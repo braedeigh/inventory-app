@@ -122,3 +122,14 @@ def upload_photo(item_id):
 
 if __name__ == '__main__':
     app.run(debug=True, port=5000)
+
+
+    
+@app.route('/debug-env', methods=['GET'])
+def debug_env():
+    return jsonify({
+        "cloud_name": os.getenv('CLOUDINARY_CLOUD_NAME'),
+        "api_key": os.getenv('CLOUDINARY_API_KEY'),
+        "secret_length": len(os.getenv('CLOUDINARY_API_SECRET', '')),
+        "secret_first_3": os.getenv('CLOUDINARY_API_SECRET', '')[:3]
+    })
