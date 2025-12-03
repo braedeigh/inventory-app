@@ -8,7 +8,7 @@ function App() {
 const [list, setList] = useState([])
 
 useEffect(() => {
-  fetch('http://localhost:5000/')
+  fetch('https://bradie-inventory-api.onrender.com/')
     .then(res => res.json())
     .then(data => setList(data))
 }, [])

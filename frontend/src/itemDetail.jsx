@@ -1,7 +1,7 @@
 import { useParams } from 'react-router-dom'
 import { useState } from 'react'
 
-const API_URL = 'http://localhost:5000'
+const API_URL = 'https://bradie-inventory-api.onrender.com'
 
 function ItemDetail({ list, setList }) {
   const { id } = useParams()

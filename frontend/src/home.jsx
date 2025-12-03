@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 
-const API_URL = 'http://localhost:5000'
+const API_URL = 'https://bradie-inventory-api.onrender.com'
 
 function Home({ list, setList }) {
   // State for form inputs
@@ -67,7 +67,7 @@ const handleDelete = async (index) => {
   const itemToDelete = list[index]
   console.log('item to delete:', itemToDelete)
   
-  await fetch(`http://localhost:5000/item/${itemToDelete.id}`, {
+  await fetch(`https://bradie-inventory-api.onrender.com/item/${itemToDelete.id}`, {
     method: 'DELETE'
   })
 
@@ -85,7 +85,7 @@ const handleUndo = async () => {
   const lastDeleted = deletedHistory[deletedHistory.length - 1]
   
   // Re-add to database
-  await fetch('http://localhost:5000/', {
+  await fetch('https://bradie-inventory-api.onrender.com/', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(lastDeleted.item)
@@ -99,7 +99,7 @@ const handleUndo = async () => {
 }
 
 const handleSave = async () => {
-  const response = await fetch(`http://localhost:5000/item/${editForm.id}`, {
+  const response = await fetch(`https://bradie-inventory-api.onrender.com/item/${editForm.id}`, {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(editForm)
