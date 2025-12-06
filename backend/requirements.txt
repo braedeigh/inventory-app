@@ -4,3 +4,4 @@ python-dotenv
 cloudinary
 libsql-experimental
 gunicorn
+gevent
