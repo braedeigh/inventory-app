@@ -37,7 +37,6 @@ def init_db():
             main_photo TEXT
         )
     ''')
-    conn.commit()
 
 with app.app_context():
     init_db()
@@ -70,7 +69,6 @@ def add_item():
         (data.get('id'), data.get('itemName'), data.get('description'), 
          data.get('category'), data.get('isNewPurchase'), data.get('origin'))
     )
-    conn.commit()
     return jsonify(data), 201
 
 
@@ -83,7 +81,6 @@ def update_item(item_id):
         WHERE id=?
     ''', (data.get('itemName'), data.get('description'), data.get('category'),
           data.get('isNewPurchase'), data.get('origin'), item_id))
-    conn.commit()
     
     cursor = conn.execute('SELECT * FROM item WHERE id=?', (item_id,))
     row = cursor.fetchone()
@@ -96,7 +93,6 @@ def update_item(item_id):
 def delete_item(item_id):
     conn = get_db()
     conn.execute('DELETE FROM item WHERE id=?', (item_id,))
-    conn.commit()
     return jsonify({"message": "Item deleted"})
 
 
@@ -112,7 +108,6 @@ def upload_photo(item_id):
     result = cloudinary.uploader.upload(file)
     
     conn.execute('UPDATE item SET main_photo=? WHERE id=?', (result['secure_url'], item_id))
-    conn.commit()
     
     return jsonify({"url": result['secure_url']})
 
