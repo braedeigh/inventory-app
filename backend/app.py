@@ -1,9 +1,9 @@
 from flask import Flask, jsonify, request
-from flask_sqlalchemy import SQLAlchemy
 from flask_cors import CORS
 from dotenv import load_dotenv
 import cloudinary
 import cloudinary.uploader
+import libsql_experimental as libsql
 import os
 
 load_dotenv()
@@ -11,8 +11,11 @@ load_dotenv()
 app = Flask(__name__)
 CORS(app)
 
-app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv('DATABASE_URL', 'sqlite:///inventory.db')
-db = SQLAlchemy(app)
+def get_db():
+    return libsql.connect(
+        database=os.getenv('TURSO_DATABASE_URL'),
+        auth_token=os.getenv('TURSO_AUTH_TOKEN')
+    )
 
 # Cloudinary config
 cloudinary.config(
@@ -21,110 +24,99 @@ cloudinary.config(
     api_secret=os.getenv('CLOUDINARY_API_SECRET')
 )
 
-class Item(db.Model):
-    id = db.Column(db.String(36), primary_key=True)
-    item_name = db.Column(db.String(255))
-    description = db.Column(db.Text)
-    category = db.Column(db.String(50))
-    is_new_purchase = db.Column(db.Boolean)
-    origin = db.Column(db.String(255))
-    main_photo = db.Column(db.String(500))  # NEW: stores Cloudinary URL
-
-    def to_dict(self):
-        return {
-            "id": self.id,
-            "itemName": self.item_name,
-            "description": self.description,
-            "category": self.category,
-            "isNewPurchase": self.is_new_purchase,
-            "origin": self.origin,
-            "mainPhoto": self.main_photo  # NEW
-        }
+def init_db():
+    conn = get_db()
+    conn.execute('''
+        CREATE TABLE IF NOT EXISTS item (
+            id TEXT PRIMARY KEY,
+            item_name TEXT,
+            description TEXT,
+            category TEXT,
+            is_new_purchase INTEGER,
+            origin TEXT,
+            main_photo TEXT
+        )
+    ''')
+    conn.commit()
 
 with app.app_context():
-    db.create_all()
+    init_db()
+
+def row_to_dict(row):
+    return {
+        "id": row[0],
+        "itemName": row[1],
+        "description": row[2],
+        "category": row[3],
+        "isNewPurchase": bool(row[4]),
+        "origin": row[5],
+        "mainPhoto": row[6]
+    }
 
 @app.route('/', methods=['GET'])
 def list_return():
-    items = Item.query.all()
-    return jsonify([item.to_dict() for item in items])
+    conn = get_db()
+    cursor = conn.execute('SELECT * FROM item')
+    items = [row_to_dict(row) for row in cursor.fetchall()]
+    return jsonify(items)
+
 
 @app.route('/', methods=['POST'])
 def add_item():
     data = request.json
-    
-    new_item = Item(
-        id=data.get('id'),
-        item_name=data.get('itemName'),
-        description=data.get('description'),
-        category=data.get('category'),
-        is_new_purchase=data.get('isNewPurchase'),
-        origin=data.get('origin')
+    conn = get_db()
+    conn.execute(
+        'INSERT INTO item (id, item_name, description, category, is_new_purchase, origin) VALUES (?, ?, ?, ?, ?, ?)',
+        (data.get('id'), data.get('itemName'), data.get('description'), 
+         data.get('category'), data.get('isNewPurchase'), data.get('origin'))
     )
-    
-    db.session.add(new_item)
-    db.session.commit()
-    
-    return jsonify(new_item.to_dict()), 201
+    conn.commit()
+    return jsonify(data), 201
 
 
 @app.route('/item/<item_id>', methods=['PUT'])
 def update_item(item_id):
-    item = Item.query.get(item_id)
-    if not item:
-        return jsonify({"error": "Item not found"}), 404
-    
     data = request.json
-    item.item_name = data.get('itemName', item.item_name)
-    item.description = data.get('description', item.description)
-    item.category = data.get('category', item.category)
-    item.is_new_purchase = data.get('isNewPurchase', item.is_new_purchase)
-    item.origin = data.get('origin', item.origin)
+    conn = get_db()
+    conn.execute('''
+        UPDATE item SET item_name=?, description=?, category=?, is_new_purchase=?, origin=?
+        WHERE id=?
+    ''', (data.get('itemName'), data.get('description'), data.get('category'),
+          data.get('isNewPurchase'), data.get('origin'), item_id))
+    conn.commit()
     
-    db.session.commit()
-    
-    return jsonify(item.to_dict())
+    cursor = conn.execute('SELECT * FROM item WHERE id=?', (item_id,))
+    row = cursor.fetchone()
+    if not row:
+        return jsonify({"error": "Item not found"}), 404
+    return jsonify(row_to_dict(row))
 
 
 @app.route('/item/<item_id>', methods=['DELETE'])
 def delete_item(item_id):
-    item = Item.query.get(item_id)
-    if not item:
-        return jsonify({"error": "Item not found"}), 404
-    
-    db.session.delete(item)
-    db.session.commit()
-    
+    conn = get_db()
+    conn.execute('DELETE FROM item WHERE id=?', (item_id,))
+    conn.commit()
     return jsonify({"message": "Item deleted"})
 
 
 # NEW: Photo upload route
 @app.route('/item/<item_id>/photo', methods=['POST'])
 def upload_photo(item_id):
-    item = Item.query.get(item_id)
-    if not item:
-        return jsonify({"error": "Item not found"}), 404
+    conn = get_db()
     
     if 'photo' not in request.files:
         return jsonify({"error": "No photo provided"}), 400
     
     file = request.files['photo']
-    
-    # Upload to Cloudinary
     result = cloudinary.uploader.upload(file)
     
-    # Save URL to database
-    item.main_photo = result['secure_url']
-    db.session.commit()
+    conn.execute('UPDATE item SET main_photo=? WHERE id=?', (result['secure_url'], item_id))
+    conn.commit()
     
     return jsonify({"url": result['secure_url']})
 
 
-if __name__ == '__main__':
-    app.run(debug=True, port=5000)
-
-
-    
 @app.route('/debug-env', methods=['GET'])
 def debug_env():
     return jsonify({
@@ -133,3 +125,7 @@ def debug_env():
         "secret_length": len(os.getenv('CLOUDINARY_API_SECRET', '')),
         "secret_first_3": os.getenv('CLOUDINARY_API_SECRET', '')[:3]
     })
+
+
+if __name__ == '__main__':
+    app.run(debug=True, port=5000)
