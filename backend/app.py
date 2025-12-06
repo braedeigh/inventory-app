@@ -12,8 +12,8 @@ app = Flask(__name__)
 CORS(app)
 
 def get_db():
-    return libsql.connect(
-        database=os.getenv('TURSO_DATABASE_URL'),
+    return create_client_sync(
+        url=os.getenv('TURSO_DATABASE_URL'),
         auth_token=os.getenv('TURSO_AUTH_TOKEN')
     )
 
