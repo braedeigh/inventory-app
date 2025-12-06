@@ -3,7 +3,7 @@ from flask_cors import CORS
 from dotenv import load_dotenv
 import cloudinary
 import cloudinary.uploader
-import libsql_experimental as libsql
+from libsql_client import create_client_sync
 import os
 
 load_dotenv()

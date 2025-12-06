@@ -2,6 +2,5 @@ flask
 flask-cors
 python-dotenv
 cloudinary
-libsql-experimental
+libsql-client
 gunicorn
-gevent
