@@ -55,10 +55,9 @@ def row_to_dict(row):
 @app.route('/', methods=['GET'])
 def list_return():
     conn = get_db()
-    cursor = conn.execute('SELECT * FROM item')
-    items = [row_to_dict(row) for row in cursor.fetchall()]
+    result = conn.execute('SELECT * FROM item')
+    items = [row_to_dict(row) for row in result.rows]
     return jsonify(items)
-
 
 @app.route('/', methods=['POST'])
 def add_item():
@@ -66,11 +65,10 @@ def add_item():
     conn = get_db()
     conn.execute(
         'INSERT INTO item (id, item_name, description, category, is_new_purchase, origin) VALUES (?, ?, ?, ?, ?, ?)',
-        (data.get('id'), data.get('itemName'), data.get('description'), 
-         data.get('category'), data.get('isNewPurchase'), data.get('origin'))
+        [data.get('id'), data.get('itemName'), data.get('description'), 
+         data.get('category'), data.get('isNewPurchase'), data.get('origin')]
     )
     return jsonify(data), 201
-
 
 @app.route('/item/<item_id>', methods=['PUT'])
 def update_item(item_id):
@@ -79,24 +77,21 @@ def update_item(item_id):
     conn.execute('''
         UPDATE item SET item_name=?, description=?, category=?, is_new_purchase=?, origin=?
         WHERE id=?
-    ''', (data.get('itemName'), data.get('description'), data.get('category'),
-          data.get('isNewPurchase'), data.get('origin'), item_id))
+    ''', [data.get('itemName'), data.get('description'), data.get('category'),
+          data.get('isNewPurchase'), data.get('origin'), item_id])
     
-    cursor = conn.execute('SELECT * FROM item WHERE id=?', (item_id,))
-    row = cursor.fetchone()
-    if not row:
+    result = conn.execute('SELECT * FROM item WHERE id=?', [item_id])
+    rows = result.rows
+    if not rows:
         return jsonify({"error": "Item not found"}), 404
-    return jsonify(row_to_dict(row))
-
+    return jsonify(row_to_dict(rows[0]))
 
 @app.route('/item/<item_id>', methods=['DELETE'])
 def delete_item(item_id):
     conn = get_db()
-    conn.execute('DELETE FROM item WHERE id=?', (item_id,))
+    conn.execute('DELETE FROM item WHERE id=?', [item_id])
     return jsonify({"message": "Item deleted"})
 
-
-# NEW: Photo upload route
 @app.route('/item/<item_id>/photo', methods=['POST'])
 def upload_photo(item_id):
     conn = get_db()
@@ -107,10 +102,9 @@ def upload_photo(item_id):
     file = request.files['photo']
     result = cloudinary.uploader.upload(file)
     
-    conn.execute('UPDATE item SET main_photo=? WHERE id=?', (result['secure_url'], item_id))
+    conn.execute('UPDATE item SET main_photo=? WHERE id=?', [result['secure_url'], item_id])
     
     return jsonify({"url": result['secure_url']})
-
 
 @app.route('/debug-env', methods=['GET'])
 def debug_env():
@@ -120,7 +114,6 @@ def debug_env():
         "secret_length": len(os.getenv('CLOUDINARY_API_SECRET', '')),
         "secret_first_3": os.getenv('CLOUDINARY_API_SECRET', '')[:3]
     })
-
 
 if __name__ == '__main__':
     app.run(debug=True, port=5000)
