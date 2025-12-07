@@ -5,6 +5,9 @@ import cloudinary
 import cloudinary.uploader
 from libsql_client import create_client_sync
 import os
+import jwt
+from datetime import datetime, timedelta
+from functools import wraps
 
 load_dotenv()
 
@@ -52,6 +55,37 @@ def row_to_dict(row):
         "mainPhoto": row[6]
     }
 
+# Auth helper
+def token_required(f):
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        token = request.headers.get('Authorization')
+        if not token:
+            return jsonify({"error": "Token missing"}), 401
+        try:
+            token = token.replace('Bearer ', '')
+            jwt.decode(token, os.getenv('JWT_SECRET', 'dev-secret'), algorithms=['HS256'])
+        except:
+            return jsonify({"error": "Invalid token"}), 401
+        return f(*args, **kwargs)
+    return decorated
+
+@app.route('/login', methods=['POST'])
+def login():
+    data = request.json
+    username = data.get('username')
+    password = data.get('password')
+    
+    if username == os.getenv('ADMIN_USERNAME') and password == os.getenv('ADMIN_PASSWORD'):
+        token = jwt.encode({
+            'user': username,
+            'exp': datetime.utcnow() + timedelta(hours=24)
+        }, os.getenv('JWT_SECRET', 'dev-secret'), algorithm='HS256')
+        return jsonify({"token": token})
+    
+    return jsonify({"error": "Invalid credentials"}), 401
+
+
 @app.route('/', methods=['GET'])
 def list_return():
     conn = get_db()
@@ -60,6 +94,7 @@ def list_return():
     return jsonify(items)
 
 @app.route('/', methods=['POST'])
+@token_required
 def add_item():
     data = request.json
     conn = get_db()
@@ -71,6 +106,7 @@ def add_item():
     return jsonify(data), 201
 
 @app.route('/item/<item_id>', methods=['PUT'])
+@token_required
 def update_item(item_id):
     data = request.json
     conn = get_db()
@@ -87,12 +123,14 @@ def update_item(item_id):
     return jsonify(row_to_dict(rows[0]))
 
 @app.route('/item/<item_id>', methods=['DELETE'])
+@token_required
 def delete_item(item_id):
     conn = get_db()
     conn.execute('DELETE FROM item WHERE id=?', [item_id])
     return jsonify({"message": "Item deleted"})
 
 @app.route('/item/<item_id>/photo', methods=['POST'])
+@token_required
 def upload_photo(item_id):
     conn = get_db()
     
@@ -107,6 +145,7 @@ def upload_photo(item_id):
     return jsonify({"url": result['secure_url']})
 
 @app.route('/debug-env', methods=['GET'])
+@token_required
 def debug_env():
     return jsonify({
         "cloud_name": os.getenv('CLOUDINARY_CLOUD_NAME'),
