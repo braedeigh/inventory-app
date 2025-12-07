@@ -4,3 +4,4 @@ python-dotenv
 cloudinary
 libsql-client
 gunicorn
+pyjwt
