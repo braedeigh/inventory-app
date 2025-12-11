@@ -41,13 +41,6 @@ function App() {
 
   return (
     <div>
-      <div className="auth-header">
-        {token ? (
-          <button onClick={handleLogout}>Logout</button>
-        ) : (
-          <button onClick={() => setShowLogin(true)}>Login</button>
-        )}
-      </div>
 
       {showLogin && (
         <Login 
