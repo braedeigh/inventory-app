@@ -3,7 +3,8 @@ import { useNavigate } from 'react-router-dom'
 
 const API_URL = 'https://bradie-inventory-api.onrender.com'
 
-function Home({ list, setList, token }) { // Added token prop
+// UPDATED: Added new props for login management (setShowLogin, handleLogout)
+function Home({ list, setList, token, setShowLogin, handleLogout }) {
   // State for form inputs
   const [itemName, setItemName] = useState('')
   const [description, setDescription] = useState('')
@@ -167,16 +168,27 @@ const handleSave = async () => {
   
   return (
     <div>
-      <h1>Bradie's Inventory</h1>
+      {/* NEW: Flex container for H1 and Login/Logout button */}
+      <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center'}}>
+        <h1>Bradie's Inventory</h1>
+        
+        <div className="home-auth-button">
+            {token ? (
+              <button onClick={handleLogout}>Logout</button>
+            ) : (
+              <button onClick={() => setShowLogin(true)}>Login</button>
+            )}
+        </div>
+      </div>
       
-      {/* MOVED & MODIFIED: Blurb conditional block added here, below the H1, with styling removed */}
+      {/* NEW LOCATION: Blurb conditional block placed below the new header div, without box styling */}
       {!token && (
         <div style={{marginBottom: '20px'}}>
           <p>This is my inventory of items, created for performance art, to learn to code, to create a portfolio, and to keep track of the items that I have.</p>
         </div>
       )}
 
-      {/* ADDED: Conditionally render the Add Item form only if logged in */}
+      {/* Conditionally render the Add Item form only if logged in */}
       {token && ( 
         <form>
           <div>
@@ -236,7 +248,7 @@ const handleSave = async () => {
 
       <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center'}}>
         <h2>My Items</h2>
-        {/* ADDED: Conditionally render Undo button only if logged in */}
+        {/* Conditionally render Undo button only if logged in */}
         {deletedHistory.length > 0 && token && (
           <button onClick={handleUndo}>Undo Delete</button>
         )}
@@ -251,7 +263,7 @@ const handleSave = async () => {
             <th>Category</th>
             <th>New Purchase</th>
             <th>Origin</th>
-            {/* ADDED: Conditionally render Actions column header only if logged in */}
+            {/* Conditionally render Actions column header only if logged in */}
             {token && <th>Actions</th>} 
           </tr>
         </thead>
@@ -333,7 +345,7 @@ const handleSave = async () => {
                 )}
               </td>
               
-              {/* ADDED: Conditionally render Actions cell only if logged in */}
+              {/* Conditionally render Actions cell only if logged in */}
               {token && (
                 <td>
                   {editingIndex === index ? (

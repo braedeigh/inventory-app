@@ -49,11 +49,7 @@ function App() {
         )}
       </div>
       
-      {!token && (
-        <div className="site-blurb" style={{marginBottom: '20px', padding: '15px', border: '1px solid #ccc', borderRadius: '5px'}}>
-          <p>This is my inventory of items, created for performance art, to learn to code, to create a portfolio, and to keep track of the items that I have.</p>
-        </div>
-      )}
+      {/* REMOVED: Blurb conditional block previously here */}
 
       {showLogin && (
         <Login 
