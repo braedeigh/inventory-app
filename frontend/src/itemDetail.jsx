@@ -3,7 +3,8 @@ import { useState } from 'react'
 
 const API_URL = 'https://bradie-inventory-api.onrender.com'
 
-function ItemDetail({ list, setList }) {
+// CORRECTED: Added token to prop destructuring
+function ItemDetail({ list, setList, token }) { 
   const { id } = useParams()
   const item = list.find(item => item.id === id)
   const [uploading, setUploading] = useState(false)
@@ -16,6 +17,13 @@ function ItemDetail({ list, setList }) {
     const file = e.target.files[0]
     if (!file) return
 
+    // ADDED: Check if user is logged in before attempting upload
+    if (!token) {
+        console.error("User not logged in. Cannot upload photo.")
+        setUploading(false)
+        return
+    }
+
     setUploading(true)
 
     const formData = new FormData()
@@ -23,16 +31,24 @@ function ItemDetail({ list, setList }) {
 
     const response = await fetch(`${API_URL}/item/${id}/photo`, {
       method: 'POST',
-      body: formData
+      body: formData,
+      headers: { // ADDED: Authorization header
+          'Authorization': `Bearer ${token}`
+      }
     })
 
-    const result = await response.json()
-    
-    // Update the item in local state so UI refreshes
-    const updatedList = list.map(i => 
-      i.id === id ? { ...i, mainPhoto: result.url } : i
-    )
-    setList(updatedList)
+    if (response.ok) { // Only update state if API call succeeds
+        const result = await response.json()
+        
+        // Update the item in local state so UI refreshes
+        const updatedList = list.map(i => 
+          i.id === id ? { ...i, mainPhoto: result.url } : i
+        )
+        setList(updatedList)
+    } else {
+        console.error("Photo upload failed.", await response.text())
+        // Optionally: Handle 401 or other errors
+    }
     
     setUploading(false)
   }
@@ -42,20 +58,30 @@ function ItemDetail({ list, setList }) {
       <h1>{item.itemName}</h1>
       
       <div className="photo-section">
-        <div className="main-photo" onClick={() => document.getElementById('photo-input').click()}>
+        {/* ADDED: Conditional logic for click handler and cursor based on token */}
+        <div 
+          className="main-photo" 
+          onClick={token ? () => document.getElementById('photo-input').click() : undefined}
+          style={{cursor: token ? 'pointer' : 'default'}}
+        >
           {item.mainPhoto ? (
             <img src={item.mainPhoto} alt={item.itemName} style={{width: '100%', height: '100%', objectFit: 'cover'}} />
           ) : (
-            <p>{uploading ? 'Uploading...' : 'Click to add photo'}</p>
+             // UPDATED: Text based on login status
+            <p>{uploading ? 'Uploading...' : (token ? 'Click to add photo' : 'No photo added')}</p>
           )}
         </div>
-        <input 
-          type="file" 
-          id="photo-input" 
-          accept="image/*" 
-          onChange={handlePhotoUpload}
-          style={{display: 'none'}}
-        />
+        
+        {/* ADDED: Conditionally render the input element only if logged in */}
+        {token && (
+          <input 
+            type="file" 
+            id="photo-input" 
+            accept="image/*" 
+            onChange={handlePhotoUpload}
+            style={{display: 'none'}}
+          />
+        )}
       </div>
 
       <div className="item-info">

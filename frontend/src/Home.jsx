@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 
 const API_URL = 'https://bradie-inventory-api.onrender.com'
 
-function Home({ list, setList }) {
+function Home({ list, setList, token }) { // Added token prop
   // State for form inputs
   const [itemName, setItemName] = useState('')
   const [description, setDescription] = useState('')
@@ -24,6 +24,12 @@ function Home({ list, setList }) {
   })
 
 const handleAddItem = async () => {
+    // Check if user is logged in before attempting POST operation
+    if (!token) {
+        console.error("User not logged in. Cannot add item.")
+        return
+    }
+
   const newItem = {
     id: crypto.randomUUID(),
     itemName,
@@ -33,19 +39,27 @@ const handleAddItem = async () => {
     origin
   }
 
-  await fetch(`${API_URL}/`, {
+  const response = await fetch(`${API_URL}/`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}` // ADDED: Authorization header
+    },
     body: JSON.stringify(newItem)
   })
 
-  setList([newItem, ...list])
+    if (response.ok) { // Only update state if API call succeeds
+        setList([newItem, ...list])
 
-  setItemName('')
-  setDescription('')
-  setCategory('other')
-  setIsNewPurchase(false)
-  setOrigin('')
+        setItemName('')
+        setDescription('')
+        setCategory('other')
+        setIsNewPurchase(false)
+        setOrigin('')
+    } else {
+        console.error("Failed to add item.", await response.text())
+        // Optionally handle 401 or other errors
+    }
 }
   
     
@@ -63,55 +77,87 @@ const handleAddItem = async () => {
   }
 
 const handleDelete = async (index) => {
+    // Check if user is logged in before attempting DELETE operation
+    if (!token) {
+        console.error("User not logged in. Cannot delete item.")
+        return
+    }
   console.log('deleting item at index:', index)
   const itemToDelete = list[index]
   console.log('item to delete:', itemToDelete)
   
-  await fetch(`https://bradie-inventory-api.onrender.com/item/${itemToDelete.id}`, {
-    method: 'DELETE'
+  const response = await fetch(`https://bradie-inventory-api.onrender.com/item/${itemToDelete.id}`, {
+    method: 'DELETE',
+    headers: {
+        'Authorization': `Bearer ${token}` // ADDED: Authorization header
+    }
   })
 
-  const newHistory = [...deletedHistory, { item: itemToDelete, position: index }]
-  console.log('new history:', newHistory)
-  setDeletedHistory(newHistory)
-  
-  const updatedList = list.filter((item, i) => i !== index)
-  setList(updatedList)
+    if (response.ok) { // Only update state if API call succeeds
+        const newHistory = [...deletedHistory, { item: itemToDelete, position: index }]
+        console.log('new history:', newHistory)
+        setDeletedHistory(newHistory)
+        
+        const updatedList = list.filter((item, i) => i !== index)
+        setList(updatedList)
+    } else {
+        console.error("Failed to delete item.", await response.text())
+    }
 }
 
 const handleUndo = async () => {
-  if (deletedHistory.length === 0) return
-  
+  if (deletedHistory.length === 0 || !token) return // Added token check
+
   const lastDeleted = deletedHistory[deletedHistory.length - 1]
   
   // Re-add to database
-  await fetch('https://bradie-inventory-api.onrender.com/', {
+  const response = await fetch('https://bradie-inventory-api.onrender.com/', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}` // ADDED: Authorization header
+    },
     body: JSON.stringify(lastDeleted.item)
   })
-  
-  const newList = [...list]
-  newList.splice(lastDeleted.position, 0, lastDeleted.item)
-  setList(newList)
-  
-  setDeletedHistory(deletedHistory.slice(0, -1))
+
+    if (response.ok) { // Only update state if API call succeeds
+        const newList = [...list]
+        newList.splice(lastDeleted.position, 0, lastDeleted.item)
+        setList(newList)
+        
+        setDeletedHistory(deletedHistory.slice(0, -1))
+    } else {
+        console.error("Failed to undo delete.", await response.text())
+    }
 }
 
 const handleSave = async () => {
+    // Check if user is logged in before attempting PUT operation
+    if (!token) {
+        console.error("User not logged in. Cannot save item.")
+        return
+    }
+
   const response = await fetch(`https://bradie-inventory-api.onrender.com/item/${editForm.id}`, {
     method: 'PUT',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}` // ADDED: Authorization header
+    },
     body: JSON.stringify(editForm)
   })
 
-  const updatedItem = await response.json()
+  if (response.ok) { // Only update state if API call succeeds
+      const updatedItem = await response.json()
 
-  const updatedList = list.map(item => 
-    item.id === editForm.id ? updatedItem : item
-  )
-  setList(updatedList)
-  setEditingIndex(null)
+      const updatedList = list.map(item => 
+          item.id === editForm.id ? updatedItem : item
+      )
+      setList(updatedList)
+      setEditingIndex(null)
+  } else {
+      console.error("Failed to save item.", await response.text())
+  }
 }
 
   const handleCancel = () => {
@@ -123,64 +169,68 @@ const handleSave = async () => {
     <div>
       <h1>Bradie's Inventory</h1>
       
-      <form>
-        <div>
-          <label>Item Name:</label>
-          <input 
-            type="text"
-            value={itemName}
-            onChange={(e) => setItemName(e.target.value)}
-          />
-        </div>
-
-        <div>
-          <label>Description:</label>
-          <textarea 
-            value={description}
-            onChange={(e) => setDescription(e.target.value)}
-          />
-        </div>
-
-        <div>
-          <label>Category:</label>
-          <select 
-            value={category}
-            onChange={(e) => setCategory(e.target.value)}
-          >
-            <option value="clothing">Clothing</option>
-            <option value="jewelry">Jewelry</option>
-            <option value="sentimental">Sentimental</option>
-            <option value="bedding">Bedding</option>
-            <option value="other">Other</option>
-          </select>
-        </div>
-
-        <div>
-          <label>
+      {/* ADDED: Conditionally render the Add Item form only if logged in */}
+      {token && ( 
+        <form>
+          <div>
+            <label>Item Name:</label>
             <input 
-              type="checkbox"
-              checked={isNewPurchase}
-              onChange={(e) => setIsNewPurchase(e.target.checked)}
+              type="text"
+              value={itemName}
+              onChange={(e) => setItemName(e.target.value)}
             />
-            Purchased after building this site
-          </label>
-        </div>
+          </div>
 
-        <div>
-          <label>Origin (optional):</label>
-          <input 
-            type="text"
-            value={origin}
-            onChange={(e) => setOrigin(e.target.value)}
-          />
-        </div>
+          <div>
+            <label>Description:</label>
+            <textarea 
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+            />
+          </div>
 
-        <button type="button" onClick={handleAddItem}>Add Item</button>
-      </form>
+          <div>
+            <label>Category:</label>
+            <select 
+              value={category}
+              onChange={(e) => setCategory(e.target.value)}
+            >
+              <option value="clothing">Clothing</option>
+              <option value="jewelry">Jewelry</option>
+              <option value="sentimental">Sentimental</option>
+              <option value="bedding">Bedding</option>
+              <option value="other">Other</option>
+            </select>
+          </div>
+
+          <div>
+            <label>
+              <input 
+                type="checkbox"
+                checked={isNewPurchase}
+                onChange={(e) => setIsNewPurchase(e.target.checked)}
+              />
+              Purchased after building this site
+            </label>
+          </div>
+
+          <div>
+            <label>Origin (optional):</label>
+            <input 
+              type="text"
+              value={origin}
+              onChange={(e) => setOrigin(e.target.value)}
+            />
+          </div>
+
+          <button type="button" onClick={handleAddItem}>Add Item</button>
+        </form>
+      )}
 
       <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center'}}>
         <h2>My Items</h2>
-        {deletedHistory.length > 0 && (
+        {/* ADDED: Conditionally render Undo button only if logged in */}
+        {deletedHistory.length > 0 && token && (
           <button onClick={handleUndo}>Undo Delete</button>
         )}
       </div>
@@ -194,7 +244,8 @@ const handleSave = async () => {
             <th>Category</th>
             <th>New Purchase</th>
             <th>Origin</th>
-            <th>Actions</th>
+            {/* ADDED: Conditionally render Actions column header only if logged in */}
+            {token && <th>Actions</th>} 
           </tr>
         </thead>
         <tbody>
@@ -274,33 +325,35 @@ const handleSave = async () => {
                   <span className="origin-cell">{item.origin}</span>
                 )}
               </td>
-              <td>
-                {editingIndex === index ? (
-                  <>
-<button onClick={(e) => {
-  e.stopPropagation()
-  handleSave()
-}}>Save</button>
-
-<button onClick={(e) => {
-  e.stopPropagation()
-  handleCancel()
-}}>Cancel</button>
-                  </>
-                ) : (
-                  <>
-<button onClick={(e) => {
-  e.stopPropagation()
-  handleEdit(index)
-}}>Edit</button>
-
-<button onClick={(e) => {
-  e.stopPropagation()
-  handleDelete(index)
-}}>Delete</button>
-                  </>
-                )}
-              </td>
+              
+              {/* ADDED: Conditionally render Actions cell only if logged in */}
+              {token && (
+                <td>
+                  {editingIndex === index ? (
+                    <>
+                      <button onClick={(e) => {
+                        e.stopPropagation()
+                        handleSave()
+                      }}>Save</button>
+                      <button onClick={(e) => {
+                        e.stopPropagation()
+                        handleCancel()
+                      }}>Cancel</button>
+                    </>
+                  ) : (
+                    <>
+                      <button onClick={(e) => {
+                        e.stopPropagation()
+                        handleEdit(index)
+                      }}>Edit</button>
+                      <button onClick={(e) => {
+                        e.stopPropagation()
+                        handleDelete(index)
+                      }}>Delete</button>
+                    </>
+                  )}
+                </td>
+              )}
             </tr>
           ))}
         </tbody>
@@ -308,8 +361,6 @@ const handleSave = async () => {
     </div>
   )
 }
-
-
 
 
 export default Home
