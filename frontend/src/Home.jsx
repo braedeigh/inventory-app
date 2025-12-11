@@ -186,6 +186,7 @@ const handleSave = async () => {
       {!token && (
         <div style={{marginBottom: '20px'}}>
           <p>This is my inventory of items, created for performance art, to learn to code, to create a portfolio, and to keep track of the items that I have.</p>
+          <p>If the inventory does not yet display items, wait 50 seconds and refresh the page.</p>
         </div>
       )}
 
