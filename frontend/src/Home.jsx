@@ -168,10 +168,11 @@ const handleSave = async () => {
   
   return (
     <div>
-      {/* NEW: Flex container for H1 and Login/Logout button */}
+      {/* NEW: Flex container for H1 and Login/Logout button, aligned horizontally */}
       <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center'}}>
         <h1>Bradie's Inventory</h1>
         
+        {/* MOVED: The functional Login/Logout button logic */}
         <div className="home-auth-button">
             {token ? (
               <button onClick={handleLogout}>Logout</button>
@@ -228,23 +229,23 @@ const handleSave = async () => {
                 type="checkbox"
                 checked={isNewPurchase}
                 onChange={(e) => setIsNewPurchase(e.target.checked)}
-              />
-              Purchased after building this site
-            </label>
-          </div>
-
-          <div>
-            <label>Origin (optional):</label>
-            <input 
-              type="text"
-              value={origin}
-              onChange={(e) => setOrigin(e.target.value)}
             />
-          </div>
+            Purchased after building this site
+          </label>
+        </div>
 
-          <button type="button" onClick={handleAddItem}>Add Item</button>
-        </form>
-      )}
+        <div>
+          <label>Origin (optional):</label>
+          <input 
+            type="text"
+            value={origin}
+            onChange={(e) => setOrigin(e.target.value)}
+          />
+        </div>
+
+        <button type="button" onClick={handleAddItem}>Add Item</button>
+      </form>
+    )}
 
       <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center'}}>
         <h2>My Items</h2>

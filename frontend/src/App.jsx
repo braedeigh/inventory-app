@@ -41,7 +41,7 @@ function App() {
 
   return (
     <div>
-
+      
       {showLogin && (
         <Login 
           onLogin={handleLogin} 
@@ -50,8 +50,21 @@ function App() {
       )}
 
       <Routes>
-        <Route path="/" element={<Home list={list} setList={setList} token={token} />} />
-        <Route path="/home" element={<Home list={list} setList={setList} token={token} />} />
+        {/* CRITICAL FIX: Ensure setShowLogin and handleLogout are passed as props */}
+        <Route path="/" element={<Home 
+          list={list} 
+          setList={setList} 
+          token={token} 
+          setShowLogin={setShowLogin} 
+          handleLogout={handleLogout} 
+        />} />
+        <Route path="/home" element={<Home 
+          list={list} 
+          setList={setList} 
+          token={token} 
+          setShowLogin={setShowLogin} 
+          handleLogout={handleLogout} 
+        />} />
         <Route path="/item/:id" element={<ItemDetail list={list} setList={setList} token={token} />} />
       </Routes>
     </div>
