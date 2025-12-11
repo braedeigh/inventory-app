@@ -48,8 +48,6 @@ function App() {
           <button onClick={() => setShowLogin(true)}>Login</button>
         )}
       </div>
-      
-      {/* REMOVED: Blurb conditional block previously here */}
 
       {showLogin && (
         <Login 
