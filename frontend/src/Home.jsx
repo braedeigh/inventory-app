@@ -169,6 +169,13 @@ const handleSave = async () => {
     <div>
       <h1>Bradie's Inventory</h1>
       
+      {/* MOVED & MODIFIED: Blurb conditional block added here, below the H1, with styling removed */}
+      {!token && (
+        <div style={{marginBottom: '20px'}}>
+          <p>This is my inventory of items, created for performance art, to learn to code, to create a portfolio, and to keep track of the items that I have.</p>
+        </div>
+      )}
+
       {/* ADDED: Conditionally render the Add Item form only if logged in */}
       {token && ( 
         <form>
