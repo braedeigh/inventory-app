@@ -96,14 +96,35 @@ def list_return():
 @app.route('/', methods=['POST'])
 @token_required
 def add_item():
-    data = request.json
+    # Get form fields
+    item_id = request.form.get('id')
+    item_name = request.form.get('itemName')
+    description = request.form.get('description')
+    category = request.form.get('category')
+    is_new_purchase = request.form.get('isNewPurchase') == 'true'  # Convert string to bool
+    origin = request.form.get('origin')
+    
+    photo_url = None
+    
+    # Handle photo if present
+    if 'photo' in request.files:
+        file = request.files['photo']
+        if file.filename != '':
+            result = cloudinary.uploader.upload(file)
+            photo_url = result['secure_url']
+    
+    # Save to database
     conn = get_db()
     conn.execute(
-        'INSERT INTO item (id, item_name, description, category, is_new_purchase, origin) VALUES (?, ?, ?, ?, ?, ?)',
-        [data.get('id'), data.get('itemName'), data.get('description'), 
-         data.get('category'), data.get('isNewPurchase'), data.get('origin')]
+        'INSERT INTO item (id, item_name, description, category, is_new_purchase, origin, main_photo) VALUES (?, ?, ?, ?, ?, ?, ?)',
+        [item_id, item_name, description, category, is_new_purchase, origin, photo_url]
     )
-    return jsonify(data), 201
+    
+    # Return the created item
+    result = conn.execute('SELECT * FROM item WHERE id=?', [item_id])
+    row = result.rows[0]
+    return jsonify(row_to_dict(row)), 201
+
 
 @app.route('/item/<item_id>', methods=['PUT'])
 @token_required

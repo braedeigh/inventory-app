@@ -11,6 +11,8 @@ function Home({ list, setList, token, setShowLogin, handleLogout }) {
   const [category, setCategory] = useState('other')
   const [isNewPurchase, setIsNewPurchase] = useState(false)
   const [origin, setOrigin] = useState('')
+  const [photoFile, setPhotoFile] = useState(null)
+  const [photoPreview, setPhotoPreview] = useState(null)
   const [editingIndex, setEditingIndex] = useState(null)
   const [deletedHistory, setDeletedHistory] = useState([])
   const navigate = useNavigate()
@@ -24,21 +26,58 @@ function Home({ list, setList, token, setShowLogin, handleLogout }) {
     origin: ''
   })
 
-const handleAddItem = async () => {
-    // Check if user is logged in before attempting POST operation
-    if (!token) {
-        console.error("User not logged in. Cannot add item.")
-        return
-    }
-
-  const newItem = {
-    id: crypto.randomUUID(),
-    itemName,
-    description,
-    category,
-    isNewPurchase,
-    origin
+const handlePhotoSelect = (e) => {
+  const file = e.target.files[0]
+  if (file) {
+    setPhotoFile(file)
+    const previewUrl = URL.createObjectURL(file)
+    setPhotoPreview(previewUrl)
   }
+}
+
+const handleAddItem = async () => {
+  if (!token) {
+    console.error("User not logged in. Cannot add item.")
+    return
+  }
+
+  const formData = new FormData()
+  formData.append('id', crypto.randomUUID())
+  formData.append('itemName', itemName)
+  formData.append('description', description)
+  formData.append('category', category)
+  formData.append('isNewPurchase', isNewPurchase)
+  formData.append('origin', origin)
+  
+  if (photoFile) {
+    formData.append('photo', photoFile)
+  }
+
+  const response = await fetch(`${API_URL}/`, {
+    method: 'POST',
+    headers: { 
+      'Authorization': `Bearer ${token}`
+      // NO Content-Type header - browser sets it automatically
+    },
+    body: formData
+  })
+
+  if (response.ok) {
+    const newItem = await response.json()
+    setList([newItem, ...list])
+
+    // Clear form
+    setItemName('')
+    setDescription('')
+    setCategory('other')
+    setIsNewPurchase(false)
+    setOrigin('')
+    setPhotoFile(null)
+    setPhotoPreview(null)
+  } else {
+    console.error("Failed to add item.", await response.text())
+  }
+}
 
   const response = await fetch(`${API_URL}/`, {
     method: 'POST',
@@ -243,6 +282,24 @@ const handleSave = async () => {
             onChange={(e) => setOrigin(e.target.value)}
           />
         </div>
+
+        <div>
+  <label>Photo (optional):</label>
+  <input 
+    type="file"
+    accept="image/*"
+    onChange={handlePhotoSelect}
+  />
+  {photoPreview && (
+    <div style={{marginTop: '10px'}}>
+      <img 
+        src={photoPreview} 
+        alt="Preview" 
+        style={{width: '200px', height: '200px', objectFit: 'cover'}}
+      />
+    </div>
+  )}
+</div>
 
         <button type="button" onClick={handleAddItem}>Add Item</button>
       </form>
