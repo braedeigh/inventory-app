@@ -78,29 +78,6 @@ const handleAddItem = async () => {
     console.error("Failed to add item.", await response.text())
   }
 }
-
-  const response = await fetch(`${API_URL}/`, {
-    method: 'POST',
-    headers: { 
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}` // ADDED: Authorization header
-    },
-    body: JSON.stringify(newItem)
-  })
-
-    if (response.ok) { // Only update state if API call succeeds
-        setList([newItem, ...list])
-
-        setItemName('')
-        setDescription('')
-        setCategory('other')
-        setIsNewPurchase(false)
-        setOrigin('')
-    } else {
-        console.error("Failed to add item.", await response.text())
-        // Optionally handle 401 or other errors
-    }
-}
   
     
   const handleEdit = (index) => {
