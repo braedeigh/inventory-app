@@ -181,5 +181,15 @@ def debug_env():
         "secret_first_3": os.getenv('CLOUDINARY_API_SECRET', '')[:3]
     })
 
+@app.route('/migrate-add-timestamp', methods=['POST'])
+@token_required
+def migrate_add_timestamp():
+    conn = get_db()
+    try:
+        conn.execute('ALTER TABLE item ADD COLUMN created_at TEXT')
+        return jsonify({"message": "Column added successfully"})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
 if __name__ == '__main__':
     app.run(debug=True, port=5000)
