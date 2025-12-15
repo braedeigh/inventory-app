@@ -16,6 +16,7 @@ function Home({ list, setList, token, setShowLogin, handleLogout }) {
   const [editingIndex, setEditingIndex] = useState(null)
   const [deletedHistory, setDeletedHistory] = useState([])
   const navigate = useNavigate()
+  const [isUploading, setIsUploading] = useState(false)
 
 
   const [editForm, setEditForm] = useState({
@@ -41,6 +42,8 @@ const handleAddItem = async () => {
     return
   }
 
+  setIsUploading(true)  // Start loading
+
   const formData = new FormData()
   formData.append('id', crypto.randomUUID())
   formData.append('itemName', itemName)
@@ -57,7 +60,6 @@ const handleAddItem = async () => {
     method: 'POST',
     headers: { 
       'Authorization': `Bearer ${token}`
-      // NO Content-Type header - browser sets it automatically
     },
     body: formData
   })
@@ -77,6 +79,8 @@ const handleAddItem = async () => {
   } else {
     console.error("Failed to add item.", await response.text())
   }
+
+  setIsUploading(false)  // End loading
 }
   
   const handleEdit = (index) => {
@@ -286,7 +290,13 @@ const handleSave = async () => {
   )}
 </div>
 
-        <button type="button" onClick={handleAddItem}>Add Item</button>
+        <button 
+  type="button" 
+  onClick={handleAddItem}
+  disabled={isUploading}
+>
+  {isUploading ? 'Adding...' : 'Add Item'}
+</button>
       </form>
     )}
 
