@@ -195,3 +195,139 @@ tr:hover {
   overflow: hidden;
   text-overflow: ellipsis;
 }
+
+
+/* Auth header */
+.auth-header {
+  display: flex;
+  justify-content: flex-end;
+  padding: 10px 0;
+  margin-bottom: 20px;
+}
+
+.auth-header button {
+  padding: 8px 16px;
+  cursor: pointer;
+}
+
+/* Login modal */
+.login-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.login-modal {
+  background: white;
+  padding: 30px;
+  border-radius: 8px;
+  width: 300px;
+  position: relative;
+}
+
+.login-modal h2 {
+  margin-top: 0;
+  margin-bottom: 20px;
+}
+
+.login-modal .close-btn {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  background: none;
+  border: none;
+  font-size: 24px;
+  cursor: pointer;
+  color: #666;
+}
+
+.login-modal .close-btn:hover {
+  color: #000;
+}
+
+.login-modal input[type="text"],
+.login-modal input[type="password"] {
+  width: 100%;
+  padding: 8px;
+  box-sizing: border-box;
+}
+
+.login-modal button[type="submit"] {
+  width: 100%;
+  padding: 10px;
+  background-color: #4CAF50;
+  color: white;
+  border: none;
+  cursor: pointer;
+  margin-top: 10px;
+}
+
+.login-modal button[type="submit"]:hover {
+  background-color: #45a049;
+}
+
+.login-modal .error {
+  color: red;
+  margin-bottom: 10px;
+}
+
+
+/* Mobile responsive styles */
+@media (max-width: 768px) {
+  #root {
+    padding: 1rem;
+  }
+
+  h1 {
+    font-size: 2em;
+  }
+
+  /* Hide the table on mobile */
+  table {
+    display: none;
+  }
+
+  /* Show items as cards instead */
+  .mobile-item-list {
+    display: block;
+  }
+
+  .mobile-item-card {
+    background: #2a2a2a;
+    border: 1px solid #444;
+    border-radius: 8px;
+    padding: 15px;
+    margin-bottom: 15px;
+  }
+
+  .mobile-item-card img {
+    width: 100%;
+    max-width: 200px;
+    height: auto;
+    border-radius: 4px;
+    margin-bottom: 10px;
+  }
+
+  .mobile-item-field {
+    margin-bottom: 8px;
+  }
+
+  .mobile-item-field strong {
+    display: inline-block;
+    width: 100px;
+  }
+}
+
+/* Desktop - hide mobile view */
+@media (min-width: 769px) {
+  .mobile-item-list {
+    display: none;
+  }
+}

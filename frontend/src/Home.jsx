@@ -421,6 +421,34 @@ const handleSave = async () => {
           ))}
         </tbody>
       </table>
+
+
+      {/* Mobile card view */}
+      <div className="mobile-item-list">
+        {list.map((item, index) => (
+          <div 
+            key={index} 
+            className="mobile-item-card"
+            onClick={() => navigate(`/item/${item.id}`)}
+          >
+            {item.mainPhoto && (
+              <img src={item.mainPhoto} alt={item.itemName} />
+            )}
+            <div className="mobile-item-field">
+              <strong>Name:</strong> {item.itemName}
+            </div>
+            <div className="mobile-item-field">
+              <strong>Description:</strong> {item.description}
+            </div>
+            <div className="mobile-item-field">
+              <strong>Category:</strong> {item.category}
+            </div>
+            <div className="mobile-item-field">
+              <strong>Origin:</strong> {item.origin}
+            </div>
+          </div>
+        ))}
+      </div>
     </div>
   )
 }
