@@ -8,6 +8,7 @@ import os
 import jwt
 from datetime import datetime, timedelta
 from functools import wraps
+from datetime import datetime
 
 load_dotenv()
 
@@ -53,6 +54,7 @@ def row_to_dict(row):
         "isNewPurchase": bool(row[4]),
         "origin": row[5],
         "mainPhoto": row[6]
+        "createdAt": row[7]
     }
 
 # Auth helper
@@ -103,6 +105,7 @@ def add_item():
     category = request.form.get('category')
     is_new_purchase = request.form.get('isNewPurchase') == 'true'  # Convert string to bool
     origin = request.form.get('origin')
+    created_at = datetime.utcnow().isoformat()
     
     photo_url = None
     
@@ -121,8 +124,8 @@ def add_item():
     # Save to database
     conn = get_db()
     conn.execute(
-        'INSERT INTO item (id, item_name, description, category, is_new_purchase, origin, main_photo) VALUES (?, ?, ?, ?, ?, ?, ?)',
-        [item_id, item_name, description, category, is_new_purchase, origin, photo_url]
+        'INSERT INTO item (id, item_name, description, category, is_new_purchase, origin, main_photo, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+        [item_id, item_name, description, category, is_new_purchase, origin, photo_url, created_at]
     )
     
     # Return the created item
