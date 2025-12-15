@@ -102,7 +102,7 @@ const handleDelete = async (index) => {
   const itemToDelete = list[index]
   console.log('item to delete:', itemToDelete)
   
-  const response = await fetch(`${API_URL}/${itemToDelete.id}`, {
+  const response = await fetch(`${API_URL}/item/${itemToDelete.id}`, {
     method: 'DELETE',
     headers: {
         'Authorization': `Bearer ${token}` // ADDED: Authorization header
