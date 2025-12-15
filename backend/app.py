@@ -53,7 +53,7 @@ def row_to_dict(row):
         "category": row[3],
         "isNewPurchase": bool(row[4]),
         "origin": row[5],
-        "mainPhoto": row[6]
+        "mainPhoto": row[6],
         "createdAt": row[7]
     }
 
