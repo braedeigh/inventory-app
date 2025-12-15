@@ -79,7 +79,6 @@ const handleAddItem = async () => {
   }
 }
   
-    
   const handleEdit = (index) => {
     const item = list[index]
     setEditForm({
@@ -123,29 +122,38 @@ const handleDelete = async (index) => {
 }
 
 const handleUndo = async () => {
-  if (deletedHistory.length === 0 || !token) return // Added token check
+  if (deletedHistory.length === 0 || !token) return
 
   const lastDeleted = deletedHistory[deletedHistory.length - 1]
   
-  // Re-add to database
-  const response = await fetch('https://bradie-inventory-api.onrender.com/', {
+  const formData = new FormData()
+  formData.append('id', lastDeleted.item.id)
+  formData.append('itemName', lastDeleted.item.itemName)
+  formData.append('description', lastDeleted.item.description)
+  formData.append('category', lastDeleted.item.category)
+  formData.append('isNewPurchase', lastDeleted.item.isNewPurchase)
+  formData.append('origin', lastDeleted.item.origin)
+  if (lastDeleted.item.mainPhoto) {
+    formData.append('mainPhoto', lastDeleted.item.mainPhoto)
+  }
+  
+  const response = await fetch(API_URL + '/', {
     method: 'POST',
     headers: { 
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}` // ADDED: Authorization header
+      'Authorization': `Bearer ${token}`
     },
-    body: JSON.stringify(lastDeleted.item)
+    body: formData
   })
 
-    if (response.ok) { // Only update state if API call succeeds
-        const newList = [...list]
-        newList.splice(lastDeleted.position, 0, lastDeleted.item)
-        setList(newList)
-        
-        setDeletedHistory(deletedHistory.slice(0, -1))
-    } else {
-        console.error("Failed to undo delete.", await response.text())
-    }
+  if (response.ok) {
+    const newList = [...list]
+    newList.splice(lastDeleted.position, 0, lastDeleted.item)
+    setList(newList)
+    
+    setDeletedHistory(deletedHistory.slice(0, -1))
+  } else {
+    console.error("Failed to undo delete.", await response.text())
+  }
 }
 
 const handleSave = async () => {

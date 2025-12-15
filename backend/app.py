@@ -112,6 +112,11 @@ def add_item():
         if file.filename != '':
             result = cloudinary.uploader.upload(file)
             photo_url = result['secure_url']
+
+    if photo_url is None:
+        existing_url = request.form.get('mainPhoto')
+        if existing_url:
+            photo_url = existing_url
     
     # Save to database
     conn = get_db()
@@ -124,6 +129,7 @@ def add_item():
     result = conn.execute('SELECT * FROM item WHERE id=?', [item_id])
     row = result.rows[0]
     return jsonify(row_to_dict(row)), 201
+
 
 
 @app.route('/item/<item_id>', methods=['PUT'])
