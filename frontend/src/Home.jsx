@@ -102,7 +102,7 @@ const handleDelete = async (index) => {
   const itemToDelete = list[index]
   console.log('item to delete:', itemToDelete)
   
-  const response = await fetch(`https://bradie-inventory-api.onrender.com/item/${itemToDelete.id}`, {
+  const response = await fetch(`${API_URL}/${itemToDelete.id}`, {
     method: 'DELETE',
     headers: {
         'Authorization': `Bearer ${token}` // ADDED: Authorization header
@@ -163,7 +163,7 @@ const handleSave = async () => {
         return
     }
 
-  const response = await fetch(`https://bradie-inventory-api.onrender.com/item/${editForm.id}`, {
+  const response = await fetch(`${API_URL}/item/${editForm.id}`, {
     method: 'PUT',
     headers: { 
         'Content-Type': 'application/json',
