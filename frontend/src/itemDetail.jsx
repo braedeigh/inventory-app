@@ -89,7 +89,7 @@ function ItemDetail({ list, setList, token }) {
         <p><strong>Category:</strong> {item.category}</p>
         <p><strong>Origin:</strong> {item.origin}</p>
         <p><strong>New Purchase:</strong> {item.isNewPurchase ? 'Yes' : 'No'}</p>
-<p><strong>Formatted:</strong> {new Date(item.createdAt + 'Z').toLocaleString('en-US', {
+<p><strong>Date logged:</strong> {new Date(item.createdAt + 'Z').toLocaleString('en-US', {
   timeZone: 'America/Chicago',
   year: 'numeric',
   month: 'long', 
