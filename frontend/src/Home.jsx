@@ -262,12 +262,24 @@ const handleSave = async () => {
                 // Regular Enter creates newline, so we use a different approach
                 if (e.key === 'Enter' && !e.shiftKey) {
                   e.preventDefault()
-                  categoryRef.current?.focus()
+                  originRef.current?.focus()
                 }
               }}
               enterKeyHint="next"
             />
           </div>
+
+        <div>
+          <label>Origin (optional):</label>
+          <input 
+            type="text"
+            ref={originRef}
+            value={origin}
+            onChange={(e) => setOrigin(e.target.value)}
+            onKeyDown={(e) => handleKeyDown(e, categoryRef)}
+            enterKeyHint="next"
+          />
+        </div>
 
           <div>
             <label>Category:</label>
@@ -275,7 +287,6 @@ const handleSave = async () => {
               ref={categoryRef}
               value={category}
               onChange={(e) => setCategory(e.target.value)}
-              onKeyDown={(e) => handleKeyDown(e, originRef)}
             >
               <option value="clothing">Clothing</option>
               <option value="jewelry">Jewelry</option>
@@ -296,17 +307,7 @@ const handleSave = async () => {
           </label>
         </div>
 
-        <div>
-          <label>Origin (optional):</label>
-          <input 
-            type="text"
-            ref={originRef}
-            value={origin}
-            onChange={(e) => setOrigin(e.target.value)}
-            onKeyDown={(e) => handleKeyDown(e, submitRef)}
-            enterKeyHint="done"
-          />
-        </div>
+
 
         <div>
   <label>Photo (optional):</label>
