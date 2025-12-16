@@ -89,7 +89,15 @@ function ItemDetail({ list, setList, token }) {
         <p><strong>Category:</strong> {item.category}</p>
         <p><strong>Origin:</strong> {item.origin}</p>
         <p><strong>New Purchase:</strong> {item.isNewPurchase ? 'Yes' : 'No'}</p>
-        <p><strong>Added:</strong> {item.createdAt}</p>
+        <p><strong>Added:</strong> {new Date(item.createdAt).toLocaleString('en-US', {
+  timeZone: 'America/Chicago',
+  year: 'numeric',
+  month: 'long', 
+  day: 'numeric',
+  hour: 'numeric',
+  minute: '2-digit',
+  hour12: true
+})}</p>
       </div>
 
       <button onClick={() => window.history.back()}>Back</button>
