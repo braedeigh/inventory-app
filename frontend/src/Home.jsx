@@ -1,10 +1,18 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 
 const API_URL = 'https://bradie-inventory-api.onrender.com'
 
 // UPDATED: Added new props for login management (setShowLogin, handleLogout)
 function Home({ list, setList, token, setShowLogin, handleLogout }) {
+  // Refs for form field navigation
+  const itemNameRef = useRef(null)
+  const descriptionRef = useRef(null)
+  const categoryRef = useRef(null)
+  const originRef = useRef(null)
+  const photoRef = useRef(null)
+  const submitRef = useRef(null)
+
   // State for form inputs
   const [itemName, setItemName] = useState('')
   const [description, setDescription] = useState('')
@@ -26,6 +34,16 @@ function Home({ list, setList, token, setShowLogin, handleLogout }) {
     isNewPurchase: false,
     origin: ''
   })
+
+  // Helper function to handle Enter key navigation
+  const handleKeyDown = (e, nextRef) => {
+    if (e.key === 'Enter') {
+      e.preventDefault()
+      if (nextRef?.current) {
+        nextRef.current.focus()
+      }
+    }
+  }
 
 const handlePhotoSelect = (e) => {
   const file = e.target.files[0]
@@ -225,24 +243,39 @@ const handleSave = async () => {
             <label>Item Name:</label>
             <input 
               type="text"
+              ref={itemNameRef}
               value={itemName}
               onChange={(e) => setItemName(e.target.value)}
+              onKeyDown={(e) => handleKeyDown(e, descriptionRef)}
+              enterKeyHint="next"
             />
           </div>
 
           <div>
             <label>Description:</label>
             <textarea 
+              ref={descriptionRef}
               value={description}
               onChange={(e) => setDescription(e.target.value)}
+              onKeyDown={(e) => {
+                // For textarea, only move to next on Shift+Enter or just Enter
+                // Regular Enter creates newline, so we use a different approach
+                if (e.key === 'Enter' && !e.shiftKey) {
+                  e.preventDefault()
+                  categoryRef.current?.focus()
+                }
+              }}
+              enterKeyHint="next"
             />
           </div>
 
           <div>
             <label>Category:</label>
             <select 
+              ref={categoryRef}
               value={category}
               onChange={(e) => setCategory(e.target.value)}
+              onKeyDown={(e) => handleKeyDown(e, originRef)}
             >
               <option value="clothing">Clothing</option>
               <option value="jewelry">Jewelry</option>
@@ -267,8 +300,11 @@ const handleSave = async () => {
           <label>Origin (optional):</label>
           <input 
             type="text"
+            ref={originRef}
             value={origin}
             onChange={(e) => setOrigin(e.target.value)}
+            onKeyDown={(e) => handleKeyDown(e, submitRef)}
+            enterKeyHint="done"
           />
         </div>
 
@@ -276,6 +312,7 @@ const handleSave = async () => {
   <label>Photo (optional):</label>
   <input 
     type="file"
+    ref={photoRef}
     accept="image/*"
     onChange={handlePhotoSelect}
   />
@@ -292,6 +329,7 @@ const handleSave = async () => {
 
         <button 
   type="button" 
+  ref={submitRef}
   onClick={handleAddItem}
   disabled={isUploading}
 >
