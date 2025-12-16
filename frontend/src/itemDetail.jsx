@@ -89,6 +89,7 @@ function ItemDetail({ list, setList, token }) {
         <p><strong>Category:</strong> {item.category}</p>
         <p><strong>Origin:</strong> {item.origin}</p>
         <p><strong>New Purchase:</strong> {item.isNewPurchase ? 'Yes' : 'No'}</p>
+        <p><strong>Added:</strong> {item.createdAt}</p>
       </div>
 
       <button onClick={() => window.history.back()}>Back</button>
