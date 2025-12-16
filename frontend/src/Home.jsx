@@ -273,7 +273,7 @@ const handleSave = async () => {
           </div>
 
         <div>
-          <label>Origin (optional):</label>
+          <label>Origin:</label>
           <input 
             type="text"
             ref={originRef}
@@ -301,7 +301,7 @@ const handleSave = async () => {
 
 {category === 'clothing' && (
   <div>
-    <label>Subcategory (optional):</label>
+    <label>Subcategory:</label>
     <select
       value={subcategory}
       onChange={(e) => setSubcategory(e.target.value)}
