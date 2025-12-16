@@ -17,6 +17,7 @@ function Home({ list, setList, token, setShowLogin, handleLogout }) {
   const [itemName, setItemName] = useState('')
   const [description, setDescription] = useState('')
   const [category, setCategory] = useState('other')
+  const [subcategory, setSubcategory] = useState('')
   const [isNewPurchase, setIsNewPurchase] = useState(false)
   const [origin, setOrigin] = useState('')
   const [photoFile, setPhotoFile] = useState(null)
@@ -27,14 +28,14 @@ function Home({ list, setList, token, setShowLogin, handleLogout }) {
   const [isUploading, setIsUploading] = useState(false)
 
 
-  const [editForm, setEditForm] = useState({
-    itemName: '',
-    description: '',
-    category: '',
-    isNewPurchase: false,
-    origin: ''
-  })
-
+const [editForm, setEditForm] = useState({
+  itemName: '',
+  description: '',
+  category: '',
+  subcategory: '',
+  isNewPurchase: false,
+  origin: ''
+})
   // Helper function to handle Enter key navigation
   const handleKeyDown = (e, nextRef) => {
     if (e.key === 'Enter') {
@@ -67,6 +68,7 @@ const handleAddItem = async () => {
   formData.append('itemName', itemName)
   formData.append('description', description)
   formData.append('category', category)
+  formData.append('subcategory', subcategory)
   formData.append('isNewPurchase', isNewPurchase)
   formData.append('origin', origin)
   
@@ -90,6 +92,7 @@ const handleAddItem = async () => {
     setItemName('')
     setDescription('')
     setCategory('other')
+    setSubcategory('')
     setIsNewPurchase(false)
     setOrigin('')
     setPhotoFile(null)
@@ -101,18 +104,19 @@ const handleAddItem = async () => {
   setIsUploading(false)  // End loading
 }
   
-  const handleEdit = (index) => {
-    const item = list[index]
-    setEditForm({
-        id: item.id,
-      itemName: item.itemName,
-      description: item.description,
-      category: item.category,
-      isNewPurchase: item.isNewPurchase,
-      origin: item.origin
-    })
-    setEditingIndex(index)
-  }
+const handleEdit = (index) => {
+  const item = list[index]
+  setEditForm({
+    id: item.id,
+    itemName: item.itemName,
+    description: item.description,
+    category: item.category,
+    subcategory: item.subcategory,
+    isNewPurchase: item.isNewPurchase,
+    origin: item.origin
+  })
+  setEditingIndex(index)
+}
 
 const handleDelete = async (index) => {
     // Check if user is logged in before attempting DELETE operation
@@ -158,7 +162,6 @@ const handleUndo = async () => {
   if (lastDeleted.item.mainPhoto) {
     formData.append('mainPhoto', lastDeleted.item.mainPhoto)
   }
-  
   const response = await fetch(API_URL + '/', {
     method: 'POST',
     headers: { 
@@ -295,6 +298,31 @@ const handleSave = async () => {
               <option value="other">Other</option>
             </select>
           </div>
+
+{category === 'clothing' && (
+  <div>
+    <label>Subcategory (optional):</label>
+    <select
+      value={subcategory}
+      onChange={(e) => setSubcategory(e.target.value)}
+    >
+      <option value="">-- Select --</option>
+      <option value="undershirt">Undershirt</option>
+      <option value="shirt">Shirt</option>
+      <option value="sweater">Sweater</option>
+      <option value="jacket">Jacket</option>
+      <option value="dress">Dress</option>
+      <option value="pants">Pants</option>
+      <option value="shorts">Shorts</option>
+      <option value="skirt">Skirt</option>
+      <option value="shoes">Shoes</option>
+      <option value="socks">Socks</option>
+      <option value="underwear">Underwear</option>
+      <option value="accessories">Accessories</option>
+      <option value="other">Other</option>
+    </select>
+  </div>
+)}
 
           <div>
             <label>

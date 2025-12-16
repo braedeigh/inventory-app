@@ -54,7 +54,8 @@ def row_to_dict(row):
         "isNewPurchase": bool(row[4]),
         "origin": row[5],
         "mainPhoto": row[6],
-        "createdAt": row[7]
+        "createdAt": row[7],
+        "subcategory": row[8]
     }
 
 # Auth helper
@@ -106,6 +107,7 @@ def add_item():
     is_new_purchase = request.form.get('isNewPurchase') == 'true'  # Convert string to bool
     origin = request.form.get('origin')
     created_at = datetime.utcnow().isoformat()
+    subcategory = request.form.get('subcategory')
     
     photo_url = None
     
@@ -124,8 +126,8 @@ def add_item():
     # Save to database
     conn = get_db()
     conn.execute(
-        'INSERT INTO item (id, item_name, description, category, is_new_purchase, origin, main_photo, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
-        [item_id, item_name, description, category, is_new_purchase, origin, photo_url, created_at]
+        'INSERT INTO item (id, item_name, description, category, is_new_purchase, origin, main_photo, created_at, subcategory) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
+        [item_id, item_name, description, category, is_new_purchase, origin, photo_url, created_at, subcategory]
     )
     
     # Return the created item
@@ -141,10 +143,10 @@ def update_item(item_id):
     data = request.json
     conn = get_db()
     conn.execute('''
-        UPDATE item SET item_name=?, description=?, category=?, is_new_purchase=?, origin=?
+        UPDATE item SET item_name=?, description=?, category=?, is_new_purchase=?, origin=?, subcategory=?
         WHERE id=?
     ''', [data.get('itemName'), data.get('description'), data.get('category'),
-          data.get('isNewPurchase'), data.get('origin'), item_id])
+          data.get('isNewPurchase'), data.get('origin'), data.get('subcategory'), item_id])
     
     result = conn.execute('SELECT * FROM item WHERE id=?', [item_id])
     rows = result.rows
@@ -191,6 +193,16 @@ def migrate_add_timestamp():
     try:
         conn.execute('ALTER TABLE item ADD COLUMN created_at TEXT')
         return jsonify({"message": "Column added successfully"})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+    
+@app.route('/migrate-add-subcategory', methods=['POST'])
+@token_required
+def migrate_add_subcategory():
+    conn = get_db()
+    try:
+        conn.execute('ALTER TABLE item ADD COLUMN subcategory TEXT')
+        return jsonify({"message": "Subcategory column added successfully"})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
