@@ -26,6 +26,8 @@ function Home({ list, setList, token, setShowLogin, handleLogout }) {
   const [deletedHistory, setDeletedHistory] = useState([])
   const navigate = useNavigate()
   const [isUploading, setIsUploading] = useState(false)
+  const [sortOrder, setSortOrder] = useState('newest')
+  const [selectedCategories, setSelectedCategories] = useState([])
 
 
 const [editForm, setEditForm] = useState({
@@ -213,6 +215,19 @@ const handleSave = async () => {
   const handleCancel = () => {
     setEditingIndex(null)
   }
+  
+const filteredAndSortedList = list
+  .filter(item => {
+    if (selectedCategories.length === 0) return true
+    return selectedCategories.includes(item.category)
+  })
+  .sort((a, b) => {
+    if (sortOrder === 'newest') {
+      return new Date(b.createdAt) - new Date(a.createdAt)
+    } else {
+      return new Date(a.createdAt) - new Date(b.createdAt)
+    }
+  })
 
   
   return (
@@ -375,6 +390,45 @@ const handleSave = async () => {
         )}
       </div>
 
+<div style={{display: 'flex', gap: '20px', alignItems: 'center', marginBottom: '20px', flexWrap: 'wrap'}}>
+  <div>
+    <label>Sort by: </label>
+    <select 
+      value={sortOrder} 
+      onChange={(e) => setSortOrder(e.target.value)}
+    >
+      <option value="newest">Newest first</option>
+      <option value="oldest">Oldest first</option>
+    </select>
+  </div>
+  
+  <div style={{display: 'flex', gap: '8px', flexWrap: 'wrap'}}>
+    {['clothing', 'jewelry', 'sentimental', 'bedding', 'other'].map(cat => (
+      <button
+        key={cat}
+        onClick={() => {
+          if (selectedCategories.includes(cat)) {
+            setSelectedCategories(selectedCategories.filter(c => c !== cat))
+          } else {
+            setSelectedCategories([...selectedCategories, cat])
+          }
+        }}
+        style={{
+          padding: '8px 16px',
+          backgroundColor: selectedCategories.includes(cat) ? '#4CAF50' : '#e0e0e0',
+          color: selectedCategories.includes(cat) ? 'white' : '#333',
+          border: 'none',
+          borderRadius: '4px',
+          cursor: 'pointer'
+        }}
+      >
+        {cat.charAt(0).toUpperCase() + cat.slice(1)}
+      </button>
+    ))}
+  </div>
+</div>
+
+
       <table>
         <thead>
           <tr>
@@ -389,7 +443,7 @@ const handleSave = async () => {
           </tr>
         </thead>
         <tbody>
-          {list.map((item, index) => (
+  {filteredAndSortedList.map((item, index) => (
 <tr 
   key={index} 
   onClick={() => {
@@ -487,8 +541,8 @@ const handleSave = async () => {
 
 
       {/* Mobile card view */}
-      <div className="mobile-item-list">
-        {list.map((item, index) => (
+<div className="mobile-item-list">
+  {filteredAndSortedList.map((item, index) => (
           <div 
             key={index} 
             className="mobile-item-card"
