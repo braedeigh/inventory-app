@@ -218,7 +218,7 @@ const handleSave = async () => {
 {isEditing ? (
   <button onClick={handleSave}>Save</button>
 ) : (
-  <button onClick={() => setIsEditing(true)}>Edit</button>
+  token && <button onClick={() => setIsEditing(true)}>Edit</button>
 )}
 <button onClick={() => window.history.back()}>Back</button>
 
