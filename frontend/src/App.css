@@ -299,13 +299,14 @@ tr:hover {
     display: block;
   }
 
-  .mobile-item-card {
-    background: #2a2a2a;
-    border: 1px solid #444;
-    border-radius: 8px;
-    padding: 15px;
-    margin-bottom: 15px;
-  }
+.mobile-item-card {
+  background: #f5f5f5;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  padding: 15px;
+  margin-bottom: 15px;
+  color: #333;
+}
 
   .mobile-item-card img {
     width: 100%;

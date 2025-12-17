@@ -467,33 +467,19 @@ const handleSave = async () => {
               </td>
               
               {/* Conditionally render Actions cell only if logged in */}
-              {token && (
-                <td>
-                  {editingIndex === index ? (
-                    <>
-                      <button onClick={(e) => {
-                        e.stopPropagation()
-                        handleSave()
-                      }}>Save</button>
-                      <button onClick={(e) => {
-                        e.stopPropagation()
-                        handleCancel()
-                      }}>Cancel</button>
-                    </>
-                  ) : (
-                    <>
-                      <button onClick={(e) => {
-                        e.stopPropagation()
-                        handleEdit(index)
-                      }}>Edit</button>
-                      <button onClick={(e) => {
-                        e.stopPropagation()
-                        handleDelete(index)
-                      }}>Delete</button>
-                    </>
-                  )}
-                </td>
-              )}
+{token && (
+  <td>
+    <button onClick={(e) => {
+      e.stopPropagation()
+      navigate(`/item/${item.id}?edit=true`)
+    }}>Edit</button>
+    <button onClick={(e) => {
+      e.stopPropagation()
+      handleDelete(index)
+    }}>Delete</button>
+  </td>
+)}
+
             </tr>
           ))}
         </tbody>

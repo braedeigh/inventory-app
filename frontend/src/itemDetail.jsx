@@ -1,4 +1,4 @@
-import { useParams } from 'react-router-dom'
+import { useParams, useSearchParams } from 'react-router-dom'
 import { useState } from 'react'
 
 const API_URL = 'https://bradie-inventory-api.onrender.com'
@@ -6,8 +6,18 @@ const API_URL = 'https://bradie-inventory-api.onrender.com'
 // CORRECTED: Added token to prop destructuring
 function ItemDetail({ list, setList, token }) { 
   const { id } = useParams()
+  const [searchParams] = useSearchParams()
+  const startInEditMode = searchParams.get('edit') === 'true'
+  const [isEditing, setIsEditing] = useState(startInEditMode)
   const item = list.find(item => item.id === id)
   const [uploading, setUploading] = useState(false)
+
+  const [editName, setEditName] = useState(item?.itemName || '')
+  const [editDescription, setEditDescription] = useState(item?.description || '')
+  const [editCategory, setEditCategory] = useState(item?.category || '')
+  const [editSubcategory, setEditSubcategory] = useState(item?.subcategory || '')
+  const [editOrigin, setEditOrigin] = useState(item?.origin || '')
+  const [editIsNewPurchase, setEditIsNewPurchase] = useState(item?.isNewPurchase || false)
 
   if (!item) {
     return <p>Item not found</p>
@@ -52,10 +62,50 @@ function ItemDetail({ list, setList, token }) {
     
     setUploading(false)
   }
+const handleSave = async () => {
+  if (!token) {
+    console.error("User not logged in. Cannot save.")
+    return
+  }
 
+  const response = await fetch(`${API_URL}/item/${id}`, {
+    method: 'PUT',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${token}`
+    },
+    body: JSON.stringify({
+      itemName: editName,
+      description: editDescription,
+      category: editCategory,
+      subcategory: editSubcategory,
+      origin: editOrigin,
+      isNewPurchase: editIsNewPurchase
+    })
+  })
+
+  if (response.ok) {
+    const updatedItem = await response.json()
+    const updatedList = list.map(i => 
+      i.id === id ? updatedItem : i
+    )
+    setList(updatedList)
+    setIsEditing(false)
+  } else {
+    console.error("Failed to save.", await response.text())
+  }
+}
   return (
     <div>
-      <h1>{item.itemName}</h1>
+  {isEditing ? (
+  <input 
+    type="text"
+    value={editName}
+    onChange={(e) => setEditName(e.target.value)}
+  />
+) : (
+  <h1>{item.itemName}</h1>
+)}
       
       <div className="photo-section">
         {/* ADDED: Conditional logic for click handler and cursor based on token */}
@@ -84,23 +134,94 @@ function ItemDetail({ list, setList, token }) {
         )}
       </div>
 
-      <div className="item-info">
-        <p><strong>Description:</strong> {item.description}</p>
-        <p><strong>Category:</strong> {item.category}</p>
-        <p><strong>Origin:</strong> {item.origin}</p>
-        <p><strong>New Purchase:</strong> {item.isNewPurchase ? 'Yes' : 'No'}</p>
-<p><strong>Date logged:</strong> {new Date(item.createdAt + 'Z').toLocaleString('en-US', {
-  timeZone: 'America/Chicago',
-  year: 'numeric',
-  month: 'long', 
-  day: 'numeric',
-  hour: 'numeric',
-  minute: '2-digit',
-  hour12: true
-})}</p>
-      </div>
+<div className="item-info">
+  <p><strong>Description:</strong> {isEditing ? (
+    <textarea 
+      value={editDescription}
+      onChange={(e) => setEditDescription(e.target.value)}
+    />
+  ) : (
+    item.description
+  )}</p>
 
-      <button onClick={() => window.history.back()}>Back</button>
+  <p><strong>Category:</strong> {isEditing ? (
+    <select
+      value={editCategory}
+      onChange={(e) => setEditCategory(e.target.value)}
+    >
+      <option value="clothing">Clothing</option>
+      <option value="jewelry">Jewelry</option>
+      <option value="sentimental">Sentimental</option>
+      <option value="bedding">Bedding</option>
+      <option value="other">Other</option>
+    </select>
+  ) : (
+    item.category
+  )}</p>
+
+  {(isEditing ? editCategory : item.category) === 'clothing' && (
+    <p><strong>Subcategory:</strong> {isEditing ? (
+      <select
+        value={editSubcategory}
+        onChange={(e) => setEditSubcategory(e.target.value)}
+      >
+        <option value="">-- Select --</option>
+        <option value="undershirt">Undershirt</option>
+        <option value="shirt">Shirt</option>
+        <option value="sweater">Sweater</option>
+        <option value="jacket">Jacket</option>
+        <option value="dress">Dress</option>
+        <option value="pants">Pants</option>
+        <option value="shorts">Shorts</option>
+        <option value="skirt">Skirt</option>
+        <option value="shoes">Shoes</option>
+        <option value="socks">Socks</option>
+        <option value="underwear">Underwear</option>
+        <option value="accessories">Accessories</option>
+        <option value="other">Other</option>
+      </select>
+    ) : (
+      item.subcategory
+    )}</p>
+  )}
+
+  <p><strong>Origin:</strong> {isEditing ? (
+    <input 
+      type="text"
+      value={editOrigin}
+      onChange={(e) => setEditOrigin(e.target.value)}
+    />
+  ) : (
+    item.origin
+  )}</p>
+
+  <p><strong>New Purchase:</strong> {isEditing ? (
+    <input 
+      type="checkbox"
+      checked={editIsNewPurchase}
+      onChange={(e) => setEditIsNewPurchase(e.target.checked)}
+    />
+  ) : (
+    item.isNewPurchase ? 'Yes' : 'No'
+  )}</p>
+
+  <p><strong>Date logged:</strong> {new Date(item.createdAt + 'Z').toLocaleString('en-US', {
+    timeZone: 'America/Chicago',
+    year: 'numeric',
+    month: 'long', 
+    day: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+    hour12: true
+  })}</p>
+</div>
+{isEditing ? (
+  <button onClick={handleSave}>Save</button>
+) : (
+  <button onClick={() => setIsEditing(true)}>Edit</button>
+)}
+<button onClick={() => window.history.back()}>Back</button>
+
     </div>
   )
 }
