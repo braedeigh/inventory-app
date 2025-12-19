@@ -264,29 +264,37 @@ def migrate_add_community_items():
     
 @app.route('/community', methods=['POST'])
 def add_community_item():
-    # Get form fields
-    item_id = request.form.get('id')
-    item_name = request.form.get('itemName')
-    description = request.form.get('description')
-    category = request.form.get('category')
-    origin = request.form.get('origin')
-    created_at = datetime.utcnow().isoformat()
-    subcategory = request.form.get('subcategory')
-    submitted_by = request.form.get('submittedBy', '')
-    
-    photo_url = None
-    
-    if 'photo' in request.files:
-        file = request.files['photo']
-        if file.filename != '':
-            result = cloudinary.uploader.upload(file)
-            photo_url = result['secure_url']
-    
-    conn = get_db()
-    conn.execute(
-        'INSERT INTO community_item (id, item_name, description, category, origin, main_photo, created_at, subcategory, submitted_by, approved) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 0)',
-        [item_id, item_name, description, category, origin, photo_url, created_at, subcategory, submitted_by]
-    )
+    try:
+        # Get form fields
+        item_id = request.form.get('id')
+        item_name = request.form.get('itemName')
+        description = request.form.get('description')
+        category = request.form.get('category')
+        origin = request.form.get('origin')
+        created_at = datetime.utcnow().isoformat()
+        subcategory = request.form.get('subcategory', '')
+        submitted_by = request.form.get('submittedBy', '')
+        
+        photo_url = None
+        
+        # Handle photo
+        if 'photo' in request.files:
+            file = request.files['photo']
+            if file.filename != '':
+                result = cloudinary.uploader.upload(file)
+                photo_url = result['secure_url']
+        
+        conn = get_db()
+        # Ensure the columns match your table exactly
+        conn.execute(
+            'INSERT INTO community_item (id, item_name, description, category, origin, main_photo, created_at, subcategory, submitted_by, approved) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 0)',
+            [item_id, item_name, description, category, origin, photo_url, created_at, subcategory, submitted_by]
+        )
+        
+        return jsonify({"message": "Item submitted for review"}), 201
+    except Exception as e:
+        print(f"COMMUNITY ERROR: {str(e)}") # This shows up in Render Logs
+        return jsonify({"error": str(e)}), 500
     
     return jsonify({"message": "Item submitted for review"}), 201
     
@@ -333,6 +341,53 @@ def delete_community_item(item_id):
     conn.execute('DELETE FROM community_item WHERE id = ?', [item_id])
     return jsonify({"message": "Item deleted"})
 
+
+@app.route('/random', methods=['GET'])
+def get_random_item():
+    conn = get_db()
+    result = conn.execute('SELECT id, item_name, description, category, origin, main_photo, created_at, subcategory FROM item ORDER BY RANDOM() LIMIT 1')
+    if result.rows:
+        return jsonify(row_to_dict(result.rows[0]))
+    return jsonify(None)
+
+@app.route('/community/random', methods=['GET'])
+def get_random_community_item():
+    conn = get_db()
+    result = conn.execute('SELECT id, item_name, description, category, origin, main_photo, created_at, subcategory, submitted_by, approved FROM community_item WHERE approved = 1 ORDER BY RANDOM() LIMIT 1')
+    if result.rows:
+        return jsonify(community_row_to_dict(result.rows[0]))
+    return jsonify(None)
+
+@app.route('/migrate-community-fix', methods=['GET'])
+def migrate_community_fix():
+    conn = get_db()
+    try:
+        # Try to add missing columns if they don't exist
+        conn.execute('ALTER TABLE community_item ADD COLUMN subcategory TEXT')
+        conn.execute('ALTER TABLE community_item ADD COLUMN submitted_by TEXT')
+        return "Migration successful"
+    except Exception as e:
+        return f"Migration info: {str(e)}"
+    
+@app.route('/migrate-community-final', methods=['GET'])
+def migrate_community_final():
+    conn = get_db()
+    try:
+        # Check and add subcategory
+        try:
+            conn.execute('ALTER TABLE community_item ADD COLUMN subcategory TEXT')
+        except Exception:
+            pass # Already exists
+        
+        # Check and add submitted_by
+        try:
+            conn.execute('ALTER TABLE community_item ADD COLUMN submitted_by TEXT')
+        except Exception:
+            pass # Already exists
+            
+        return jsonify({"message": "Community table migration successful"}), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 if __name__ == '__main__':
     app.run(debug=True, port=5000)
