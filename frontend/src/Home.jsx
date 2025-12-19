@@ -264,6 +264,13 @@ const filteredAndSortedList = list
         </div>
       )}
 
+      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '20px' }}>
+  <button onClick={() => navigate('/')} style={{ padding: '8px 16px', cursor: 'pointer' }}>
+    ← Home
+  </button>
+  {/* If on Home.jsx, you might already have a login button here, you can keep or remove it */}
+</div>
+
 {token && ( 
   <form>
     <div>
