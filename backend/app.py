@@ -230,12 +230,6 @@ def migrate_remove_new_purchase():
     except Exception as e:
         return jsonify({"error": str(e)}), 500
     
-@app.route('/', methods=['GET'])
-def list_return():
-    conn = get_db()
-    result = conn.execute('SELECT id, item_name, description, category, origin, main_photo, created_at, subcategory FROM item')
-    items = [row_to_dict(row) for row in result.rows]
-    return jsonify(items)
 
 @app.route('/', methods=['GET'])
 def list_return():
@@ -268,5 +262,77 @@ def migrate_add_community_items():
     except Exception as e:
         return jsonify({"error": str(e)}), 500
     
+@app.route('/community', methods=['POST'])
+def add_community_item():
+    # Get form fields
+    item_id = request.form.get('id')
+    item_name = request.form.get('itemName')
+    description = request.form.get('description')
+    category = request.form.get('category')
+    origin = request.form.get('origin')
+    created_at = datetime.utcnow().isoformat()
+    subcategory = request.form.get('subcategory')
+    submitted_by = request.form.get('submittedBy', '')
+    
+    photo_url = None
+    
+    if 'photo' in request.files:
+        file = request.files['photo']
+        if file.filename != '':
+            result = cloudinary.uploader.upload(file)
+            photo_url = result['secure_url']
+    
+    conn = get_db()
+    conn.execute(
+        'INSERT INTO community_item (id, item_name, description, category, origin, main_photo, created_at, subcategory, submitted_by, approved) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 0)',
+        [item_id, item_name, description, category, origin, photo_url, created_at, subcategory, submitted_by]
+    )
+    
+    return jsonify({"message": "Item submitted for review"}), 201
+    
+def community_row_to_dict(row):
+    return {
+        "id": row[0],
+        "itemName": row[1],
+        "description": row[2],
+        "category": row[3],
+        "origin": row[4],
+        "mainPhoto": row[5],
+        "createdAt": row[6],
+        "subcategory": row[7],
+        "submittedBy": row[8],
+        "approved": row[9]
+    }
+
+@app.route('/community', methods=['GET'])
+def get_community_items():
+    conn = get_db()
+    result = conn.execute('SELECT id, item_name, description, category, origin, main_photo, created_at, subcategory, submitted_by, approved FROM community_item WHERE approved = 1')
+    items = [community_row_to_dict(row) for row in result.rows]
+    return jsonify(items)
+
+@app.route('/community/pending', methods=['GET'])
+@token_required
+def get_pending_community_items():
+    conn = get_db()
+    result = conn.execute('SELECT id, item_name, description, category, origin, main_photo, created_at, subcategory, submitted_by, approved FROM community_item WHERE approved = 0')
+    items = [community_row_to_dict(row) for row in result.rows]
+    return jsonify(items)
+
+@app.route('/community/<item_id>/approve', methods=['PUT'])
+@token_required
+def approve_community_item(item_id):
+    conn = get_db()
+    conn.execute('UPDATE community_item SET approved = 1 WHERE id = ?', [item_id])
+    return jsonify({"message": "Item approved"})
+
+@app.route('/community/<item_id>', methods=['DELETE'])
+@token_required
+def delete_community_item(item_id):
+    conn = get_db()
+    conn.execute('DELETE FROM community_item WHERE id = ?', [item_id])
+    return jsonify({"message": "Item deleted"})
+
+
 if __name__ == '__main__':
     app.run(debug=True, port=5000)

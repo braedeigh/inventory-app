@@ -452,7 +452,6 @@ const filteredAndSortedList = list
             <th>Item Name</th>
             <th>Description</th>
             <th>Category</th>
-            <th>New Purchase</th>
             <th>Origin</th>
             {/* Conditionally render Actions column header only if logged in */}
             {token && <th>Actions</th>} 
