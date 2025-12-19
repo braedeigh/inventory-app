@@ -18,7 +18,6 @@ function ItemDetail({ list, setList, token }) {
   const [editCategory, setEditCategory] = useState(item?.category || '')
   const [editSubcategory, setEditSubcategory] = useState(item?.subcategory || '')
   const [editOrigin, setEditOrigin] = useState(item?.origin || '')
-  const [editIsNewPurchase, setEditIsNewPurchase] = useState(item?.isNewPurchase || false)
 
   if (!item) {
     return <p>Item not found</p>
@@ -81,7 +80,6 @@ const handleSave = async () => {
       category: editCategory,
       subcategory: editSubcategory,
       origin: editOrigin,
-      isNewPurchase: editIsNewPurchase
     })
   })
 
@@ -195,16 +193,6 @@ const handleSave = async () => {
     />
   ) : (
     item.origin
-  )}</p>
-
-  <p><strong>New Purchase:</strong> {isEditing ? (
-    <input 
-      type="checkbox"
-      checked={editIsNewPurchase}
-      onChange={(e) => setEditIsNewPurchase(e.target.checked)}
-    />
-  ) : (
-    item.isNewPurchase ? 'Yes' : 'No'
   )}</p>
 
   <p><strong>Date logged:</strong> {new Date(item.createdAt + 'Z').toLocaleString('en-US', {

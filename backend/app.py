@@ -51,11 +51,10 @@ def row_to_dict(row):
         "itemName": row[1],
         "description": row[2],
         "category": row[3],
-        "isNewPurchase": bool(row[4]),
-        "origin": row[5],
-        "mainPhoto": row[6],
-        "createdAt": row[7],
-        "subcategory": row[8]
+        "origin": row[4],
+        "mainPhoto": row[5],
+        "createdAt": row[6],
+        "subcategory": row[7]
     }
 
 # Auth helper
@@ -104,9 +103,10 @@ def add_item():
     item_name = request.form.get('itemName')
     description = request.form.get('description')
     category = request.form.get('category')
-    is_new_purchase = request.form.get('isNewPurchase') == 'true'  # Convert string to bool
     origin = request.form.get('origin')
-    created_at = datetime.utcnow().isoformat()
+    created_at = request.form.get('createdAt')
+    if not created_at:
+        created_at = datetime.utcnow().isoformat()
     subcategory = request.form.get('subcategory')
     
     photo_url = None
@@ -126,8 +126,8 @@ def add_item():
     # Save to database
     conn = get_db()
     conn.execute(
-        'INSERT INTO item (id, item_name, description, category, is_new_purchase, origin, main_photo, created_at, subcategory) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
-        [item_id, item_name, description, category, is_new_purchase, origin, photo_url, created_at, subcategory]
+        'INSERT INTO item (id, item_name, description, category, origin, main_photo, created_at, subcategory) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+        [item_id, item_name, description, category, origin, photo_url, created_at, subcategory]
     )
     
     # Return the created item
@@ -143,10 +143,10 @@ def update_item(item_id):
     data = request.json
     conn = get_db()
     conn.execute('''
-        UPDATE item SET item_name=?, description=?, category=?, is_new_purchase=?, origin=?, subcategory=?
+        UPDATE item SET item_name=?, description=?, category=?, origin=?, subcategory=?
         WHERE id=?
     ''', [data.get('itemName'), data.get('description'), data.get('category'),
-          data.get('isNewPurchase'), data.get('origin'), data.get('subcategory'), item_id])
+           data.get('origin'), data.get('subcategory'), item_id])
     
     result = conn.execute('SELECT * FROM item WHERE id=?', [item_id])
     rows = result.rows
@@ -208,3 +208,33 @@ def migrate_add_subcategory():
 
 if __name__ == '__main__':
     app.run(debug=True, port=5000)
+
+
+@app.route('/migrate-remove-new-purchase', methods=['POST'])
+@token_required
+def migrate_remove_new_purchase():
+    conn = get_db()
+    try:
+        # SQLite way: create new table, copy data, drop old, rename
+        conn.execute('''
+            CREATE TABLE IF NOT EXISTS item_new (
+                id TEXT PRIMARY KEY,
+                item_name TEXT,
+                description TEXT,
+                category TEXT,
+                origin TEXT,
+                main_photo TEXT,
+                created_at TEXT,
+                subcategory TEXT
+            )
+        ''')
+        conn.execute('''
+            INSERT INTO item_new (id, item_name, description, category, origin, main_photo, created_at, subcategory)
+            SELECT id, item_name, description, category, origin, main_photo, created_at, subcategory
+            FROM item
+        ''')
+        conn.execute('DROP TABLE item')
+        conn.execute('ALTER TABLE item_new RENAME TO item')
+        return jsonify({"message": "is_new_purchase column removed successfully"})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500

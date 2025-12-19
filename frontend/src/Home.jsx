@@ -17,9 +17,8 @@ function Home({ list, setList, token, setShowLogin, handleLogout }) {
   // State for form inputs
   const [itemName, setItemName] = useState('')
   const [description, setDescription] = useState('')
-  const [category, setCategory] = useState('other')
+  const [category, setCategory] = useState('')
   const [subcategory, setSubcategory] = useState('')
-  const [isNewPurchase, setIsNewPurchase] = useState(false)
   const [origin, setOrigin] = useState('')
   const [photoFile, setPhotoFile] = useState(null)
   const [photoPreview, setPhotoPreview] = useState(null)
@@ -29,14 +28,19 @@ function Home({ list, setList, token, setShowLogin, handleLogout }) {
   const [isUploading, setIsUploading] = useState(false)
   const [sortOrder, setSortOrder] = useState('newest')
   const [selectedCategories, setSelectedCategories] = useState([])
-
+  const [errors, setErrors] = useState({
+    itemName: false,
+    description: false,
+    origin: false,
+    category: false
+  })
+  const [confirmDelete, setConfirmDelete] = useState(null)
 
 const [editForm, setEditForm] = useState({
   itemName: '',
   description: '',
   category: '',
   subcategory: '',
-  isNewPurchase: false,
   origin: ''
 })
   // Helper function to handle Enter key navigation
@@ -64,6 +68,16 @@ const handleAddItem = async () => {
     return
   }
 
+if (itemName === '' || description === '' || origin === '' || category === '') {
+  setErrors({
+    itemName: itemName === '',
+    description: description === '',
+    origin: origin === '',
+    category: category === ''
+  })
+  return
+}
+
   setIsUploading(true)  // Start loading
 
   const formData = new FormData()
@@ -72,9 +86,9 @@ const handleAddItem = async () => {
   formData.append('description', description)
   formData.append('category', category)
   formData.append('subcategory', subcategory)
-  formData.append('isNewPurchase', isNewPurchase)
   formData.append('origin', origin)
-  
+
+
   if (photoFile) {
     formData.append('photo', photoFile)
   }
@@ -96,7 +110,6 @@ const handleAddItem = async () => {
     setDescription('')
     setCategory('other')
     setSubcategory('')
-    setIsNewPurchase(false)
     setOrigin('')
     setPhotoFile(null)
     setPhotoPreview(null)
@@ -115,7 +128,6 @@ const handleEdit = (index) => {
     description: item.description,
     category: item.category,
     subcategory: item.subcategory,
-    isNewPurchase: item.isNewPurchase,
     origin: item.origin
   })
   setEditingIndex(index)
@@ -157,7 +169,6 @@ const handleUndo = async () => {
   formData.append('itemName', lastDeleted.item.itemName)
   formData.append('description', lastDeleted.item.description)
   formData.append('category', lastDeleted.item.category)
-  formData.append('isNewPurchase', lastDeleted.item.isNewPurchase)
   formData.append('origin', lastDeleted.item.origin)
   formData.append('createdAt', lastDeleted.item.createdAt)
   if (lastDeleted.item.mainPhoto) {
@@ -253,134 +264,139 @@ const filteredAndSortedList = list
         </div>
       )}
 
-      {/* Conditionally render the Add Item form only if logged in */}
-      {token && ( 
-        <form>
-          <div>
-            <label>Item Name:</label>
-            <input 
-              type="text"
-              ref={itemNameRef}
-              value={itemName}
-              onChange={(e) => setItemName(e.target.value)}
-              onKeyDown={(e) => handleKeyDown(e, descriptionRef)}
-              enterKeyHint="next"
-            />
-          </div>
-
-          <div>
-            <label>Description:</label>
-            <textarea 
-              ref={descriptionRef}
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              onKeyDown={(e) => {
-                // For textarea, only move to next on Shift+Enter or just Enter
-                // Regular Enter creates newline, so we use a different approach
-                if (e.key === 'Enter' && !e.shiftKey) {
-                  e.preventDefault()
-                  originRef.current?.focus()
-                }
-              }}
-              enterKeyHint="next"
-              placeholder="Use ||text|| to mark private sections"
-            />
-          </div>
-
-        <div>
-          <label>Origin:</label>
-          <input 
-            type="text"
-            ref={originRef}
-            value={origin}
-            onChange={(e) => setOrigin(e.target.value)}
-            onKeyDown={(e) => handleKeyDown(e, categoryRef)}
-            enterKeyHint="next"
-          />
-        </div>
-
-          <div>
-            <label>Category:</label>
-            <select 
-              ref={categoryRef}
-              value={category}
-              onChange={(e) => setCategory(e.target.value)}
-            >
-              <option value="clothing">Clothing</option>
-              <option value="jewelry">Jewelry</option>
-              <option value="sentimental">Sentimental</option>
-              <option value="bedding">Bedding</option>
-              <option value="other">Other</option>
-            </select>
-          </div>
-
-{category === 'clothing' && (
-  <div>
-    <label>Subcategory:</label>
-    <select
-      value={subcategory}
-      onChange={(e) => setSubcategory(e.target.value)}
-    >
-      <option value="">-- Select --</option>
-      <option value="undershirt">Undershirt</option>
-      <option value="shirt">Shirt</option>
-      <option value="sweater">Sweater</option>
-      <option value="jacket">Jacket</option>
-      <option value="dress">Dress</option>
-      <option value="pants">Pants</option>
-      <option value="shorts">Shorts</option>
-      <option value="skirt">Skirt</option>
-      <option value="shoes">Shoes</option>
-      <option value="socks">Socks</option>
-      <option value="underwear">Underwear</option>
-      <option value="accessories">Accessories</option>
-      <option value="other">Other</option>
-    </select>
-  </div>
-)}
-
-          <div>
-            <label>
-              <input 
-                type="checkbox"
-                checked={isNewPurchase}
-                onChange={(e) => setIsNewPurchase(e.target.checked)}
-            />
-            Purchased after building this site
-          </label>
-        </div>
-
-
-
-        <div>
-  <label>Photo (optional):</label>
-  <input 
-    type="file"
-    ref={photoRef}
-    accept="image/*"
-    onChange={handlePhotoSelect}
-  />
-  {photoPreview && (
-    <div style={{marginTop: '10px'}}>
-      <img 
-        src={photoPreview} 
-        alt="Preview" 
-        style={{width: '200px', height: '200px', objectFit: 'cover'}}
+{token && ( 
+  <form>
+    <div>
+      <label>Item Name:</label>
+      <input 
+        type="text"
+        ref={itemNameRef}
+        value={itemName}
+        onChange={(e) => {
+          setItemName(e.target.value)
+          setErrors({...errors, itemName: false})
+        }}
+        style={{ borderColor: errors.itemName ? 'red' : '' }}
+        onKeyDown={(e) => handleKeyDown(e, descriptionRef)}
+        enterKeyHint="next"
       />
+       {errors.itemName && <span style={{color: 'red', fontSize: '12px'}}>Required</span>}
     </div>
-  )}
+
+    <div>
+      <label>Description:</label>
+      <textarea 
+        ref={descriptionRef}
+        value={description}
+        onChange={(e) => {
+          setDescription(e.target.value)
+          setErrors({...errors, description: false})
+        }}
+        style={{ borderColor: errors.description ? 'red' : '' }}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' && !e.shiftKey) {
+            e.preventDefault()
+            originRef.current?.focus()
+          }
+        }}
+        enterKeyHint="next"
+        placeholder="Use || text || to mark private sections"
+      />
+       {errors.description && <span style={{color: 'red', fontSize: '12px'}}>Required</span>}
+    </div>
+
+    <div>
+      <label>Origin:</label>
+      <input 
+        type="text"
+        ref={originRef}
+        value={origin}
+        onChange={(e) => {
+          setOrigin(e.target.value)
+          setErrors({...errors, origin: false})
+        }}
+        style={{ borderColor: errors.origin ? 'red' : '' }}
+        onKeyDown={(e) => handleKeyDown(e, categoryRef)}
+        enterKeyHint="next"
+      />
+       {errors.origin && <span style={{color: 'red', fontSize: '12px'}}>Required</span>}
+    </div>
+
+<div>
+  <label>Category:</label>
+  <select 
+    ref={categoryRef}
+    value={category}
+    onChange={(e) => {
+      setCategory(e.target.value)
+      setErrors({...errors, category: false})
+    }}
+    style={{ borderColor: errors.category ? 'red' : '' }}
+  >
+    <option value="">-- Select --</option>
+    <option value="clothing">Clothing</option>
+    <option value="jewelry">Jewelry</option>
+    <option value="sentimental">Sentimental</option>
+    <option value="bedding">Bedding</option>
+    <option value="other">Other</option>
+  </select>
+  {errors.category && <span style={{color: 'red', fontSize: '12px'}}>Required</span>}
 </div>
 
-        <button 
-  type="button" 
-  ref={submitRef}
-  onClick={handleAddItem}
-  disabled={isUploading}
->
-  {isUploading ? 'Adding...' : 'Add Item'}
-</button>
-      </form>
+    {category === 'clothing' && (
+      <div>
+        <label>Subcategory:</label>
+        <select
+          value={subcategory}
+          onChange={(e) => setSubcategory(e.target.value)}
+        >
+          <option value="">-- Select --</option>
+          <option value="undershirt">Undershirt</option>
+          <option value="shirt">Shirt</option>
+          <option value="sweater">Sweater</option>
+          <option value="jacket">Jacket</option>
+          <option value="dress">Dress</option>
+          <option value="pants">Pants</option>
+          <option value="shorts">Shorts</option>
+          <option value="skirt">Skirt</option>
+          <option value="shoes">Shoes</option>
+          <option value="socks">Socks</option>
+          <option value="underwear">Underwear</option>
+          <option value="accessories">Accessories</option>
+          <option value="other">Other</option>
+        </select>
+      </div>
     )}
+
+    <div>
+      <label>Photo:</label>
+      <input 
+        type="file"
+        ref={photoRef}
+        accept="image/*"
+        onChange={handlePhotoSelect}
+      />
+      {photoPreview && (
+        <div style={{marginTop: '10px'}}>
+          <img 
+            src={photoPreview} 
+            alt="Preview" 
+            style={{width: '200px', height: '200px', objectFit: 'cover'}}
+          />
+        </div>
+      )}
+    </div>
+
+    <button 
+      type="button" 
+      ref={submitRef}
+      onClick={handleAddItem}
+      disabled={isUploading}
+    >
+      {isUploading ? 'Adding...' : 'Add Item'}
+    </button>
+  </form>
+)}
 
       <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center'}}>
         <h2>My Items</h2>
@@ -503,17 +519,6 @@ const filteredAndSortedList = list
               <td>
                 {editingIndex === index ? (
                   <input 
-                    type="checkbox"
-                    checked={editForm.isNewPurchase}
-                    onChange={(e) => setEditForm({...editForm, isNewPurchase: e.target.checked})}
-                  />
-                ) : (
-                    item.isNewPurchase ? 'Yes' : 'No'
-                )}
-              </td>
-              <td>
-                {editingIndex === index ? (
-                  <input 
                     value={editForm.origin}
                     onChange={(e) => setEditForm({...editForm, origin: e.target.value})}
                   />
@@ -545,32 +550,50 @@ const filteredAndSortedList = list
       {/* Mobile card view */}
 <div className="mobile-item-list">
   {filteredAndSortedList.map((item, index) => (
-          <div 
-            key={index} 
-            className="mobile-item-card"
-            onClick={() => navigate(`/item/${item.id}`)}
-          >
-            {item.mainPhoto && (
-              <img src={item.mainPhoto} alt={item.itemName} />
-            )}
-            <div className="mobile-item-field">
-              <strong>Name:</strong> {item.itemName}
-            </div>
-            <div className="mobile-item-field">
-              <strong>Description:</strong> <PrivateText text={item.description} isAuthenticated={!!token} />
-            </div>
-            <div className="mobile-item-field">
-              <strong>Category:</strong> {item.category}
-            </div>
-            <div className="mobile-item-field">
-              <strong>Origin:</strong> {item.origin}
-            </div>
-          </div>
-        ))}
+    <div 
+      key={index} 
+      className="mobile-item-card"
+      onClick={() => navigate(`/item/${item.id}`)}
+    >
+      {item.mainPhoto && (
+        <img src={item.mainPhoto} alt={item.itemName} />
+      )}
+      <div className="mobile-item-field">
+        <strong>Name:</strong> {item.itemName}
       </div>
+      <div className="mobile-item-field">
+        <strong>Description:</strong> <PrivateText text={item.description} isAuthenticated={!!token} />
+      </div>
+      <div className="mobile-item-field">
+        <strong>Category:</strong> {item.category}
+      </div>
+      <div className="mobile-item-field">
+        <strong>Origin:</strong> {item.origin}
+      </div>
+      
+{token && (
+  <div style={{marginTop: '10px'}} onClick={(e) => e.stopPropagation()}>
+    <button onClick={() => navigate(`/item/${item.id}?edit=true`)}>Edit</button>
+    
+    {confirmDelete === item.id ? (
+      <div>
+        <span style={{marginRight: '10px'}}>Are you sure?</span>
+        <button onClick={() => {
+          handleDelete(item.id)
+          setConfirmDelete(null)
+        }}>Yes</button>
+        <button onClick={() => setConfirmDelete(null)} style={{marginLeft: '5px'}}>No</button>
+      </div>
+) : (
+      <button onClick={() => setConfirmDelete(item.id)} style={{marginLeft: '5px'}}>Delete</button>
+    )}
+  </div>
+)}
     </div>
+  ))}
+</div>
+</div>
   )
 }
-
 
 export default Home
