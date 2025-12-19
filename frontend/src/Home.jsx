@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
+import PrivateText from './PrivateText.jsx'
 
 const API_URL = 'https://bradie-inventory-api.onrender.com'
 
@@ -120,33 +121,30 @@ const handleEdit = (index) => {
   setEditingIndex(index)
 }
 
-const handleDelete = async (index) => {
-    // Check if user is logged in before attempting DELETE operation
-    if (!token) {
-        console.error("User not logged in. Cannot delete item.")
-        return
-    }
-  console.log('deleting item at index:', index)
-  const itemToDelete = list[index]
-  console.log('item to delete:', itemToDelete)
+const handleDelete = async (itemId) => {
+  if (!token) {
+    console.error("User not logged in. Cannot delete item.")
+    return
+  }
   
-  const response = await fetch(`${API_URL}/item/${itemToDelete.id}`, {
+  const itemToDelete = list.find(item => item.id === itemId)
+  const itemIndex = list.findIndex(item => item.id === itemId)
+  
+  console.log('deleting item:', itemToDelete.itemName)
+  
+  const response = await fetch(`${API_URL}/item/${itemId}`, {
     method: 'DELETE',
     headers: {
-        'Authorization': `Bearer ${token}` // ADDED: Authorization header
+      'Authorization': `Bearer ${token}`
     }
   })
 
-    if (response.ok) { // Only update state if API call succeeds
-        const newHistory = [...deletedHistory, { item: itemToDelete, position: index }]
-        console.log('new history:', newHistory)
-        setDeletedHistory(newHistory)
-        
-        const updatedList = list.filter((item, i) => i !== index)
-        setList(updatedList)
-    } else {
-        console.error("Failed to delete item.", await response.text())
-    }
+  if (response.ok) {
+    setDeletedHistory([...deletedHistory, { item: itemToDelete, position: itemIndex }])
+    setList(list.filter(item => item.id !== itemId))
+  } else {
+    console.error("Failed to delete item.", await response.text())
+  }
 }
 
 const handleUndo = async () => {
@@ -161,6 +159,7 @@ const handleUndo = async () => {
   formData.append('category', lastDeleted.item.category)
   formData.append('isNewPurchase', lastDeleted.item.isNewPurchase)
   formData.append('origin', lastDeleted.item.origin)
+  formData.append('createdAt', lastDeleted.item.createdAt)
   if (lastDeleted.item.mainPhoto) {
     formData.append('mainPhoto', lastDeleted.item.mainPhoto)
   }
@@ -284,6 +283,7 @@ const filteredAndSortedList = list
                 }
               }}
               enterKeyHint="next"
+              placeholder="Use ||text|| to mark private sections"
             />
           </div>
 
@@ -478,7 +478,9 @@ const filteredAndSortedList = list
                     onChange={(e) => setEditForm({...editForm, description: e.target.value})}
                   />
                 ) : (
-                    <span className="description-cell">{item.description}</span>
+                    <span className="description-cell">
+                      <PrivateText text={item.description} isAuthenticated={!!token} />
+                    </span>
                 )}
               </td>
             
@@ -527,10 +529,10 @@ const filteredAndSortedList = list
       e.stopPropagation()
       navigate(`/item/${item.id}?edit=true`)
     }}>Edit</button>
-    <button onClick={(e) => {
-      e.stopPropagation()
-      handleDelete(index)
-    }}>Delete</button>
+<button onClick={(e) => {
+  e.stopPropagation()
+  handleDelete(item.id)
+}}>Delete</button>
   </td>
 )}
 
@@ -555,7 +557,7 @@ const filteredAndSortedList = list
               <strong>Name:</strong> {item.itemName}
             </div>
             <div className="mobile-item-field">
-              <strong>Description:</strong> {item.description}
+              <strong>Description:</strong> <PrivateText text={item.description} isAuthenticated={!!token} />
             </div>
             <div className="mobile-item-field">
               <strong>Category:</strong> {item.category}

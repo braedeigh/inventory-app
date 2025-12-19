@@ -1,5 +1,6 @@
 import { useParams, useSearchParams } from 'react-router-dom'
 import { useState } from 'react'
+import PrivateText from './PrivateText.jsx'
 
 const API_URL = 'https://bradie-inventory-api.onrender.com'
 
@@ -139,9 +140,10 @@ const handleSave = async () => {
     <textarea 
       value={editDescription}
       onChange={(e) => setEditDescription(e.target.value)}
+      placeholder="Use ||text|| to mark private sections"
     />
   ) : (
-    item.description
+    <PrivateText text={item.description} isAuthenticated={!!token} />
   )}</p>
 
   <p><strong>Category:</strong> {isEditing ? (
