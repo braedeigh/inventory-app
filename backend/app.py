@@ -389,5 +389,22 @@ def migrate_community_final():
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
+@app.route('/fix-community-db', methods=['GET'])
+def fix_community_db():
+    conn = get_db()
+    try:
+        # Try to add missing columns one by one
+        try:
+            conn.execute('ALTER TABLE community_item ADD COLUMN subcategory TEXT')
+        except: pass # Column might already exist
+        
+        try:
+            conn.execute('ALTER TABLE community_item ADD COLUMN submitted_by TEXT')
+        except: pass
+            
+        return "Database check complete. Try submitting again!"
+    except Exception as e:
+        return f"Error: {str(e)}"
+
 if __name__ == '__main__':
     app.run(debug=True, port=5000)
