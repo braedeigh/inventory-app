@@ -36,9 +36,10 @@ def init_db():
             item_name TEXT,
             description TEXT,
             category TEXT,
-            is_new_purchase INTEGER,
             origin TEXT,
-            main_photo TEXT
+            main_photo TEXT,
+            created_at TEXT,
+            subcategory TEXT
         )
     ''')
 
@@ -206,9 +207,6 @@ def migrate_add_subcategory():
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
-if __name__ == '__main__':
-    app.run(debug=True, port=5000)
-
 
 @app.route('/migrate-remove-new-purchase', methods=['POST'])
 @token_required
@@ -238,3 +236,6 @@ def migrate_remove_new_purchase():
         return jsonify({"message": "is_new_purchase column removed successfully"})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+    
+if __name__ == '__main__':
+    app.run(debug=True, port=5000)
