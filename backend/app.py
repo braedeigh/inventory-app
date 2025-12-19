@@ -89,13 +89,6 @@ def login():
     return jsonify({"error": "Invalid credentials"}), 401
 
 
-@app.route('/', methods=['GET'])
-def list_return():
-    conn = get_db()
-    result = conn.execute('SELECT * FROM item')
-    items = [row_to_dict(row) for row in result.rows]
-    return jsonify(items)
-
 @app.route('/', methods=['POST'])
 @token_required
 def add_item():
@@ -132,7 +125,7 @@ def add_item():
     )
     
     # Return the created item
-    result = conn.execute('SELECT * FROM item WHERE id=?', [item_id])
+    result = conn.execute('SELECT id, item_name, description, category, origin, main_photo, created_at, subcategory FROM item WHERE id=?', [item_id])    
     row = result.rows[0]
     return jsonify(row_to_dict(row)), 201
 
@@ -149,7 +142,7 @@ def update_item(item_id):
     ''', [data.get('itemName'), data.get('description'), data.get('category'),
            data.get('origin'), data.get('subcategory'), item_id])
     
-    result = conn.execute('SELECT * FROM item WHERE id=?', [item_id])
+    result = conn.execute('SELECT id, item_name, description, category, origin, main_photo, created_at, subcategory FROM item WHERE id=?', [item_id])    
     rows = result.rows
     if not rows:
         return jsonify({"error": "Item not found"}), 404
@@ -236,6 +229,21 @@ def migrate_remove_new_purchase():
         return jsonify({"message": "is_new_purchase column removed successfully"})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+    
+@app.route('/', methods=['GET'])
+def list_return():
+    conn = get_db()
+    result = conn.execute('SELECT id, item_name, description, category, origin, main_photo, created_at, subcategory FROM item')
+    items = [row_to_dict(row) for row in result.rows]
+    return jsonify(items)
+
+@app.route('/', methods=['GET'])
+def list_return():
+    conn = get_db()
+    result = conn.execute('SELECT id, item_name, description, category, origin, main_photo, created_at, subcategory FROM item')
+    print(result.rows[0])  # Add this line
+    items = [row_to_dict(row) for row in result.rows]
+    return jsonify(items)
     
 if __name__ == '__main__':
     app.run(debug=True, port=5000)
