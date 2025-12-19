@@ -244,6 +244,29 @@ def list_return():
     print(result.rows[0])  # Add this line
     items = [row_to_dict(row) for row in result.rows]
     return jsonify(items)
+
+@app.route('/migrate-add-community-items', methods=['POST'])
+@token_required
+def migrate_add_community_items():
+    conn = get_db()
+    try:
+        conn.execute('''
+            CREATE TABLE IF NOT EXISTS community_item (
+                id TEXT PRIMARY KEY,
+                item_name TEXT,
+                description TEXT,
+                category TEXT,
+                origin TEXT,
+                main_photo TEXT,
+                created_at TEXT,
+                subcategory TEXT,
+                submitted_by TEXT,
+                approved INTEGER DEFAULT 0
+            )
+        ''')
+        return jsonify({"message": "community_item table created successfully"})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
     
 if __name__ == '__main__':
     app.run(debug=True, port=5000)
