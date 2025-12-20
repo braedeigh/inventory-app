@@ -39,7 +39,8 @@ def init_db():
             origin TEXT,
             main_photo TEXT,
             created_at TEXT,
-            subcategory TEXT
+            subcategory TEXT,
+            secondhand TEXT
         )
     ''')
 
@@ -55,7 +56,8 @@ def row_to_dict(row):
         "origin": row[4],
         "mainPhoto": row[5],
         "createdAt": row[6],
-        "subcategory": row[7]
+        "subcategory": row[7],
+        "secondhand": row[8]
     }
 
 # Auth helper
@@ -102,6 +104,7 @@ def add_item():
     if not created_at:
         created_at = datetime.utcnow().isoformat()
     subcategory = request.form.get('subcategory')
+    secondhand = request.form.get('secondhand')
     
     photo_url = None
     
@@ -120,12 +123,12 @@ def add_item():
     # Save to database
     conn = get_db()
     conn.execute(
-        'INSERT INTO item (id, item_name, description, category, origin, main_photo, created_at, subcategory) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
-        [item_id, item_name, description, category, origin, photo_url, created_at, subcategory]
+        'INSERT INTO item (id, item_name, description, category, origin, main_photo, created_at, subcategory, secondhand) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
+        [item_id, item_name, description, category, origin, photo_url, created_at, subcategory, secondhand]
     )
     
     # Return the created item
-    result = conn.execute('SELECT id, item_name, description, category, origin, main_photo, created_at, subcategory FROM item WHERE id=?', [item_id])    
+    result = conn.execute('SELECT id, item_name, description, category, origin, main_photo, created_at, subcategory, secondhand FROM item WHERE id=?', [item_id])    
     row = result.rows[0]
     return jsonify(row_to_dict(row)), 201
 
@@ -137,12 +140,12 @@ def update_item(item_id):
     data = request.json
     conn = get_db()
     conn.execute('''
-        UPDATE item SET item_name=?, description=?, category=?, origin=?, subcategory=?
+        UPDATE item SET item_name=?, description=?, category=?, origin=?, subcategory=?, secondhand=?
         WHERE id=?
     ''', [data.get('itemName'), data.get('description'), data.get('category'),
-           data.get('origin'), data.get('subcategory'), item_id])
+           data.get('origin'), data.get('subcategory'), data.get('secondhand'), item_id])
     
-    result = conn.execute('SELECT id, item_name, description, category, origin, main_photo, created_at, subcategory FROM item WHERE id=?', [item_id])    
+    result = conn.execute('SELECT id, item_name, description, category, origin, main_photo, created_at, subcategory, secondhand FROM item WHERE id=?', [item_id])    
     rows = result.rows
     if not rows:
         return jsonify({"error": "Item not found"}), 404
@@ -216,12 +219,13 @@ def migrate_remove_new_purchase():
                 origin TEXT,
                 main_photo TEXT,
                 created_at TEXT,
-                subcategory TEXT
+                subcategory TEXT,
+                secondhand TEXT
             )
         ''')
         conn.execute('''
-            INSERT INTO item_new (id, item_name, description, category, origin, main_photo, created_at, subcategory)
-            SELECT id, item_name, description, category, origin, main_photo, created_at, subcategory
+            INSERT INTO item_new (id, item_name, description, category, origin, main_photo, created_at, subcategory, secondhand)
+            SELECT id, item_name, description, category, origin, main_photo, created_at, subcategory, secondhand
             FROM item
         ''')
         conn.execute('DROP TABLE item')
@@ -234,8 +238,7 @@ def migrate_remove_new_purchase():
 @app.route('/', methods=['GET'])
 def list_return():
     conn = get_db()
-    result = conn.execute('SELECT id, item_name, description, category, origin, main_photo, created_at, subcategory FROM item')
-    print(result.rows[0])  # Add this line
+    result = conn.execute('SELECT id, item_name, description, category, origin, main_photo, created_at, subcategory, secondhand FROM item')
     items = [row_to_dict(row) for row in result.rows]
     return jsonify(items)
 
@@ -345,7 +348,7 @@ def delete_community_item(item_id):
 @app.route('/random', methods=['GET'])
 def get_random_item():
     conn = get_db()
-    result = conn.execute('SELECT id, item_name, description, category, origin, main_photo, created_at, subcategory FROM item ORDER BY RANDOM() LIMIT 1')
+    result = conn.execute('SELECT id, item_name, description, category, origin, main_photo, created_at, subcategory, secondhand FROM item ORDER BY RANDOM() LIMIT 1')
     if result.rows:
         return jsonify(row_to_dict(result.rows[0]))
     return jsonify(None)
@@ -393,18 +396,44 @@ def migrate_community_final():
 def fix_community_db():
     conn = get_db()
     try:
-        # Try to add missing columns one by one
+        # 1. Ensure the table exists
+        conn.execute('''
+            CREATE TABLE IF NOT EXISTS community_item (
+                id TEXT PRIMARY KEY,
+                item_name TEXT,
+                description TEXT,
+                category TEXT,
+                origin TEXT,
+                main_photo TEXT,
+                created_at TEXT,
+                subcategory TEXT,
+                submitted_by TEXT,
+                approved INTEGER DEFAULT 0
+            )
+        ''')
+        
+        # 2. Safety check: Try to add columns if they were missed previously
         try:
             conn.execute('ALTER TABLE community_item ADD COLUMN subcategory TEXT')
-        except: pass # Column might already exist
+        except: pass
         
         try:
             conn.execute('ALTER TABLE community_item ADD COLUMN submitted_by TEXT')
         except: pass
             
-        return "Database check complete. Try submitting again!"
+        return "Community table is ready! You can now close this tab and try submitting."
     except Exception as e:
         return f"Error: {str(e)}"
+    
+@app.route('/migrate-add-secondhand', methods=['POST'])
+@token_required
+def migrate_add_secondhand():
+    conn = get_db()
+    try:
+        conn.execute('ALTER TABLE item ADD COLUMN secondhand TEXT')
+        return jsonify({"message": "secondhand column added successfully"})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 if __name__ == '__main__':
     app.run(debug=True, port=5000)
