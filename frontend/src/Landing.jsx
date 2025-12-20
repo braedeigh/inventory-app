@@ -81,7 +81,7 @@ const refreshCommunityItem = () => {
       <p style={{ maxWidth: '600px', margin: '0 auto 10px' }}>
         This is a performance art piece documenting my personal 
         belongings.
-        Here, you can xplore my inventory or see what others are sharing.
+        Here you can explore my inventory or see what others are sharing.
       </p>
 
       <p style={{ marginBottom: '20px', fontSize: '0.9em', color: '#4CAF50', fontWeight: 'bold' }}>

@@ -28,6 +28,7 @@ function Home({ list, setList, token, setShowLogin, handleLogout }) {
   const [isUploading, setIsUploading] = useState(false)
   const [sortOrder, setSortOrder] = useState('newest')
   const [selectedCategories, setSelectedCategories] = useState([])
+  const [selectedSubcategories, setSelectedSubcategories] = useState([])
   const [errors, setErrors] = useState({
     itemName: false,
     description: false,
@@ -229,16 +230,23 @@ const handleSave = async () => {
 const filteredAndSortedList = list
   .filter(item => {
     if (selectedCategories.length === 0) return true
-    return selectedCategories.includes(item.category)
-  })
-  .sort((a, b) => {
-    if (sortOrder === 'newest') {
-      return new Date(b.createdAt) - new Date(a.createdAt)
-    } else {
-      return new Date(a.createdAt) - new Date(b.createdAt)
+    if (!selectedCategories.includes(item.category)) return false
+    if (item.category === 'clothing' && selectedSubcategories.length > 0) {
+      return selectedSubcategories.includes(item.subcategory)
     }
+    return true
   })
-
+.sort((a, b) => {
+  if (sortOrder === 'newest') {
+    return new Date(b.createdAt) - new Date(a.createdAt)
+  } else if (sortOrder === 'oldest') {
+    return new Date(a.createdAt) - new Date(b.createdAt)
+  } else if (sortOrder === 'alphabetical') {
+    return a.itemName.localeCompare(b.itemName)
+  } else if (sortOrder === 'random') {
+    return Math.random() - 0.5
+  }
+})
   
   return (
     <div>
@@ -416,40 +424,77 @@ const filteredAndSortedList = list
 <div style={{display: 'flex', gap: '20px', alignItems: 'center', marginBottom: '20px', flexWrap: 'wrap'}}>
   <div>
     <label>Sort by: </label>
-    <select 
-      value={sortOrder} 
-      onChange={(e) => setSortOrder(e.target.value)}
-    >
-      <option value="newest">Newest first</option>
-      <option value="oldest">Oldest first</option>
-    </select>
+<select 
+  value={sortOrder} 
+  onChange={(e) => setSortOrder(e.target.value)}
+>
+  <option value="newest">Newest first</option>
+  <option value="oldest">Oldest first</option>
+  <option value="alphabetical">A-Z</option>
+  <option value="random">Random</option>
+</select>
   </div>
   
   <div style={{display: 'flex', gap: '8px', flexWrap: 'wrap'}}>
-    {['clothing', 'jewelry', 'sentimental', 'bedding', 'other'].map(cat => (
-      <button
-        key={cat}
-        onClick={() => {
-          if (selectedCategories.includes(cat)) {
-            setSelectedCategories(selectedCategories.filter(c => c !== cat))
-          } else {
-            setSelectedCategories([...selectedCategories, cat])
-          }
-        }}
-        style={{
-          padding: '8px 16px',
-          backgroundColor: selectedCategories.includes(cat) ? '#4CAF50' : '#e0e0e0',
-          color: selectedCategories.includes(cat) ? 'white' : '#333',
-          border: 'none',
-          borderRadius: '4px',
-          cursor: 'pointer'
-        }}
-      >
-        {cat.charAt(0).toUpperCase() + cat.slice(1)}
-      </button>
-    ))}
+{['clothing', 'jewelry', 'sentimental', 'bedding', 'other'].map(cat => {
+  const count = list.filter(item => item.category === cat).length
+  return (
+    <button
+      key={cat}
+      onClick={() => {
+        if (selectedCategories.includes(cat)) {
+          setSelectedCategories(selectedCategories.filter(c => c !== cat))
+        } else {
+          setSelectedCategories([...selectedCategories, cat])
+        }
+      }}
+      style={{
+        padding: '8px 16px',
+        backgroundColor: selectedCategories.includes(cat) ? '#4CAF50' : '#e0e0e0',
+        color: selectedCategories.includes(cat) ? 'white' : '#333',
+        border: 'none',
+        borderRadius: '4px',
+        cursor: 'pointer'
+      }}
+    >
+      {cat.charAt(0).toUpperCase() + cat.slice(1)} ({count})
+    </button>
+  )
+    })}
   </div>
 </div>
+
+{selectedCategories.includes('clothing') && (
+  <div style={{display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: '20px', marginTop: '10px'}}>
+    {['undershirt', 'shirt', 'sweater', 'jacket', 'dress', 'pants', 'shorts', 'skirt', 'shoes', 'socks', 'underwear', 'accessories', 'other'].map(sub => {
+      const count = list.filter(item => item.category === 'clothing' && item.subcategory === sub).length
+      return (
+        <button
+          key={sub}
+          onClick={() => {
+            if (selectedSubcategories.includes(sub)) {
+              setSelectedSubcategories(selectedSubcategories.filter(s => s !== sub))
+            } else {
+              setSelectedSubcategories([...selectedSubcategories, sub])
+            }
+          }}
+          style={{
+            padding: '6px 12px',
+            backgroundColor: selectedSubcategories.includes(sub) ? '#2196F3' : '#e0e0e0',
+            color: selectedSubcategories.includes(sub) ? 'white' : '#333',
+            border: 'none',
+            borderRadius: '4px',
+            cursor: 'pointer',
+            fontSize: '0.9em'
+          }}
+        >
+          {sub.charAt(0).toUpperCase() + sub.slice(1)} ({count})
+        </button>
+      )
+    })}
+  </div>
+)}
+
 
 
       <table>
