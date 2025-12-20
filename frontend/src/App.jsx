@@ -11,7 +11,7 @@ const API_URL = 'https://bradie-inventory-api.onrender.com'
 
 function App() {
   const [list, setList] = useState([])
-  const [communityList, setCommunityList] = useState([]) // Moved inside function
+  const [communityList, setCommunityList] = useState([])
   const [token, setToken] = useState(localStorage.getItem('token'))
   const [showLogin, setShowLogin] = useState(false)
 
@@ -60,8 +60,16 @@ function App() {
       )}
 
       <Routes>
-        {/* Landing Page as the root */}
-        <Route path="/" element={<Landing list={list} communityList={communityList} />} />
+        {/* Landing Page as the root - now with auth props */}
+        <Route path="/" element={
+          <Landing 
+            list={list} 
+            communityList={communityList} 
+            token={token}
+            setShowLogin={setShowLogin}
+            handleLogout={handleLogout}
+          />
+        } />
         
         {/* Your personal inventory */}
         <Route path="/inventory" element={<Home 

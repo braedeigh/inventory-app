@@ -53,11 +53,12 @@ function CommunityPage({ token }) {
   }
 
   const handleDelete = async (id) => {
-    if (!window.confirm("Reject and delete this submission?")) return
+    if (!window.confirm("Delete this item?")) return
     await fetch(`${API_URL}/community/${id}`, {
       method: 'DELETE',
       headers: { 'Authorization': `Bearer ${token}` }
     })
+    fetchPublicItems()
     fetchPendingItems()
   }
 
@@ -107,26 +108,25 @@ function CommunityPage({ token }) {
       {/* --- DETAILED SUBMISSION FORM --- */}
       <section style={{ background: '#f9f9f9', padding: '25px', border: '1px solid #ddd', marginBottom: '40px' }}>
         <h2 style={{ marginTop: 0 }}>Add to the Collection</h2>
-        <form onSubmit={handleSubmit} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px' }}>
-          <input placeholder="Item Name" required onChange={e => setFormData({...formData, itemName: e.target.value})} value={formData.itemName} />
-          <input placeholder="Your Name" required onChange={e => setFormData({...formData, submittedBy: e.target.value})} value={formData.submittedBy} />
-          <input placeholder="Subcategory (e.g. Vintage, Handmade)" onChange={e => setFormData({...formData, subcategory: e.target.value})} value={formData.subcategory} />
-          <input placeholder="Origin (Where did you get it?)" onChange={e => setFormData({...formData, origin: e.target.value})} value={formData.origin} />
-          
-          <select style={{ gridColumn: 'span 2' }} onChange={e => setFormData({...formData, category: e.target.value})} value={formData.category}>
+<form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
+  <input placeholder="Item Name" required onChange={e => setFormData({...formData, itemName: e.target.value})} value={formData.itemName} />
+  <input placeholder="Your Name" required onChange={e => setFormData({...formData, submittedBy: e.target.value})} value={formData.submittedBy} />
+  <input placeholder="Origin (Where did you get it?)" onChange={e => setFormData({...formData, origin: e.target.value})} value={formData.origin} />
+  
+  <select onChange={e => setFormData({...formData, category: e.target.value})} value={formData.category}>
             <option value="clothing">Clothing</option>
-            <option value="accessory">Accessory</option>
+            <option value="imaginary">Accessory</option>
             <option value="object">Object</option>
             <option value="other">Other</option>
           </select>
 
           <textarea style={{ gridColumn: 'span 2', height: '80px' }} placeholder="The story behind this item..." required onChange={e => setFormData({...formData, description: e.target.value})} value={formData.description} />
           
-          <div style={{ gridColumn: 'span 2' }}>
-            <label>Upload Photo: </label>
-            <input type="file" accept="image/*" required onChange={e => setPhotoFile(e.target.files[0])} />
-          </div>
-
+<div style={{ gridColumn: 'span 2', color: '#333' }}>
+  <label>Upload Photo: </label>
+  <input type="file" accept="image/*" required onChange={e => setPhotoFile(e.target.files[0])} />
+  {photoFile && <span style={{ marginLeft: '10px' }}>✓ {photoFile.name}</span>}
+</div>
           <button type="submit" disabled={isUploading} style={{ gridColumn: 'span 2', padding: '10px', background: 'black', color: 'white', cursor: 'pointer' }}>
             {isUploading ? 'UPLOADING...' : 'SUBMIT FOR REVIEW'}
           </button>
@@ -158,7 +158,26 @@ function CommunityPage({ token }) {
         <h2 style={{ textAlign: 'center' }}>The Archive</h2>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '30px' }}>
           {communityList.length === 0 ? <p style={{ textAlign: 'center', gridColumn: 'span 3' }}>No items in the archive yet.</p> : communityList.map(item => (
-            <div key={item.id} style={{ border: '1px solid #000', padding: '15px' }}>
+            <div key={item.id} style={{ border: '1px solid #000', padding: '15px', position: 'relative' }}>
+              {/* Admin delete button for approved items */}
+              {token && (
+                <button 
+                  onClick={() => handleDelete(item.id)}
+                  style={{ 
+                    position: 'absolute', 
+                    top: '10px', 
+                    right: '10px', 
+                    background: '#f44336', 
+                    color: 'white', 
+                    border: 'none', 
+                    padding: '5px 10px',
+                    cursor: 'pointer',
+                    fontSize: '0.75rem'
+                  }}
+                >
+                  Delete
+                </button>
+              )}
               <img src={item.mainPhoto} style={{ width: '100%', height: '250px', objectFit: 'cover', marginBottom: '10px' }} />
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
                 <h3 style={{ margin: 0 }}>{item.itemName}</h3>

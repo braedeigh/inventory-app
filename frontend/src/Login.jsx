@@ -17,7 +17,9 @@ function Login({ onLogin, onClose }) {
     <div className="login-overlay">
       <div className="login-modal">
         <button className="close-btn" onClick={onClose}>×</button>
-        <h2>Login</h2>
+        <p style={{ marginTop: 0, marginBottom: '20px', fontSize: '0.9em', color: '#666' }}>
+        Currently admin-only. Let me know if you'd like to make your own inventory!
+        </p>
         {error && <p className="error">{error}</p>}
         <form onSubmit={handleSubmit}>
           <div>

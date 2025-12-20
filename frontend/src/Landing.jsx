@@ -1,54 +1,62 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
+import PrivateText from './PrivateText.jsx'
 
-function Landing({ list, communityList }) {
+function Landing({ list, communityList, token, setShowLogin, handleLogout }) {
   const [randomMyItem, setRandomMyItem] = useState(null)
   const [randomCommunityItem, setRandomCommunityItem] = useState(null)
   const navigate = useNavigate()
 
-  const refreshMyItem = () => {
-    if (list && list.length > 0) {
-      const randomIndex = Math.floor(Math.random() * list.length)
-      setRandomMyItem(list[randomIndex])
-    }
+const refreshMyItem = () => {
+  if (list && list.length > 0) {
+    const available = list.filter(item => item.id !== randomMyItem?.id)
+    const pool = available.length > 0 ? available : list
+    const randomIndex = Math.floor(Math.random() * pool.length)
+    setRandomMyItem(pool[randomIndex])
   }
+}
 
-  const refreshCommunityItem = () => {
-    if (communityList && communityList.length > 0) {
-      const randomIndex = Math.floor(Math.random() * communityList.length)
-      setRandomCommunityItem(communityList[randomIndex])
-    }
+const refreshCommunityItem = () => {
+  if (communityList && communityList.length > 0) {
+    const available = communityList.filter(item => item.id !== randomCommunityItem?.id)
+    const pool = available.length > 0 ? available : communityList
+    const randomIndex = Math.floor(Math.random() * pool.length)
+    setRandomCommunityItem(pool[randomIndex])
   }
+}
 
   useEffect(() => {
     refreshMyItem()
     refreshCommunityItem()
   }, [list, communityList])
 
-  // Helper component with requested layout: Description then Origin
+  // Helper component - fully dynamic: photo aspect ratio + description length
   const CardContent = ({ item }) => (
     <div style={{ textAlign: 'left', marginTop: '10px' }}>
-      <img 
-        src={item.mainPhoto} 
-        alt={item.itemName} 
-        style={{ width: '100%', height: '200px', objectFit: 'cover', borderRadius: '8px' }} 
-      />
+      {item.mainPhoto && (
+        <img 
+          src={item.mainPhoto} 
+          alt={item.itemName} 
+          style={{ 
+            width: '100%', 
+            height: 'auto',
+            maxHeight: '400px',
+            objectFit: 'contain',
+            borderRadius: '8px' 
+          }} 
+        />
+      )}
       <h4 style={{ margin: '10px 0 5px 0' }}>{item.itemName}</h4>
       
-      {/* Description is now first */}
       <p style={{ 
         fontSize: '0.85em', 
         color: '#666',
         margin: '0 0 10px 0',
-        display: '-webkit-box',
-        WebkitLineClamp: '3',
-        WebkitBoxOrient: 'vertical',
-        overflow: 'hidden' 
+        lineHeight: '1.5'
       }}>
-        {item.description}
+        <PrivateText text={item.description} isAuthenticated={!!token} />
       </p>
 
-      {/* Origin is now below the description */}
       <p style={{ fontSize: '0.9em', margin: '0', color: '#555' }}>
         <strong>Origin:</strong> {item.origin}
       </p>
@@ -57,20 +65,30 @@ function Landing({ list, communityList }) {
 
   return (
     <div className="landing-container" style={{ padding: '20px', textAlign: 'center' }}>
-      <h1>Bradie's Show and Tell</h1>
+      {/* Header with login button */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+        <div style={{ width: '80px' }}></div>
+        <h1 style={{ margin: 0 }}>Bradie's Show and Tell</h1>
+        <div style={{ width: '80px' }}>
+          {token ? (
+            <button onClick={handleLogout} style={{ padding: '8px 16px' }}>Logout</button>
+          ) : (
+            <button onClick={() => setShowLogin(true)} style={{ padding: '8px 16px' }}>Login</button>
+          )}
+        </div>
+      </div>
+
       <p style={{ maxWidth: '600px', margin: '0 auto 10px' }}>
         This is a performance art piece documenting my personal 
-        belongings and ethical consumption. My goal is to build this into a community resource
-        for sharing favorite items and purchasing habits.
-        Explore my inventory or see what others are sharing.
+        belongings.
+        Here, you can xplore my inventory or see what others are sharing.
       </p>
 
-      {/* Instruction text moved ABOVE the cards */}
       <p style={{ marginBottom: '20px', fontSize: '0.9em', color: '#4CAF50', fontWeight: 'bold' }}>
         Click an item to view a new random item
       </p>
 
-      <div style={{ display: 'flex', justifyContent: 'center', gap: '40px', flexWrap: 'wrap' }}>
+      <div style={{ display: 'flex', justifyContent: 'center', gap: '40px', flexWrap: 'wrap', alignItems: 'flex-start' }}>
         
         {/* Personal Inventory Preview Card */}
         <div 
