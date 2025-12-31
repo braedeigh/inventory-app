@@ -18,6 +18,7 @@ function ItemDetail({ list, setList, token }) {
   const [editCategory, setEditCategory] = useState(item?.category || '')
   const [editSubcategory, setEditSubcategory] = useState(item?.subcategory || '')
   const [editOrigin, setEditOrigin] = useState(item?.origin || '')
+  const [editSecondhand, setEditSecondhand] = useState(item?.secondhand || '')
 
   if (!item) {
     return <p>Item not found</p>
@@ -74,13 +75,14 @@ const handleSave = async () => {
       'Content-Type': 'application/json',
       'Authorization': `Bearer ${token}`
     },
-    body: JSON.stringify({
-      itemName: editName,
-      description: editDescription,
-      category: editCategory,
-      subcategory: editSubcategory,
-      origin: editOrigin,
-    })
+body: JSON.stringify({
+  itemName: editName,
+  description: editDescription,
+  category: editCategory,
+  subcategory: editSubcategory,
+  origin: editOrigin,
+  secondhand: editSecondhand,
+})
   })
 
   if (response.ok) {
@@ -184,6 +186,22 @@ const handleSave = async () => {
       item.subcategory
     )}</p>
   )}
+
+<p><strong>Source:</strong> {isEditing ? (
+  <select
+    value={editSecondhand}
+    onChange={(e) => setEditSecondhand(e.target.value)}
+  >
+    <option value="">-- Select --</option>
+    <option value="new">New</option>
+    <option value="secondhand">Secondhand</option>
+    <option value="gifted">Gifted</option>
+    <option value="handmade">Handmade</option>
+    <option value="unknown">Unknown</option>
+  </select>
+) : (
+  item.secondhand || '-'
+)}</p>
 
   <p><strong>Origin:</strong> {isEditing ? (
     <input 
