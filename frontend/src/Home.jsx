@@ -411,25 +411,40 @@ function Home({ list, setList, token, setShowLogin, handleLogout }) {
             </select>
           </div>
 
-          <div className="mb-4">
-            <label className="block text-sm font-medium mb-1">Photo:</label>
-            <input 
-              type="file"
-              ref={photoRef}
-              accept="image/*"
-              onChange={handlePhotoSelect}
-              className="text-sm"
-            />
-            {photoPreview && (
-              <div className="mt-2">
-                <img 
-                  src={photoPreview} 
-                  alt="Preview" 
-                  className="w-48 h-48 object-cover rounded-lg"
-                />
-              </div>
-            )}
-          </div>
+<div className="mb-4">
+  <label className="block text-sm font-medium mb-1">Photo:</label>
+  
+  {/* Hidden file input */}
+  <input 
+    type="file"
+    ref={photoRef}
+    accept="image/*"
+    onChange={handlePhotoSelect}
+    className="hidden"
+  />
+  
+  {/* Styled button that triggers the file input */}
+  <button
+    type="button"
+    onClick={() => photoRef.current?.click()}
+    className="px-4 py-2 bg-neutral-200 dark:bg-neutral-700 rounded-lg hover:bg-neutral-300 dark:hover:bg-neutral-600 transition-all"
+  >
+    Choose File
+  </button>
+  
+  {/* Show filename if selected */}
+  {photoFile && <span className="ml-2 text-sm">{photoFile.name}</span>}
+  
+  {photoPreview && (
+    <div className="mt-2">
+      <img 
+        src={photoPreview} 
+        alt="Preview" 
+        className="w-48 h-48 object-cover rounded-lg"
+      />
+    </div>
+  )}
+</div>
 
           <button 
             type="button" 
@@ -449,7 +464,7 @@ function Home({ list, setList, token, setShowLogin, handleLogout }) {
         {deletedHistory.length > 0 && token && (
           <button 
             onClick={handleUndo}
-            className="px-4 py-2 text-sm bg-yellow-500 text-white rounded-lg hover:bg-yellow-600 transition-all"
+            className="px-4 py-2 text-sm bg-yellow-300 text-black rounded-lg hover:bg-yellow-400 transition-all"
           >
             Undo Delete
           </button>
@@ -529,15 +544,15 @@ function Home({ list, setList, token, setShowLogin, handleLogout }) {
       {/* Table - Desktop */}
       <div className="hidden md:block overflow-x-auto">
         <table className="w-full border-collapse">
-          <thead>
-            <tr className="bg-green-600 text-white">
-              <th className="p-3 text-left w-16">Photo</th>
-              <th className="p-3 text-left">Item Name</th>
-              <th className="p-3 text-left">Description</th>
-              <th className="p-3 text-left">Origin</th>
-              {token && <th className="p-3 text-left w-32">Actions</th>}
-            </tr>
-          </thead>
+<thead>
+  <tr className="bg-green-600 text-white">
+    <th className="p-3 text-left w-18">Photo</th>
+    <th className="p-3 text-left w-1/6">Item Name</th>
+    <th className="p-3 text-left">Description</th>
+    <th className="p-3 text-left w-1/6">Origin</th>
+    {token && <th className="p-3 text-left w-38">Actions</th>}
+  </tr>
+</thead>
           <tbody>
             {filteredAndSortedList.map((item, index) => (
               <tr 
@@ -549,7 +564,7 @@ function Home({ list, setList, token, setShowLogin, handleLogout }) {
                 }} 
                 className="border-b border-neutral-200 dark:border-neutral-700 hover:bg-neutral-100 dark:hover:bg-neutral-800 cursor-pointer"
               >
-                <td className="p-3" onClick={(e) => e.stopPropagation()}>
+                <td className="p-3 w-16" onClick={(e) => e.stopPropagation()}>
                   {item.mainPhoto ? (
                     <img src={item.mainPhoto} alt={item.itemName} className="w-12 h-12 object-cover rounded" />
                   ) : (
@@ -565,7 +580,7 @@ function Home({ list, setList, token, setShowLogin, handleLogout }) {
                       className="px-2 py-1 border rounded bg-white dark:bg-neutral-900"
                     />
                   ) : (
-                    <span className="block max-w-[150px] truncate">{item.itemName}</span>
+                    <span className="block truncate">{item.itemName}</span>
                   )}
                 </td>
 
@@ -577,7 +592,7 @@ function Home({ list, setList, token, setShowLogin, handleLogout }) {
                       className="px-2 py-1 border rounded bg-white dark:bg-neutral-900 w-full"
                     />
                   ) : (
-                    <span className="block max-w-[250px] truncate">
+                    <span className="block truncate">
                       <PrivateText text={item.description} isAuthenticated={!!token} />
                     </span>
                   )}
@@ -591,7 +606,7 @@ function Home({ list, setList, token, setShowLogin, handleLogout }) {
                       className="px-2 py-1 border rounded bg-white dark:bg-neutral-900"
                     />
                   ) : (
-                    <span className="block max-w-[150px] truncate">{item.origin}</span>
+                    <span className="block truncate">{item.origin}</span>
                   )}
                 </td>
                 
@@ -603,7 +618,7 @@ function Home({ list, setList, token, setShowLogin, handleLogout }) {
                           e.stopPropagation()
                           navigate(`/item/${item.id}?edit=true`)
                         }}
-                        className="px-3 py-1 text-sm bg-blue-500 text-white rounded hover:bg-blue-600 transition-all"
+                        className="px-3 py-1 text-sm bg-blue-200 text-black rounded hover:bg-blue-400 transition-all"
                       >
                         Edit
                       </button>
@@ -612,7 +627,7 @@ function Home({ list, setList, token, setShowLogin, handleLogout }) {
                           e.stopPropagation()
                           handleDelete(item.id)
                         }}
-                        className="px-3 py-1 text-sm bg-red-500 text-white rounded hover:bg-red-600 transition-all"
+                        className="px-3 py-1 text-sm bg-red-200 text-black rounded hover:bg-red-400 transition-all"
                       >
                         Delete
                       </button>
@@ -653,7 +668,7 @@ function Home({ list, setList, token, setShowLogin, handleLogout }) {
               <div className="mt-3 flex gap-2" onClick={(e) => e.stopPropagation()}>
                 <button 
                   onClick={() => navigate(`/item/${item.id}?edit=true`)}
-                  className="px-3 py-1 text-sm bg-blue-500 text-white rounded hover:bg-blue-600 transition-all"
+                  className="px-3 py-1 text-sm bg-blue-500 text-black rounded hover:bg-blue-600 transition-all"
                 >
                   Edit
                 </button>
@@ -666,7 +681,7 @@ function Home({ list, setList, token, setShowLogin, handleLogout }) {
                         handleDelete(item.id)
                         setConfirmDelete(null)
                       }}
-                      className="px-3 py-1 text-sm bg-red-500 text-white rounded hover:bg-red-600"
+                      className="px-3 py-1 text-sm bg-red-500 text-black rounded hover:bg-red-600"
                     >
                       Yes
                     </button>
@@ -680,7 +695,7 @@ function Home({ list, setList, token, setShowLogin, handleLogout }) {
                 ) : (
                   <button 
                     onClick={() => setConfirmDelete(item.id)}
-                    className="px-3 py-1 text-sm bg-red-500 text-white rounded hover:bg-red-600 transition-all"
+                    className="px-3 py-1 text-sm bg-red-500 text-black rounded hover:bg-red-600 transition-all"
                   >
                     Delete
                   </button>
