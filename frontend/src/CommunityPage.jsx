@@ -13,12 +13,18 @@ function CommunityPage({ token }) {
   const [formData, setFormData] = useState({
     itemName: '', 
     description: '', 
-    category: 'clothing', 
-    subcategory: '',
     origin: '', 
     submittedBy: ''
   })
   const [photoFile, setPhotoFile] = useState(null)
+  
+  const [errors, setErrors] = useState({
+    itemName: false,
+    submittedBy: false,
+    origin: false,
+    description: false,
+    photo: false
+  })
 
   const fetchPublicItems = async () => {
     try {
@@ -65,18 +71,27 @@ function CommunityPage({ token }) {
 
   const handleSubmit = async (e) => {
     e.preventDefault()
-    if (!photoFile) {
-      alert("Please upload a photo!")
+    
+    const newErrors = {
+      itemName: formData.itemName === '',
+      submittedBy: formData.submittedBy === '',
+      origin: formData.origin === '',
+      description: formData.description === '',
+      photo: !photoFile
+    }
+    
+    setErrors(newErrors)
+    
+    if (Object.values(newErrors).some(error => error)) {
       return
     }
+    
     setIsUploading(true)
     
     const data = new FormData()
     data.append('id', crypto.randomUUID())
     data.append('itemName', formData.itemName)
     data.append('description', formData.description)
-    data.append('category', formData.category)
-    data.append('subcategory', formData.subcategory)
     data.append('origin', formData.origin)
     data.append('submittedBy', formData.submittedBy)
     data.append('photo', photoFile)
@@ -85,7 +100,7 @@ function CommunityPage({ token }) {
       const res = await fetch(`${API_URL}/community`, { method: 'POST', body: data })
       if (res.ok) {
         alert("Success! Your item has been sent to Bradie for review.")
-        setFormData({ itemName: '', description: '', category: 'clothing', subcategory: '', origin: '', submittedBy: '' })
+        setFormData({ itemName: '', description: '', origin: '', submittedBy: '' })
         setPhotoFile(null)
         fetchPendingItems() 
       }
@@ -123,11 +138,14 @@ function CommunityPage({ token }) {
             <input 
               type="text"
               placeholder="What is this item?" 
-              required 
-              onChange={e => setFormData({...formData, itemName: e.target.value})} 
+              onChange={e => {
+                setFormData({...formData, itemName: e.target.value})
+                setErrors({...errors, itemName: false})
+              }} 
               value={formData.itemName}
-              className="w-full px-3 py-2 border border-neutral-300 dark:border-neutral-600 rounded-lg bg-white dark:bg-neutral-900 focus:outline-none focus:ring-2 focus:ring-green-500"
+              className={`w-full px-3 py-2 border rounded-lg bg-white dark:bg-neutral-900 focus:outline-none focus:ring-2 focus:ring-green-500 ${errors.itemName ? 'border-red-500' : 'border-neutral-300 dark:border-neutral-600'}`}
             />
+            {errors.itemName && <span className="text-red-500 text-xs">Required</span>}
           </div>
 
           <div>
@@ -135,11 +153,14 @@ function CommunityPage({ token }) {
             <input 
               type="text"
               placeholder="How should we credit you?" 
-              required 
-              onChange={e => setFormData({...formData, submittedBy: e.target.value})} 
+              onChange={e => {
+                setFormData({...formData, submittedBy: e.target.value})
+                setErrors({...errors, submittedBy: false})
+              }} 
               value={formData.submittedBy}
-              className="w-full px-3 py-2 border border-neutral-300 dark:border-neutral-600 rounded-lg bg-white dark:bg-neutral-900 focus:outline-none focus:ring-2 focus:ring-green-500"
+              className={`w-full px-3 py-2 border rounded-lg bg-white dark:bg-neutral-900 focus:outline-none focus:ring-2 focus:ring-green-500 ${errors.submittedBy ? 'border-red-500' : 'border-neutral-300 dark:border-neutral-600'}`}
             />
+            {errors.submittedBy && <span className="text-red-500 text-xs">Required</span>}
           </div>
 
           <div>
@@ -147,35 +168,28 @@ function CommunityPage({ token }) {
             <input 
               type="text"
               placeholder="Where did you get it?" 
-              onChange={e => setFormData({...formData, origin: e.target.value})} 
+              onChange={e => {
+                setFormData({...formData, origin: e.target.value})
+                setErrors({...errors, origin: false})
+              }} 
               value={formData.origin}
-              className="w-full px-3 py-2 border border-neutral-300 dark:border-neutral-600 rounded-lg bg-white dark:bg-neutral-900 focus:outline-none focus:ring-2 focus:ring-green-500"
+              className={`w-full px-3 py-2 border rounded-lg bg-white dark:bg-neutral-900 focus:outline-none focus:ring-2 focus:ring-green-500 ${errors.origin ? 'border-red-500' : 'border-neutral-300 dark:border-neutral-600'}`}
             />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-neutral-500 dark:text-neutral-400 mb-1">Category</label>
-            <select 
-              onChange={e => setFormData({...formData, category: e.target.value})} 
-              value={formData.category}
-              className="w-full px-3 py-2 border border-neutral-300 dark:border-neutral-600 rounded-lg bg-white dark:bg-neutral-900 focus:outline-none focus:ring-2 focus:ring-green-500"
-            >
-              <option value="clothing">Clothing</option>
-              <option value="accessory">Accessory</option>
-              <option value="object">Object</option>
-              <option value="other">Other</option>
-            </select>
+            {errors.origin && <span className="text-red-500 text-xs">Required</span>}
           </div>
 
           <div>
             <label className="block text-sm font-medium text-neutral-500 dark:text-neutral-400 mb-1">The Story</label>
             <textarea 
               placeholder="What's the story behind this item?" 
-              required 
-              onChange={e => setFormData({...formData, description: e.target.value})} 
+              onChange={e => {
+                setFormData({...formData, description: e.target.value})
+                setErrors({...errors, description: false})
+              }} 
               value={formData.description}
-              className="w-full px-3 py-2 border border-neutral-300 dark:border-neutral-600 rounded-lg bg-white dark:bg-neutral-900 focus:outline-none focus:ring-2 focus:ring-green-500 min-h-[100px]"
+              className={`w-full px-3 py-2 border rounded-lg bg-white dark:bg-neutral-900 focus:outline-none focus:ring-2 focus:ring-green-500 min-h-[100px] ${errors.description ? 'border-red-500' : 'border-neutral-300 dark:border-neutral-600'}`}
             />
+            {errors.description && <span className="text-red-500 text-xs">Required</span>}
           </div>
 
           <div>
@@ -184,18 +198,21 @@ function CommunityPage({ token }) {
               type="file" 
               ref={photoRef}
               accept="image/*" 
-              required 
-              onChange={e => setPhotoFile(e.target.files[0])}
+              onChange={e => {
+                setPhotoFile(e.target.files[0])
+                setErrors({...errors, photo: false})
+              }}
               className="hidden"
             />
             <button
               type="button"
               onClick={() => photoRef.current?.click()}
-              className="px-4 py-2 bg-neutral-200 dark:bg-neutral-700 rounded-lg hover:bg-neutral-300 dark:hover:bg-neutral-600 transition-all"
+              className={`px-4 py-2 rounded-lg transition-all ${errors.photo ? 'bg-red-100 dark:bg-red-900/30 border border-red-500' : 'bg-neutral-200 dark:bg-neutral-700 hover:bg-neutral-300 dark:hover:bg-neutral-600'}`}
             >
               Choose File
             </button>
             {photoFile && <span className="ml-3 text-sm text-green-600">✓ {photoFile.name}</span>}
+            {errors.photo && <span className="ml-3 text-red-500 text-xs">Required</span>}
           </div>
 
           <button 
@@ -271,14 +288,7 @@ function CommunityPage({ token }) {
                   className="w-full h-56 object-cover rounded-lg mb-4"
                 />
                 
-                <div className="flex justify-between items-baseline mb-2">
-                  <h3 className="font-medium text-lg">{item.itemName}</h3>
-                  {item.subcategory && (
-                    <span className="text-xs uppercase bg-neutral-100 dark:bg-neutral-700 px-2 py-1 rounded">
-                      {item.subcategory}
-                    </span>
-                  )}
-                </div>
+                <h3 className="font-medium text-lg mb-2">{item.itemName}</h3>
                 
                 <p className="text-sm text-neutral-600 dark:text-neutral-300 mb-4 leading-relaxed">
                   {item.description}
