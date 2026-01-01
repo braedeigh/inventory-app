@@ -293,7 +293,7 @@ function Home({ list, setList, token, setShowLogin, handleLogout }) {
 
       {/* Add Item Form */}
       {token && ( 
-<form className="w-3/4 mx-auto mb-10 p-6 bg-white dark:bg-neutral-800 rounded-xl border border-neutral-200 dark:border-neutral-700">
+<form className="w-full md:w-3/4 mx-auto mb-10 p-6 bg-white dark:bg-neutral-800 rounded-xl border border-neutral-200 dark:border-neutral-700">
 
           <div className="mb-4">
             <label className="block text-sm font-medium mb-1">Item Name:</label>
