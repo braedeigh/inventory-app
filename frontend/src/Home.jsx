@@ -258,29 +258,33 @@ function Home({ list, setList, token, setShowLogin, handleLogout }) {
       
 
 {/* Header */}
-<div className="flex items-center mb-6">
-  <button 
-    onClick={() => navigate('/')}
-    className="px-4 py-2 text-sm border border-neutral-300 dark:border-neutral-600 rounded-lg hover:bg-neutral-200 dark:hover:bg-neutral-700 transition-all"
-  >
-    ← Home
-  </button>
-  <h1 className="text-3xl md:text-4xl font-light font-serif flex-1 text-center">Bradie's Inventory</h1>
-  {token ? (
-    <button 
-      onClick={handleLogout}
-      className="px-4 py-2 text-sm border border-neutral-300 dark:border-neutral-600 rounded-full hover:bg-neutral-200 dark:hover:bg-neutral-700 transition-all"
+<div className="mb-6">
+  {/* Buttons row */}
+  <div className="flex justify-between items-center mb-3 md:mb-0">
+    <button
+      onClick={() => navigate('/')}
+      className="px-4 py-2 text-sm border border-neutral-300 dark:border-neutral-600 rounded-lg hover:bg-neutral-200 dark:hover:bg-neutral-700 transition-all"
     >
-      Logout
+      ← Home
     </button>
-  ) : (
-    <button 
-      onClick={() => setShowLogin(true)}
-      className="px-4 py-2 text-sm border border-neutral-300 dark:border-neutral-600 rounded-full hover:bg-neutral-200 dark:hover:bg-neutral-700 transition-all"
-    >
-      Login
-    </button>
-  )}
+    {token ? (
+      <button
+        onClick={handleLogout}
+        className="px-4 py-2 text-sm border border-neutral-300 dark:border-neutral-600 rounded-lg hover:bg-neutral-200 dark:hover:bg-neutral-700 transition-all"
+      >
+        Logout
+      </button>
+    ) : (
+      <button
+        onClick={() => setShowLogin(true)}
+        className="px-4 py-2 text-sm border border-neutral-300 dark:border-neutral-600 rounded-lg hover:bg-neutral-200 dark:hover:bg-neutral-700 transition-all"
+      >
+        Login
+      </button>
+    )}
+  </div>
+  {/* Title - below buttons on mobile, inline on desktop */}
+  <h1 className="text-3xl md:text-4xl font-light font-serif text-center">Bradie's Inventory</h1>
 </div>
 
 {/* Info for logged out users */}
@@ -413,34 +417,34 @@ function Home({ list, setList, token, setShowLogin, handleLogout }) {
 
 <div className="mb-4">
   <label className="block text-sm font-medium mb-1">Photo:</label>
-  
+
   {/* Hidden file input */}
-  <input 
+  <input
     type="file"
     ref={photoRef}
     accept="image/*"
     onChange={handlePhotoSelect}
     className="hidden"
   />
-  
+
   {/* Styled button that triggers the file input */}
   <button
     type="button"
     onClick={() => photoRef.current?.click()}
-    className="px-4 py-2 bg-neutral-200 dark:bg-neutral-700 rounded-lg hover:bg-neutral-300 dark:hover:bg-neutral-600 transition-all"
+    className="w-full md:w-auto px-4 py-3 md:py-2 text-base bg-neutral-200 dark:bg-neutral-700 rounded-lg hover:bg-neutral-300 dark:hover:bg-neutral-600 transition-all border border-neutral-300 dark:border-neutral-600"
   >
     Choose File
   </button>
-  
+
   {/* Show filename if selected */}
-  {photoFile && <span className="ml-2 text-sm">{photoFile.name}</span>}
-  
+  {photoFile && <span className="block md:inline mt-2 md:mt-0 md:ml-2 text-sm">{photoFile.name}</span>}
+
   {photoPreview && (
-    <div className="mt-2">
-      <img 
-        src={photoPreview} 
-        alt="Preview" 
-        className="w-48 h-48 object-cover rounded-lg"
+    <div className="mt-3">
+      <img
+        src={photoPreview}
+        alt="Preview"
+        className="w-full max-w-[200px] h-auto object-cover rounded-lg"
       />
     </div>
   )}
@@ -665,40 +669,43 @@ function Home({ list, setList, token, setShowLogin, handleLogout }) {
             </div>
             
             {token && (
-              <div className="mt-3 flex gap-2" onClick={(e) => e.stopPropagation()}>
-                <button 
-                  onClick={() => navigate(`/item/${item.id}?edit=true`)}
-                  className="px-3 py-1 text-sm bg-blue-500 text-black rounded hover:bg-blue-600 transition-all"
-                >
-                  Edit
-                </button>
-                
+              <div className="mt-3" onClick={(e) => e.stopPropagation()}>
                 {confirmDelete === item.id ? (
-                  <div className="flex items-center gap-2">
-                    <span className="text-sm">Are you sure?</span>
-                    <button 
-                      onClick={() => {
-                        handleDelete(item.id)
-                        setConfirmDelete(null)
-                      }}
-                      className="px-3 py-1 text-sm bg-red-500 text-black rounded hover:bg-red-600"
-                    >
-                      Yes
-                    </button>
-                    <button 
-                      onClick={() => setConfirmDelete(null)}
-                      className="px-3 py-1 text-sm bg-neutral-300 dark:bg-neutral-600 rounded hover:bg-neutral-400"
-                    >
-                      No
-                    </button>
+                  <div className="p-3 bg-red-100 dark:bg-red-900/30 border border-red-500 rounded-lg">
+                    <p className="text-sm text-center mb-2">Delete this item?</p>
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => {
+                          handleDelete(item.id)
+                          setConfirmDelete(null)
+                        }}
+                        className="flex-1 py-2 text-base bg-red-600 text-white rounded-lg hover:bg-red-700"
+                      >
+                        Yes, Delete
+                      </button>
+                      <button
+                        onClick={() => setConfirmDelete(null)}
+                        className="flex-1 py-2 text-base bg-neutral-300 dark:bg-neutral-600 rounded-lg hover:bg-neutral-400"
+                      >
+                        Cancel
+                      </button>
+                    </div>
                   </div>
                 ) : (
-                  <button 
-                    onClick={() => setConfirmDelete(item.id)}
-                    className="px-3 py-1 text-sm bg-red-500 text-black rounded hover:bg-red-600 transition-all"
-                  >
-                    Delete
-                  </button>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => navigate(`/item/${item.id}?edit=true`)}
+                      className="flex-1 py-2 text-base bg-blue-200 text-black rounded-lg hover:bg-blue-300 transition-all"
+                    >
+                      Edit
+                    </button>
+                    <button
+                      onClick={() => setConfirmDelete(item.id)}
+                      className="flex-1 py-2 text-base bg-red-200 text-black rounded-lg hover:bg-red-300 transition-all"
+                    >
+                      Delete
+                    </button>
+                  </div>
                 )}
               </div>
             )}

@@ -4,12 +4,13 @@ import PrivateText from './PrivateText.jsx'
 
 const API_URL = 'https://bradie-inventory-api.onrender.com'
 
-function ItemDetail({ list, setList, token }) { 
+function ItemDetail({ list, setList, token }) {
   const { id } = useParams()
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
   const startInEditMode = searchParams.get('edit') === 'true'
   const [isEditing, setIsEditing] = useState(startInEditMode)
+  const [confirmDelete, setConfirmDelete] = useState(false)
   const item = list.find(item => item.id === id)
   const [uploading, setUploading] = useState(false)
 
@@ -93,7 +94,7 @@ function ItemDetail({ list, setList, token }) {
 
     if (response.ok) {
       const updatedItem = await response.json()
-      const updatedList = list.map(i => 
+      const updatedList = list.map(i =>
         i.id === id ? updatedItem : i
       )
       setList(updatedList)
@@ -103,43 +104,98 @@ function ItemDetail({ list, setList, token }) {
     }
   }
 
+  const handleDelete = async () => {
+    if (!token) {
+      console.error("User not logged in. Cannot delete.")
+      return
+    }
+
+    const response = await fetch(`${API_URL}/item/${id}`, {
+      method: 'DELETE',
+      headers: {
+        'Authorization': `Bearer ${token}`
+      }
+    })
+
+    if (response.ok) {
+      setList(list.filter(i => i.id !== id))
+      navigate('/inventory')
+    } else {
+      console.error("Failed to delete.", await response.text())
+    }
+  }
+
   return (
     <div className="min-h-screen px-4 py-6 md:px-8 md:py-10 text-neutral-800 dark:text-neutral-100 max-w-4xl mx-auto">
-      
-      {/* Header with Back and Edit/Save buttons */}
-      <div className="flex justify-between items-center mb-6">
-        <button 
-          onClick={() => navigate('/inventory')}
-          className="px-4 py-2 text-sm border border-neutral-300 dark:border-neutral-600 rounded-lg hover:bg-neutral-200 dark:hover:bg-neutral-700 transition-all"
-        >
-          ← Back to Inventory
-        </button>
 
-        {isEditing ? (
-          <div className="flex gap-2">
-            <button 
-              onClick={handleSave}
-              className="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-all"
+      {/* Delete confirmation banner at top */}
+      {confirmDelete && (
+        <div className="mb-4 p-4 bg-red-100 dark:bg-red-900/30 border border-red-500 rounded-lg">
+          <p className="text-center mb-3 font-medium">Are you sure you want to delete this item?</p>
+          <div className="flex justify-center gap-3">
+            <button
+              onClick={handleDelete}
+              className="px-6 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-all"
             >
-              Save
+              Yes, Delete
             </button>
-            <button 
-              onClick={() => setIsEditing(false)}
+            <button
+              onClick={() => setConfirmDelete(false)}
               className="px-6 py-2 bg-neutral-200 dark:bg-neutral-700 rounded-lg hover:bg-neutral-300 dark:hover:bg-neutral-600 transition-all"
             >
               Cancel
             </button>
           </div>
-        ) : (
-          token && (
-            <button 
-              onClick={() => setIsEditing(true)}
-              className="px-6 py-2 bg-blue-200 text-black rounded-lg hover:bg-blue-300 transition-all"
-            >
-              Edit
-            </button>
-          )
-        )}
+        </div>
+      )}
+
+      {/* Header with Back and Edit/Save/Delete buttons */}
+      <div className="mb-6">
+        {/* Buttons row */}
+        <div className="flex justify-between items-center flex-wrap gap-2">
+          <button
+            onClick={() => navigate('/inventory')}
+            className="px-4 py-2 text-sm border border-neutral-300 dark:border-neutral-600 rounded-lg hover:bg-neutral-200 dark:hover:bg-neutral-700 transition-all"
+          >
+            ← Back to Inventory
+          </button>
+
+          <div className="flex gap-2 flex-wrap">
+            {isEditing ? (
+              <>
+                <button
+                  onClick={handleSave}
+                  className="px-4 md:px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-all"
+                >
+                  Save
+                </button>
+                <button
+                  onClick={() => setIsEditing(false)}
+                  className="px-4 md:px-6 py-2 bg-neutral-200 dark:bg-neutral-700 rounded-lg hover:bg-neutral-300 dark:hover:bg-neutral-600 transition-all"
+                >
+                  Cancel
+                </button>
+              </>
+            ) : (
+              token && (
+                <>
+                  <button
+                    onClick={() => setIsEditing(true)}
+                    className="px-4 md:px-6 py-2 bg-blue-200 text-black rounded-lg hover:bg-blue-300 transition-all"
+                  >
+                    Edit
+                  </button>
+                  <button
+                    onClick={() => setConfirmDelete(true)}
+                    className="px-4 md:px-6 py-2 bg-red-200 text-black rounded-lg hover:bg-red-300 transition-all"
+                  >
+                    Delete
+                  </button>
+                </>
+              )
+            )}
+          </div>
+        </div>
       </div>
 
       {/* Title */}

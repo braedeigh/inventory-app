@@ -135,69 +135,69 @@ function CommunityPage({ token }) {
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <label className="block text-sm font-medium text-neutral-500 dark:text-neutral-400 mb-1">Item Name</label>
-            <input 
+            <input
               type="text"
-              placeholder="What is this item?" 
+              placeholder="What is this item?"
               onChange={e => {
                 setFormData({...formData, itemName: e.target.value})
                 setErrors({...errors, itemName: false})
-              }} 
+              }}
               value={formData.itemName}
-              className={`w-full px-3 py-2 border rounded-lg bg-white dark:bg-neutral-900 focus:outline-none focus:ring-2 focus:ring-green-500 ${errors.itemName ? 'border-red-500' : 'border-neutral-300 dark:border-neutral-600'}`}
+              className={`w-full px-3 py-3 md:py-2 text-base border rounded-lg bg-white dark:bg-neutral-900 focus:outline-none focus:ring-2 focus:ring-green-500 ${errors.itemName ? 'border-red-500' : 'border-neutral-300 dark:border-neutral-600'}`}
             />
             {errors.itemName && <span className="text-red-500 text-xs">Required</span>}
           </div>
 
           <div>
             <label className="block text-sm font-medium text-neutral-500 dark:text-neutral-400 mb-1">Your Name</label>
-            <input 
+            <input
               type="text"
-              placeholder="How should we credit you?" 
+              placeholder="How should we credit you?"
               onChange={e => {
                 setFormData({...formData, submittedBy: e.target.value})
                 setErrors({...errors, submittedBy: false})
-              }} 
+              }}
               value={formData.submittedBy}
-              className={`w-full px-3 py-2 border rounded-lg bg-white dark:bg-neutral-900 focus:outline-none focus:ring-2 focus:ring-green-500 ${errors.submittedBy ? 'border-red-500' : 'border-neutral-300 dark:border-neutral-600'}`}
+              className={`w-full px-3 py-3 md:py-2 text-base border rounded-lg bg-white dark:bg-neutral-900 focus:outline-none focus:ring-2 focus:ring-green-500 ${errors.submittedBy ? 'border-red-500' : 'border-neutral-300 dark:border-neutral-600'}`}
             />
             {errors.submittedBy && <span className="text-red-500 text-xs">Required</span>}
           </div>
 
           <div>
             <label className="block text-sm font-medium text-neutral-500 dark:text-neutral-400 mb-1">Origin</label>
-            <input 
+            <input
               type="text"
-              placeholder="Where did you get it?" 
+              placeholder="Where did you get it?"
               onChange={e => {
                 setFormData({...formData, origin: e.target.value})
                 setErrors({...errors, origin: false})
-              }} 
+              }}
               value={formData.origin}
-              className={`w-full px-3 py-2 border rounded-lg bg-white dark:bg-neutral-900 focus:outline-none focus:ring-2 focus:ring-green-500 ${errors.origin ? 'border-red-500' : 'border-neutral-300 dark:border-neutral-600'}`}
+              className={`w-full px-3 py-3 md:py-2 text-base border rounded-lg bg-white dark:bg-neutral-900 focus:outline-none focus:ring-2 focus:ring-green-500 ${errors.origin ? 'border-red-500' : 'border-neutral-300 dark:border-neutral-600'}`}
             />
             {errors.origin && <span className="text-red-500 text-xs">Required</span>}
           </div>
 
           <div>
             <label className="block text-sm font-medium text-neutral-500 dark:text-neutral-400 mb-1">The Story</label>
-            <textarea 
-              placeholder="What's the story behind this item?" 
+            <textarea
+              placeholder="What's the story behind this item?"
               onChange={e => {
                 setFormData({...formData, description: e.target.value})
                 setErrors({...errors, description: false})
-              }} 
+              }}
               value={formData.description}
-              className={`w-full px-3 py-2 border rounded-lg bg-white dark:bg-neutral-900 focus:outline-none focus:ring-2 focus:ring-green-500 min-h-[100px] ${errors.description ? 'border-red-500' : 'border-neutral-300 dark:border-neutral-600'}`}
+              className={`w-full px-3 py-3 md:py-2 text-base border rounded-lg bg-white dark:bg-neutral-900 focus:outline-none focus:ring-2 focus:ring-green-500 min-h-[100px] ${errors.description ? 'border-red-500' : 'border-neutral-300 dark:border-neutral-600'}`}
             />
             {errors.description && <span className="text-red-500 text-xs">Required</span>}
           </div>
 
           <div>
             <label className="block text-sm font-medium text-neutral-500 dark:text-neutral-400 mb-1">Photo</label>
-            <input 
-              type="file" 
+            <input
+              type="file"
               ref={photoRef}
-              accept="image/*" 
+              accept="image/*"
               onChange={e => {
                 setPhotoFile(e.target.files[0])
                 setErrors({...errors, photo: false})
@@ -207,12 +207,12 @@ function CommunityPage({ token }) {
             <button
               type="button"
               onClick={() => photoRef.current?.click()}
-              className={`px-4 py-2 rounded-lg transition-all ${errors.photo ? 'bg-red-100 dark:bg-red-900/30 border border-red-500' : 'bg-neutral-200 dark:bg-neutral-700 hover:bg-neutral-300 dark:hover:bg-neutral-600'}`}
+              className={`w-full md:w-auto px-4 py-3 md:py-2 text-base rounded-lg transition-all border ${errors.photo ? 'bg-red-100 dark:bg-red-900/30 border-red-500' : 'bg-neutral-200 dark:bg-neutral-700 hover:bg-neutral-300 dark:hover:bg-neutral-600 border-neutral-300 dark:border-neutral-600'}`}
             >
               Choose File
             </button>
-            {photoFile && <span className="ml-3 text-sm text-green-600">✓ {photoFile.name}</span>}
-            {errors.photo && <span className="ml-3 text-red-500 text-xs">Required</span>}
+            {photoFile && <span className="block md:inline mt-2 md:mt-0 md:ml-3 text-sm text-green-600">✓ {photoFile.name}</span>}
+            {errors.photo && <span className="block md:inline mt-1 md:mt-0 md:ml-3 text-red-500 text-xs">Required</span>}
           </div>
 
           <button 
