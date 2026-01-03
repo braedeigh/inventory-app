@@ -81,10 +81,10 @@ function App() {
         />} />
 
         {/* Community Show & Tell */}
-        <Route path="/community" element={<CommunityPage 
-          communityList={communityList} 
-          setCommunityList={setCommunityList}
-          token={token} 
+        <Route path="/community" element={<CommunityPage
+          token={token}
+          setShowLogin={setShowLogin}
+          handleLogout={handleLogout}
         />} />
 
         {/* Individual Item Details */}

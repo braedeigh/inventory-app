@@ -88,29 +88,31 @@ function Landing({ list, communityList, token, setShowLogin, handleLogout }) {
 
   return (
     <div className="min-h-screen px-4 py-6 md:px-6 md:py-10 font-sans text-neutral-900 dark:text-neutral-100">
-      
-      {/* Header with login */}
+
+      {/* Login button - top right */}
+      <div className="flex justify-end mb-4">
+        {token ? (
+          <button
+            onClick={handleLogout}
+            className="px-4 py-2 text-sm border border-neutral-300 dark:border-neutral-600 rounded-lg hover:bg-neutral-200 dark:hover:bg-neutral-700 transition-all"
+          >
+            Logout
+          </button>
+        ) : (
+          <button
+            onClick={() => setShowLogin(true)}
+            className="px-4 py-2 text-sm border border-neutral-300 dark:border-neutral-600 rounded-lg hover:bg-neutral-200 dark:hover:bg-neutral-700 transition-all"
+          >
+            Login
+          </button>
+        )}
+      </div>
+
+      {/* Header */}
       <div className="mb-6 md:mb-8">
-        <div className="flex justify-center items-center gap-4">
-          <h1 className="text-3xl md:text-4xl font-light text-neutral-800 dark:text-neutral-100 tracking-tight font-serif">
-            Bradie's Show & Tell
-          </h1>
-          {token ? (
-            <button
-              onClick={handleLogout}
-              className="px-5 py-2 text-sm text-neutral-500 dark:text-neutral-400 border border-neutral-300 dark:border-neutral-700 rounded-full hover:bg-neutral-200 dark:hover:bg-neutral-800 hover:text-neutral-700 dark:hover:text-neutral-200 transition-all duration-300"
-            >
-              Logout
-            </button>
-          ) : (
-            <button
-              onClick={() => setShowLogin(true)}
-              className="px-5 py-2 text-sm text-neutral-500 dark:text-neutral-400 border border-neutral-300 dark:border-neutral-700 rounded-full hover:bg-neutral-200 dark:hover:bg-neutral-800 hover:text-neutral-700 dark:hover:text-neutral-200 transition-all duration-300"
-            >
-              Login
-            </button>
-          )}
-        </div>
+        <h1 className="text-3xl md:text-4xl font-light text-neutral-800 dark:text-neutral-100 tracking-tight font-serif text-center">
+          Bradie's Show & Tell
+        </h1>
         <p className="text-neutral-500 text-sm md:text-base max-w-lg mx-auto mb-2 text-center mt-3">
           A performance art piece documenting personal belongings. Here you will find my personal inventory of every item that I own (in progress). I have also created a community show and tell project, and would love for others to contribute their favorite items!
         </p>
@@ -121,8 +123,40 @@ function Landing({ list, communityList, token, setShowLogin, handleLogout }) {
 
       {/* Cards */}
       <div className="flex flex-col md:flex-row gap-4 md:gap-6 justify-center items-stretch">
-        
-        {/* My Inventory Card */}
+
+        {/* Show & Tell Card (Community) - First */}
+        <div
+          onClick={refreshCommunityItem}
+          className="w-full md:w-[380px] mx-auto md:mx-0 bg-white/80 dark:bg-white/[0.03] backdrop-blur-xl border border-neutral-200 dark:border-white/10 rounded-3xl p-6 cursor-pointer hover:scale-[1.02] hover:border-amber-400 dark:hover:border-amber-800/40 hover:shadow-xl dark:hover:shadow-2xl hover:shadow-amber-200/50 dark:hover:shadow-amber-900/20 transition-all duration-300"
+        >
+          <div className="flex justify-between items-center mb-3">
+            <h3 className="text-lg font-semibold uppercase tracking-[0.2em] text-amber-700 dark:text-amber-600">
+              Show & Tell
+            </h3>
+            <span className="text-xs text-neutral-400 dark:text-neutral-600">
+              {communityList.findIndex(item => item.id === randomCommunityItem?.id) + 1} / {communityList.length}
+            </span>
+          </div>
+
+          <p className="text-xs text-neutral-400 dark:text-neutral-600 text-center mb-4">↻ click to shuffle</p>
+
+          {randomCommunityItem ? (
+            <CardContent item={randomCommunityItem} />
+          ) : (
+            <div className="h-48 flex items-center justify-center text-neutral-400 dark:text-neutral-600 italic">
+              {communityList && communityList.length === 0 ? "No community items yet" : "Loading..."}
+            </div>
+          )}
+
+          <button
+            onClick={(e) => { e.stopPropagation(); navigate('/community'); }}
+            className="w-full mt-4 py-3 bg-amber-700 hover:bg-amber-800 text-white text-sm font-medium rounded-xl transition-colors"
+          >
+            Explore Community Archive
+          </button>
+        </div>
+
+        {/* My Inventory Card - Second */}
         <div
           onClick={refreshMyItem}
           className="w-full md:w-[380px] mx-auto md:mx-0 bg-white/80 dark:bg-white/[0.03] backdrop-blur-xl border border-neutral-200 dark:border-white/10 rounded-3xl p-6 cursor-pointer hover:scale-[1.02] hover:border-green-400 dark:hover:border-green-800/40 hover:shadow-xl dark:hover:shadow-2xl hover:shadow-green-200/50 dark:hover:shadow-green-900/20 transition-all duration-300"
@@ -135,9 +169,9 @@ function Landing({ list, communityList, token, setShowLogin, handleLogout }) {
               {list.findIndex(item => item.id === randomMyItem?.id) + 1} / {list.length}
             </span>
           </div>
-          
+
           <p className="text-xs text-neutral-400 dark:text-neutral-600 text-center mb-4">↻ click to shuffle</p>
-          
+
           {randomMyItem ? (
             <CardContent item={randomMyItem} />
           ) : (
@@ -145,73 +179,13 @@ function Landing({ list, communityList, token, setShowLogin, handleLogout }) {
               Loading...
             </div>
           )}
-          
-<button
-  onClick={(e) => { e.stopPropagation(); navigate('/inventory'); }}
-  style={{
-    width: '100%',
-    marginTop: '16px',
-    padding: '12px',
-    backgroundColor: '#15803d',
-    border: 'none',
-    borderRadius: '12px',
-    color: 'white',
-    fontSize: '14px',
-    fontWeight: '500',
-    cursor: 'pointer',
-    transition: 'background-color 0.2s ease'
-  }}
-  onMouseOver={(e) => e.target.style.backgroundColor = '#166534'}
-  onMouseOut={(e) => e.target.style.backgroundColor = '#15803d'}
->
-  View Full Inventory
-</button>
-        </div>
 
-        {/* Community Card */}
-        <div
-          onClick={refreshCommunityItem}
-          className="w-full md:w-[380px] mx-auto md:mx-0 bg-white/80 dark:bg-white/[0.03] backdrop-blur-xl border border-neutral-200 dark:border-white/10 rounded-3xl p-6 cursor-pointer hover:scale-[1.02] hover:border-amber-400 dark:hover:border-amber-800/40 hover:shadow-xl dark:hover:shadow-2xl hover:shadow-amber-200/50 dark:hover:shadow-amber-900/20 transition-all duration-300"
-        >
-          <div className="flex justify-between items-center mb-3">
-            <h3 className="text-lg font-semibold uppercase tracking-[0.2em] text-amber-700 dark:text-amber-600">
-             Show & Tell
-            </h3>
-            <span className="text-xs text-neutral-400 dark:text-neutral-600">
-              {communityList.findIndex(item => item.id === randomCommunityItem?.id) + 1} / {communityList.length}
-            </span>
-          </div>
-          
-          <p className="text-xs text-neutral-400 dark:text-neutral-600 text-center mb-4">↻ click to shuffle</p>
-          
-          {randomCommunityItem ? (
-            <CardContent item={randomCommunityItem} />
-          ) : (
-            <div className="h-48 flex items-center justify-center text-neutral-400 dark:text-neutral-600 italic">
-              {communityList && communityList.length === 0 ? "No community items yet" : "Loading..."}
-            </div>
-          )}
-          
-<button
-  onClick={(e) => { e.stopPropagation(); navigate('/community'); }}
-  style={{
-    width: '100%',
-    marginTop: '16px',
-    padding: '12px',
-    backgroundColor: '#b45309',
-    border: 'none',
-    borderRadius: '12px',
-    color: 'white',
-    fontSize: '14px',
-    fontWeight: '500',
-    cursor: 'pointer',
-    transition: 'background-color 0.2s ease'
-  }}
-  onMouseOver={(e) => e.target.style.backgroundColor = '#92400e'}
-  onMouseOut={(e) => e.target.style.backgroundColor = '#b45309'}
->
-  Explore Community Archive
-</button>
+          <button
+            onClick={(e) => { e.stopPropagation(); navigate('/inventory'); }}
+            className="w-full mt-4 py-3 bg-green-700 hover:bg-green-800 text-white text-sm font-medium rounded-xl transition-colors"
+          >
+            View Full Inventory
+          </button>
         </div>
       </div>
     </div>

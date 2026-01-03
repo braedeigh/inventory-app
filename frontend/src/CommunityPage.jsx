@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 
 const API_URL = 'https://bradie-inventory-api.onrender.com'
 
-function CommunityPage({ token }) {
+function CommunityPage({ token, setShowLogin, handleLogout }) {
   const navigate = useNavigate()
   const [isUploading, setIsUploading] = useState(false)
   const [communityList, setCommunityList] = useState([])
@@ -115,16 +115,31 @@ function CommunityPage({ token }) {
     <div className="min-h-screen px-4 py-6 md:px-8 md:py-10 text-neutral-800 dark:text-neutral-100 max-w-5xl mx-auto">
       
       {/* Header */}
-      <div className="flex justify-between items-center mb-8">
-        <button 
+      <div className="flex justify-between items-center mb-4">
+        <button
           onClick={() => navigate('/')}
           className="px-4 py-2 text-sm border border-neutral-300 dark:border-neutral-600 rounded-lg hover:bg-neutral-200 dark:hover:bg-neutral-700 transition-all"
         >
-          ← Back to Start
+          ← Home
         </button>
+        {token ? (
+          <button
+            onClick={handleLogout}
+            className="px-4 py-2 text-sm border border-neutral-300 dark:border-neutral-600 rounded-lg hover:bg-neutral-200 dark:hover:bg-neutral-700 transition-all"
+          >
+            Logout
+          </button>
+        ) : (
+          <button
+            onClick={() => setShowLogin(true)}
+            className="px-4 py-2 text-sm border border-neutral-300 dark:border-neutral-600 rounded-lg hover:bg-neutral-200 dark:hover:bg-neutral-700 transition-all"
+          >
+            Login
+          </button>
+        )}
       </div>
-      
-      <h1 className="text-3xl md:text-4xl font-light font-serif text-center mb-8 pb-4 border-b border-neutral-300 dark:border-neutral-600">
+
+      <h1 className="text-3xl md:text-4xl font-light font-serif text-center mb-8">
         Community Archive
       </h1>
 
