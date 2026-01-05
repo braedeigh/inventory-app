@@ -321,26 +321,26 @@ function CommunityPage({ token, setShowLogin, handleLogout }) {
         {communityList.length === 0 ? (
           <p className="text-center text-neutral-500 dark:text-neutral-400">Loading...</p>
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="columns-1 sm:columns-2 lg:columns-3 gap-6">
             {communityList.map(item => (
-              <div 
-                key={item.id} 
-                className="bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl p-4 relative"
+              <div
+                key={item.id}
+                className="bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl p-4 relative break-inside-avoid mb-6"
               >
                 {/* Admin delete button */}
                 {token && (
-                  <button 
+                  <button
                     onClick={() => handleDelete(item.id)}
                     className="absolute top-3 right-3 px-2 py-1 bg-red-500 text-white text-xs rounded hover:bg-red-600 transition-all"
                   >
                     Delete
                   </button>
                 )}
-                
+
                 <img
                   src={item.mainPhoto}
                   alt={item.itemName}
-                  className="w-full h-auto md:h-56 md:object-contain rounded-lg mb-4"
+                  className="w-full h-auto rounded-lg mb-4"
                 />
                 
                 <h3 className="font-medium text-lg mb-2">{item.itemName}</h3>
