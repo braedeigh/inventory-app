@@ -182,25 +182,25 @@ function Landing({ list, communityList, token, setShowLogin, handleLogout }) {
             </span>
           </div>
 
-          <div className="flex justify-center items-center gap-3 mb-4">
+          <p className="text-xs text-neutral-400 dark:text-neutral-600 text-center mb-4">↻ click to shuffle</p>
+
+          <div className="relative">
             {communityHistory.length > 0 && (
               <button
                 onClick={(e) => { e.stopPropagation(); goBackCommunityItem(); }}
-                className="text-xs text-neutral-400 hover:text-amber-600 transition-colors"
+                className="absolute left-0 top-1/3 -translate-y-1/2 -translate-x-1/2 z-10 w-8 h-8 rounded-full bg-white dark:bg-neutral-800 border border-neutral-300 dark:border-neutral-600 shadow-md flex items-center justify-center text-neutral-500 hover:text-amber-600 hover:border-amber-400 transition-all"
               >
-                ← back
+                ←
               </button>
             )}
-            <p className="text-xs text-neutral-400 dark:text-neutral-600">↻ click to shuffle</p>
+            {randomCommunityItem ? (
+              <CardContent item={randomCommunityItem} />
+            ) : (
+              <div className="h-48 flex items-center justify-center text-neutral-400 dark:text-neutral-600 italic">
+                Loading...
+              </div>
+            )}
           </div>
-
-          {randomCommunityItem ? (
-            <CardContent item={randomCommunityItem} />
-          ) : (
-            <div className="h-48 flex items-center justify-center text-neutral-400 dark:text-neutral-600 italic">
-              Loading...
-            </div>
-          )}
 
           <button
             onClick={(e) => { e.stopPropagation(); navigate('/community'); }}
@@ -224,25 +224,25 @@ function Landing({ list, communityList, token, setShowLogin, handleLogout }) {
             </span>
           </div>
 
-          <div className="flex justify-center items-center gap-3 mb-4">
+          <p className="text-xs text-neutral-400 dark:text-neutral-600 text-center mb-4">↻ click to shuffle</p>
+
+          <div className="relative">
             {myItemHistory.length > 0 && (
               <button
                 onClick={(e) => { e.stopPropagation(); goBackMyItem(); }}
-                className="text-xs text-neutral-400 hover:text-green-600 transition-colors"
+                className="absolute left-0 top-1/3 -translate-y-1/2 -translate-x-1/2 z-10 w-8 h-8 rounded-full bg-white dark:bg-neutral-800 border border-neutral-300 dark:border-neutral-600 shadow-md flex items-center justify-center text-neutral-500 hover:text-green-600 hover:border-green-400 transition-all"
               >
-                ← back
+                ←
               </button>
             )}
-            <p className="text-xs text-neutral-400 dark:text-neutral-600">↻ click to shuffle</p>
+            {randomMyItem ? (
+              <CardContent item={randomMyItem} />
+            ) : (
+              <div className="h-48 flex items-center justify-center text-neutral-400 dark:text-neutral-600 italic">
+                Loading...
+              </div>
+            )}
           </div>
-
-          {randomMyItem ? (
-            <CardContent item={randomMyItem} />
-          ) : (
-            <div className="h-48 flex items-center justify-center text-neutral-400 dark:text-neutral-600 italic">
-              Loading...
-            </div>
-          )}
 
           <button
             onClick={(e) => { e.stopPropagation(); navigate('/inventory'); }}
