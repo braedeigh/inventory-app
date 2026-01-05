@@ -9,6 +9,18 @@ function CommunityPage({ token, setShowLogin, handleLogout }) {
   const [communityList, setCommunityList] = useState([])
   const [pendingItems, setPendingItems] = useState([])
   const photoRef = useRef(null)
+
+  // Refs for Enter key navigation
+  const itemNameRef = useRef(null)
+  const submittedByRef = useRef(null)
+  const originRef = useRef(null)
+  const descriptionRef = useRef(null)
+  const submitRef = useRef(null)
+
+  // Scroll to top on mount
+  useEffect(() => {
+    window.scrollTo(0, 0)
+  }, [])
   
   const [formData, setFormData] = useState({
     itemName: '', 
@@ -152,10 +164,17 @@ function CommunityPage({ token, setShowLogin, handleLogout }) {
             <label className="block text-sm font-medium text-neutral-500 dark:text-neutral-400 mb-1">Item Name</label>
             <input
               type="text"
+              ref={itemNameRef}
               placeholder="What is this item?"
               onChange={e => {
                 setFormData({...formData, itemName: e.target.value})
                 setErrors({...errors, itemName: false})
+              }}
+              onKeyDown={e => {
+                if (e.key === 'Enter') {
+                  e.preventDefault()
+                  submittedByRef.current?.focus()
+                }
               }}
               value={formData.itemName}
               className={`w-full px-3 py-3 md:py-2 text-base border rounded-lg bg-white dark:bg-neutral-900 focus:outline-none focus:ring-2 focus:ring-green-500 ${errors.itemName ? 'border-red-500' : 'border-neutral-300 dark:border-neutral-600'}`}
@@ -167,10 +186,17 @@ function CommunityPage({ token, setShowLogin, handleLogout }) {
             <label className="block text-sm font-medium text-neutral-500 dark:text-neutral-400 mb-1">Your Name</label>
             <input
               type="text"
+              ref={submittedByRef}
               placeholder="How should we credit you?"
               onChange={e => {
                 setFormData({...formData, submittedBy: e.target.value})
                 setErrors({...errors, submittedBy: false})
+              }}
+              onKeyDown={e => {
+                if (e.key === 'Enter') {
+                  e.preventDefault()
+                  originRef.current?.focus()
+                }
               }}
               value={formData.submittedBy}
               className={`w-full px-3 py-3 md:py-2 text-base border rounded-lg bg-white dark:bg-neutral-900 focus:outline-none focus:ring-2 focus:ring-green-500 ${errors.submittedBy ? 'border-red-500' : 'border-neutral-300 dark:border-neutral-600'}`}
@@ -182,10 +208,17 @@ function CommunityPage({ token, setShowLogin, handleLogout }) {
             <label className="block text-sm font-medium text-neutral-500 dark:text-neutral-400 mb-1">Origin</label>
             <input
               type="text"
+              ref={originRef}
               placeholder="Where did you get it?"
               onChange={e => {
                 setFormData({...formData, origin: e.target.value})
                 setErrors({...errors, origin: false})
+              }}
+              onKeyDown={e => {
+                if (e.key === 'Enter') {
+                  e.preventDefault()
+                  descriptionRef.current?.focus()
+                }
               }}
               value={formData.origin}
               className={`w-full px-3 py-3 md:py-2 text-base border rounded-lg bg-white dark:bg-neutral-900 focus:outline-none focus:ring-2 focus:ring-green-500 ${errors.origin ? 'border-red-500' : 'border-neutral-300 dark:border-neutral-600'}`}
@@ -196,10 +229,17 @@ function CommunityPage({ token, setShowLogin, handleLogout }) {
           <div>
             <label className="block text-sm font-medium text-neutral-500 dark:text-neutral-400 mb-1">The Story</label>
             <textarea
+              ref={descriptionRef}
               placeholder="What's the story behind this item?"
               onChange={e => {
                 setFormData({...formData, description: e.target.value})
                 setErrors({...errors, description: false})
+              }}
+              onKeyDown={e => {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                  e.preventDefault()
+                  photoRef.current?.click()
+                }
               }}
               value={formData.description}
               className={`w-full px-3 py-3 md:py-2 text-base border rounded-lg bg-white dark:bg-neutral-900 focus:outline-none focus:ring-2 focus:ring-green-500 min-h-[100px] ${errors.description ? 'border-red-500' : 'border-neutral-300 dark:border-neutral-600'}`}

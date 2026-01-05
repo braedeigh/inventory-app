@@ -1,5 +1,5 @@
 import { useParams, useSearchParams, useNavigate } from 'react-router-dom'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import PrivateText from './PrivateText.jsx'
 
 const API_URL = 'https://bradie-inventory-api.onrender.com'
@@ -20,6 +20,11 @@ function ItemDetail({ list, setList, token }) {
   const [editSubcategory, setEditSubcategory] = useState(item?.subcategory || '')
   const [editOrigin, setEditOrigin] = useState(item?.origin || '')
   const [editSecondhand, setEditSecondhand] = useState(item?.secondhand || '')
+
+  // Scroll to top on mount
+  useEffect(() => {
+    window.scrollTo(0, 0)
+  }, [id])
 
   if (!item) {
     return (

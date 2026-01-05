@@ -44,6 +44,11 @@ function Home({ list, setList, token, setShowLogin, handleLogout }) {
     origin: ''
   })
 
+  // Scroll to top on mount
+  useEffect(() => {
+    window.scrollTo(0, 0)
+  }, [])
+
   const handleKeyDown = (e, nextRef) => {
     if (e.key === 'Enter') {
       e.preventDefault()

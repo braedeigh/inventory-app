@@ -7,9 +7,40 @@ function Landing({ list, communityList, token, setShowLogin, handleLogout }) {
   const [randomCommunityItem, setRandomCommunityItem] = useState(null)
   const [myItemQueue, setMyItemQueue] = useState([])
   const [communityQueue, setCommunityQueue] = useState([])
+  const [myItemHistory, setMyItemHistory] = useState([])
+  const [communityHistory, setCommunityHistory] = useState([])
   const navigate = useNavigate()
   const [myItemIndex, setMyItemIndex] = useState(1)
   const [communityItemIndex, setCommunityItemIndex] = useState(1)
+
+  // Scroll to top on mount
+  useEffect(() => {
+    window.scrollTo(0, 0)
+  }, [])
+
+  const goBackMyItem = () => {
+    if (myItemHistory.length === 0) return
+    const [previous, ...rest] = myItemHistory
+    setMyItemHistory(rest)
+    // Put current item back in queue
+    if (randomMyItem) {
+      setMyItemQueue([randomMyItem, ...myItemQueue])
+    }
+    setRandomMyItem(previous)
+    setMyItemIndex(prev => prev - 1)
+  }
+
+  const goBackCommunityItem = () => {
+    if (communityHistory.length === 0) return
+    const [previous, ...rest] = communityHistory
+    setCommunityHistory(rest)
+    // Put current item back in queue
+    if (randomCommunityItem) {
+      setCommunityQueue([randomCommunityItem, ...communityQueue])
+    }
+    setRandomCommunityItem(previous)
+    setCommunityItemIndex(prev => prev - 1)
+  }
 
   const refreshMyItem = () => {
     if (!list || list.length === 0) return
@@ -22,6 +53,12 @@ function Landing({ list, communityList, token, setShowLogin, handleLogout }) {
     }
 
     const [next, ...rest] = queue
+
+    // Add current item to history (keep last 3)
+    if (randomMyItem) {
+      setMyItemHistory(prev => [randomMyItem, ...prev].slice(0, 3))
+    }
+
     setRandomMyItem(next)
     setMyItemQueue(rest)
 
@@ -55,6 +92,12 @@ function Landing({ list, communityList, token, setShowLogin, handleLogout }) {
     }
 
     const [next, ...rest] = queue
+
+    // Add current item to history (keep last 3)
+    if (randomCommunityItem) {
+      setCommunityHistory(prev => [randomCommunityItem, ...prev].slice(0, 3))
+    }
+
     setRandomCommunityItem(next)
     setCommunityQueue(rest)
 
@@ -139,7 +182,17 @@ function Landing({ list, communityList, token, setShowLogin, handleLogout }) {
             </span>
           </div>
 
-          <p className="text-xs text-neutral-400 dark:text-neutral-600 text-center mb-4">↻ click to shuffle</p>
+          <div className="flex justify-center items-center gap-3 mb-4">
+            {communityHistory.length > 0 && (
+              <button
+                onClick={(e) => { e.stopPropagation(); goBackCommunityItem(); }}
+                className="text-xs text-neutral-400 hover:text-amber-600 transition-colors"
+              >
+                ← back
+              </button>
+            )}
+            <p className="text-xs text-neutral-400 dark:text-neutral-600">↻ click to shuffle</p>
+          </div>
 
           {randomCommunityItem ? (
             <CardContent item={randomCommunityItem} />
@@ -171,7 +224,17 @@ function Landing({ list, communityList, token, setShowLogin, handleLogout }) {
             </span>
           </div>
 
-          <p className="text-xs text-neutral-400 dark:text-neutral-600 text-center mb-4">↻ click to shuffle</p>
+          <div className="flex justify-center items-center gap-3 mb-4">
+            {myItemHistory.length > 0 && (
+              <button
+                onClick={(e) => { e.stopPropagation(); goBackMyItem(); }}
+                className="text-xs text-neutral-400 hover:text-green-600 transition-colors"
+              >
+                ← back
+              </button>
+            )}
+            <p className="text-xs text-neutral-400 dark:text-neutral-600">↻ click to shuffle</p>
+          </div>
 
           {randomMyItem ? (
             <CardContent item={randomMyItem} />
