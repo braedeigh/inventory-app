@@ -126,7 +126,7 @@ function ItemDetail({ list, setList, token }) {
   }
 
   return (
-    <div className="min-h-screen px-4 py-6 md:px-8 md:py-10 text-neutral-800 dark:text-neutral-100 max-w-4xl mx-auto">
+    <div className="min-h-screen px-4 py-6 md:px-8 md:py-10 pb-[50vh] md:pb-10 text-neutral-800 dark:text-neutral-100 max-w-4xl mx-auto">
 
       {/* Delete confirmation banner at top */}
       {confirmDelete && (

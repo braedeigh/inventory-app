@@ -87,7 +87,7 @@ function Landing({ list, communityList, token, setShowLogin, handleLogout }) {
   )
 
   return (
-    <div className="min-h-screen px-4 py-6 md:px-6 md:py-10 font-sans text-neutral-900 dark:text-neutral-100">
+    <div className="min-h-screen px-4 py-6 md:px-6 md:py-10 pb-[50vh] md:pb-10 font-sans text-neutral-900 dark:text-neutral-100">
 
       {/* Login button - top right */}
       <div className="flex justify-end mb-4">
@@ -111,7 +111,8 @@ function Landing({ list, communityList, token, setShowLogin, handleLogout }) {
       {/* Header */}
       <div className="mb-6 md:mb-8">
         <h1 className="text-3xl md:text-4xl font-light text-neutral-800 dark:text-neutral-100 tracking-tight font-serif text-center">
-          Bradie's Show & Tell
+          <span className="block md:inline">Bradie's</span>
+          <span className="block md:inline"> Show & Tell</span>
         </h1>
         <p className="text-neutral-500 text-sm md:text-base max-w-lg mx-auto mb-2 text-center mt-3">
           A performance art piece documenting personal belongings. Here you will find my personal inventory of every item that I own (in progress). I have also created a community show and tell project, and would love for others to contribute their favorite items!

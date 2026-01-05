@@ -112,7 +112,7 @@ function CommunityPage({ token, setShowLogin, handleLogout }) {
   }
 
   return (
-    <div className="min-h-screen px-4 py-6 md:px-8 md:py-10 text-neutral-800 dark:text-neutral-100 max-w-5xl mx-auto">
+    <div className="min-h-screen px-4 py-6 md:px-8 md:py-10 pb-[50vh] md:pb-10 text-neutral-800 dark:text-neutral-100 max-w-5xl mx-auto">
       
       {/* Header */}
       <div className="flex justify-between items-center mb-4">
@@ -144,7 +144,7 @@ function CommunityPage({ token, setShowLogin, handleLogout }) {
       </h1>
 
       {/* Submission Form */}
-      <section className="bg-white dark:bg-neutral-800 p-6 rounded-xl border border-neutral-200 dark:border-neutral-700 mb-10">
+      <section className="bg-white dark:bg-neutral-800 p-4 md:p-6 rounded-none md:rounded-xl border-y md:border border-neutral-200 dark:border-neutral-700 mb-10 -mx-4 md:mx-0 px-4 md:px-6">
         <h2 className="text-xl font-medium mb-4">Add to the Collection</h2>
         
         <form onSubmit={handleSubmit} className="space-y-4">
@@ -279,7 +279,7 @@ function CommunityPage({ token, setShowLogin, handleLogout }) {
         <h2 className="text-2xl font-light text-center mb-6">The Archive</h2>
         
         {communityList.length === 0 ? (
-          <p className="text-center text-neutral-500 dark:text-neutral-400">No items in the archive yet.</p>
+          <p className="text-center text-neutral-500 dark:text-neutral-400">Loading...</p>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
             {communityList.map(item => (
@@ -313,7 +313,7 @@ function CommunityPage({ token, setShowLogin, handleLogout }) {
                 
                 <div className="flex justify-between text-sm text-neutral-500 dark:text-neutral-400">
                   <span>From: {item.origin || '—'}</span>
-                  <span className="font-medium">— {item.submittedBy}</span>
+                  <span className="font-medium">by: {item.submittedBy}</span>
                 </div>
               </div>
             ))}
