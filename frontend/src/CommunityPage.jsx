@@ -337,10 +337,10 @@ function CommunityPage({ token, setShowLogin, handleLogout }) {
                   </button>
                 )}
                 
-                <img 
-                  src={item.mainPhoto} 
+                <img
+                  src={item.mainPhoto}
                   alt={item.itemName}
-                  className="w-full h-56 object-cover rounded-lg mb-4"
+                  className="w-full h-auto md:h-56 md:object-contain rounded-lg mb-4"
                 />
                 
                 <h3 className="font-medium text-lg mb-2">{item.itemName}</h3>
