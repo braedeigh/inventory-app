@@ -145,7 +145,7 @@ function Landing({ list, communityList, token, setShowLogin, handleLogout }) {
             <CardContent item={randomCommunityItem} />
           ) : (
             <div className="h-48 flex items-center justify-center text-neutral-400 dark:text-neutral-600 italic">
-              {communityList && communityList.length === 0 ? "No community items yet" : "Loading..."}
+              Loading...
             </div>
           )}
 
