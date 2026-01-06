@@ -221,7 +221,7 @@ function Landing({ list, communityList, token, setShowLogin, handleLogout }) {
         >
           <div className="flex justify-between items-start mb-3">
             <h3 className="text-lg font-semibold uppercase tracking-[0.2em] text-green-700 dark:text-green-600">
-              <span className="block">Personal</span>
+              <span className="block">My Personal</span>
               <span className="block">Inventory</span>
             </h3>
             <span className="text-xs text-neutral-400 dark:text-neutral-600">
