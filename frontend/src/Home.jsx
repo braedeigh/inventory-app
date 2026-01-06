@@ -27,6 +27,8 @@ function Home({ list, setList, token, setShowLogin, handleLogout }) {
   const [sortOrder, setSortOrder] = useState('newest')
   const [selectedCategories, setSelectedCategories] = useState([])
   const [selectedSubcategories, setSelectedSubcategories] = useState([])
+  const [selectedSources, setSelectedSources] = useState([])
+  const [selectedGifted, setSelectedGifted] = useState(null) // null = all, true = gifted only, false = not gifted only
   const [errors, setErrors] = useState({
     itemName: false,
     description: false,
@@ -264,15 +266,30 @@ function Home({ list, setList, token, setShowLogin, handleLogout }) {
         if (!matchesSearch) return false
       }
 
-      if (selectedCategories.length === 0) return true
-      if (!selectedCategories.includes(item.category)) return false
+      // Category filter
+      if (selectedCategories.length > 0 && !selectedCategories.includes(item.category)) return false
+
+      // Subcategory filter (for clothing)
       if (item.category === 'clothing' && selectedSubcategories.length > 0) {
         // Handle "uncategorized" filter for items with no subcategory
-        if (selectedSubcategories.includes('uncategorized')) {
-          if (!item.subcategory || item.subcategory === '') return true
+        const isUncategorized = !item.subcategory || item.subcategory === ''
+        if (selectedSubcategories.includes('uncategorized') && isUncategorized) {
+          // passes subcategory filter
+        } else if (!selectedSubcategories.includes(item.subcategory)) {
+          return false
         }
-        return selectedSubcategories.includes(item.subcategory)
       }
+
+      // Source filter (new/secondhand/handmade/unknown)
+      if (selectedSources.length > 0 && !selectedSources.includes(item.secondhand)) return false
+
+      // Gifted filter
+      if (selectedGifted !== null) {
+        const isGifted = item.gifted === 'true' || item.gifted === true
+        if (selectedGifted && !isGifted) return false
+        if (!selectedGifted && isGifted) return false
+      }
+
       return true
     })
     .sort((a, b) => {
@@ -650,6 +667,46 @@ function Home({ list, setList, token, setShowLogin, handleLogout }) {
           })}
         </div>
       )}
+
+      {/* Source filters (new/secondhand/handmade/unknown) */}
+      <div className="flex flex-wrap gap-2 mb-4">
+        <span className="text-sm text-neutral-500 dark:text-neutral-400 self-center mr-2">Source:</span>
+        {['new', 'secondhand', 'handmade', 'unknown'].map(source => {
+          const count = list.filter(item => item.secondhand === source).length
+          return (
+            <button
+              key={source}
+              onClick={() => {
+                if (selectedSources.includes(source)) {
+                  setSelectedSources(selectedSources.filter(s => s !== source))
+                } else {
+                  setSelectedSources([...selectedSources, source])
+                }
+              }}
+              className={`filter-button-sub ${selectedSources.includes(source) ? 'active' : ''}`}
+            >
+              {source.charAt(0).toUpperCase() + source.slice(1)} ({count})
+            </button>
+          )
+        })}
+      </div>
+
+      {/* Gifted filter */}
+      <div className="flex flex-wrap gap-2 mb-6">
+        <span className="text-sm text-neutral-500 dark:text-neutral-400 self-center mr-2">Gifted:</span>
+        <button
+          onClick={() => setSelectedGifted(selectedGifted === true ? null : true)}
+          className={`filter-button-sub ${selectedGifted === true ? 'active' : ''}`}
+        >
+          Gifted ({list.filter(item => item.gifted === 'true' || item.gifted === true).length})
+        </button>
+        <button
+          onClick={() => setSelectedGifted(selectedGifted === false ? null : false)}
+          className={`filter-button-sub ${selectedGifted === false ? 'active' : ''}`}
+        >
+          Not Gifted ({list.filter(item => item.gifted !== 'true' && item.gifted !== true).length})
+        </button>
+      </div>
 
       {/* Table - Desktop */}
       <div className="hidden md:block overflow-x-auto">
