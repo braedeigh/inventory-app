@@ -100,6 +100,7 @@ function ItemDetail({ list, setList, token }) {
 
     if (response.ok) {
       const result = await response.json()
+      console.log('Photo upload response:', result.photos) // Debug: check if createdAt is included
       // Add new photos to state
       setPhotos(prev => [...prev, ...result.photos])
 
