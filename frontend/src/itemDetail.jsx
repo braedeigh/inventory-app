@@ -131,13 +131,14 @@ function ItemDetail({ list, setList, token }) {
     // Find the photo before removing
     const photoToDelete = photos.find(p => p.id === photoId)
     const deletedIndex = photos.findIndex(p => p.id === photoId)
+    const currentPhotoCount = photos.length
 
     // Remove from UI immediately
     setPhotos(prev => prev.filter(p => p.id !== photoId))
 
     // Adjust selected index if needed
-    if (selectedPhotoIndex >= photos.length - 1) {
-      setSelectedPhotoIndex(Math.max(0, photos.length - 2))
+    if (selectedPhotoIndex >= currentPhotoCount - 1) {
+      setSelectedPhotoIndex(Math.max(0, currentPhotoCount - 2))
     }
 
     // Store for undo (with original position) - add to array
@@ -152,18 +153,16 @@ function ItemDetail({ list, setList, token }) {
     })
 
     if (response.ok) {
-      // Update mainPhoto in list
-      if (deletedIndex === 0 && photos.length > 1) {
+      // Update mainPhoto in list - use currentPhotoCount to avoid stale closure
+      if (deletedIndex === 0 && currentPhotoCount > 1) {
         const newMainPhoto = photos[1]?.url || null
-        const updatedList = list.map(i =>
+        setList(prev => prev.map(i =>
           i.id === id ? { ...i, mainPhoto: newMainPhoto } : i
-        )
-        setList(updatedList)
-      } else if (photos.length === 1) {
-        const updatedList = list.map(i =>
+        ))
+      } else if (currentPhotoCount === 1) {
+        setList(prev => prev.map(i =>
           i.id === id ? { ...i, mainPhoto: null } : i
-        )
-        setList(updatedList)
+        ))
       }
     }
   }
