@@ -18,6 +18,7 @@ function ItemDetail({ list, setList, token }) {
   const [photos, setPhotos] = useState([])
   const [selectedPhotoIndex, setSelectedPhotoIndex] = useState(0)
   const [loadingPhotos, setLoadingPhotos] = useState(true)
+  const [deletedPhoto, setDeletedPhoto] = useState(null) // For undo functionality
 
   const [editName, setEditName] = useState(item?.itemName || '')
   const [editDescription, setEditDescription] = useState(item?.description || '')
@@ -117,6 +118,22 @@ function ItemDetail({ list, setList, token }) {
   const handleDeletePhoto = async (photoId) => {
     if (!token) return
 
+    // Find the photo before removing
+    const photoToDelete = photos.find(p => p.id === photoId)
+    const deletedIndex = photos.findIndex(p => p.id === photoId)
+
+    // Remove from UI immediately
+    setPhotos(prev => prev.filter(p => p.id !== photoId))
+
+    // Adjust selected index if needed
+    if (selectedPhotoIndex >= photos.length - 1) {
+      setSelectedPhotoIndex(Math.max(0, photos.length - 2))
+    }
+
+    // Store for undo (with original position)
+    setDeletedPhoto({ ...photoToDelete, originalIndex: deletedIndex })
+
+    // Actually delete from backend
     const response = await fetch(`${API_URL}/item/${id}/photos/${photoId}`, {
       method: 'DELETE',
       headers: {
@@ -125,14 +142,6 @@ function ItemDetail({ list, setList, token }) {
     })
 
     if (response.ok) {
-      const deletedIndex = photos.findIndex(p => p.id === photoId)
-      setPhotos(prev => prev.filter(p => p.id !== photoId))
-
-      // Adjust selected index if needed
-      if (selectedPhotoIndex >= photos.length - 1) {
-        setSelectedPhotoIndex(Math.max(0, photos.length - 2))
-      }
-
       // Update mainPhoto in list
       if (deletedIndex === 0 && photos.length > 1) {
         const newMainPhoto = photos[1]?.url || null
@@ -147,6 +156,47 @@ function ItemDetail({ list, setList, token }) {
         setList(updatedList)
       }
     }
+  }
+
+  const handleUndoDeletePhoto = async () => {
+    if (!deletedPhoto || !token) return
+
+    // Re-upload the photo using its Cloudinary URL
+    // We need to fetch the image and re-upload it
+    try {
+      const response = await fetch(deletedPhoto.url)
+      const blob = await response.blob()
+      const file = new File([blob], 'restored-photo.jpg', { type: blob.type })
+
+      const formData = new FormData()
+      formData.append('photos', file)
+
+      const uploadResponse = await fetch(`${API_URL}/item/${id}/photos`, {
+        method: 'POST',
+        body: formData,
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      })
+
+      if (uploadResponse.ok) {
+        const result = await uploadResponse.json()
+        // Add the restored photo back
+        setPhotos(prev => [...prev, ...result.photos])
+
+        // Update mainPhoto if this was the first photo
+        if (result.photos.length > 0 && photos.length === 0) {
+          const updatedList = list.map(i =>
+            i.id === id ? { ...i, mainPhoto: result.photos[0].url } : i
+          )
+          setList(updatedList)
+        }
+      }
+    } catch (error) {
+      console.error('Failed to restore photo:', error)
+    }
+
+    setDeletedPhoto(null)
   }
 
   const handleSetMainPhoto = async (photoId) => {
@@ -397,6 +447,20 @@ function ItemDetail({ list, setList, token }) {
                 className="px-3 py-1.5 text-sm bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400 rounded-lg hover:bg-red-200 dark:hover:bg-red-900/50 transition-all"
               >
                 Delete Photo
+              </button>
+            </div>
+          )}
+
+          {/* Undo delete photo button */}
+          {deletedPhoto && (
+            <div className="mt-3 p-3 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-300 dark:border-yellow-700 rounded-lg flex items-center justify-between">
+              <span className="text-sm text-yellow-800 dark:text-yellow-200">Photo deleted</span>
+              <button
+                type="button"
+                onClick={handleUndoDeletePhoto}
+                className="px-3 py-1.5 text-sm bg-yellow-200 dark:bg-yellow-800 text-yellow-800 dark:text-yellow-100 rounded-lg hover:bg-yellow-300 dark:hover:bg-yellow-700 transition-all font-medium"
+              >
+                Undo
               </button>
             </div>
           )}
