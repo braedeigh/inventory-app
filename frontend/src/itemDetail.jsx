@@ -270,6 +270,7 @@ function ItemDetail({ list, setList, token }) {
       )
       setList(updatedList)
       setIsEditing(false)
+      setDeletedPhotos([]) // Clear undo history on save
     } else {
       console.error("Failed to save.", await response.text())
     }
