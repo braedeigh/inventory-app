@@ -626,6 +626,16 @@ function ItemDetail({ list, setList, token }) {
 
         </div>
       </div>
+
+      {/* Floating save button for mobile */}
+      {isEditing && (
+        <button
+          onClick={handleSave}
+          className="md:hidden fixed bottom-6 right-6 w-14 h-14 bg-green-600 text-white rounded-full shadow-lg hover:bg-green-700 active:bg-green-800 transition-all flex items-center justify-center text-2xl z-50"
+        >
+          ✓
+        </button>
+      )}
     </div>
   )
 }
