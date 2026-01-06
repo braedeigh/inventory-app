@@ -3,10 +3,21 @@ import { useNavigate } from 'react-router-dom'
 
 const API_URL = 'https://bradie-inventory-api.onrender.com'
 
+// Fisher-Yates shuffle
+const shuffleArray = (array) => {
+  const shuffled = [...array]
+  for (let i = shuffled.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]]
+  }
+  return shuffled
+}
+
 function CommunityPage({ token, setShowLogin, handleLogout }) {
   const navigate = useNavigate()
   const [isUploading, setIsUploading] = useState(false)
   const [communityList, setCommunityList] = useState([])
+  const [displayList, setDisplayList] = useState([]) // Shuffled version for display
   const [pendingItems, setPendingItems] = useState([])
   const photoRef = useRef(null)
 
@@ -43,7 +54,12 @@ function CommunityPage({ token, setShowLogin, handleLogout }) {
       const res = await fetch(`${API_URL}/community`)
       const data = await res.json()
       setCommunityList(data)
+      setDisplayList(shuffleArray(data)) // Shuffle on initial load
     } catch (err) { console.error(err) }
+  }
+
+  const randomizeArchive = () => {
+    setDisplayList(shuffleArray(communityList))
   }
 
   const fetchPendingItems = async () => {
@@ -316,13 +332,22 @@ function CommunityPage({ token, setShowLogin, handleLogout }) {
 
       {/* The Archive */}
       <section>
-        <h2 className="text-2xl font-light text-center mb-6">The Archive</h2>
-        
-        {communityList.length === 0 ? (
+        <h2 className="text-2xl font-light text-center mb-4">The Archive</h2>
+
+        <div className="flex justify-center mb-6">
+          <button
+            onClick={randomizeArchive}
+            className="px-4 py-2 text-sm border border-neutral-300 dark:border-neutral-600 rounded-lg hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-all flex items-center gap-2"
+          >
+            <span>↻</span> Randomize
+          </button>
+        </div>
+
+        {displayList.length === 0 ? (
           <p className="text-center text-neutral-500 dark:text-neutral-400">Loading...</p>
         ) : (
           <div className="columns-1 sm:columns-2 lg:columns-3 gap-6">
-            {communityList.map(item => (
+            {displayList.map(item => (
               <div
                 key={item.id}
                 className="bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl p-4 relative break-inside-avoid mb-6"
