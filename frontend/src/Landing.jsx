@@ -108,7 +108,7 @@ function Landing({ list, communityList, token, setShowLogin, handleLogout }) {
     }
   }
 
-  const CardContent = ({ item, backButton }) => (
+  const CardContent = ({ item, backButton, showSubmittedBy }) => (
     <div className="text-left">
       {item.mainPhoto && (
         <div className="relative">
@@ -126,9 +126,14 @@ function Landing({ list, communityList, token, setShowLogin, handleLogout }) {
       <p className="text-sm text-neutral-600 dark:text-neutral-400 leading-relaxed mb-3 line-clamp-5">
         <PrivateText text={item.description} isAuthenticated={!!token} />
       </p>
-<p className="text-xs text-neutral-500">
-  <span className="text-neutral-600 dark:text-neutral-400">Origin:</span> {item.origin}
-</p>
+      <p className="text-xs text-neutral-500">
+        <span className="text-neutral-600 dark:text-neutral-400">Origin:</span> {item.origin}
+      </p>
+      {showSubmittedBy && item.submittedBy && (
+        <p className="text-xs text-neutral-500 mt-1">
+          <span className="text-neutral-600 dark:text-neutral-400">By:</span> {item.submittedBy}
+        </p>
+      )}
     </div>
   )
 
@@ -194,6 +199,7 @@ function Landing({ list, communityList, token, setShowLogin, handleLogout }) {
           {randomCommunityItem ? (
             <CardContent
               item={randomCommunityItem}
+              showSubmittedBy={true}
               backButton={communityHistory.length > 0 && (
                 <button
                   onClick={(e) => { e.stopPropagation(); goBackCommunityItem(); }}
@@ -213,7 +219,7 @@ function Landing({ list, communityList, token, setShowLogin, handleLogout }) {
             onClick={(e) => { e.stopPropagation(); navigate('/community'); }}
             className="w-full mt-4 py-3 bg-amber-700 hover:bg-amber-800 text-white text-sm font-medium rounded-xl transition-colors"
           >
-            Explore Community Archive
+            See Archive/Add Item
           </button>
         </div>
 
