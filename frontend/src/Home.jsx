@@ -570,14 +570,6 @@ function Home({ list, setList, token, setShowLogin, handleLogout }) {
       {/* My Items Header */}
       <div className="flex justify-between items-center mb-4 mt-10">
         <h2 className="text-3xl font-light text-green-700 dark:text-green-500">My Items</h2>
-        {deletedHistory.length > 0 && token && (
-          <button 
-            onClick={handleUndo}
-            className="px-4 py-2 text-sm bg-yellow-300 text-black rounded-lg hover:bg-yellow-400 transition-all"
-          >
-            Undo Delete
-          </button>
-        )}
       </div>
 
       {/* Filters */}
@@ -707,6 +699,18 @@ function Home({ list, setList, token, setShowLogin, handleLogout }) {
           Not Gifted ({list.filter(item => item.gifted !== 'true' && item.gifted !== true).length})
         </button>
       </div>
+
+      {/* Undo Delete button */}
+      {deletedHistory.length > 0 && token && (
+        <div className="flex justify-end mb-4">
+          <button
+            onClick={handleUndo}
+            className="px-4 py-2 text-sm bg-yellow-300 text-black rounded-lg hover:bg-yellow-400 transition-all"
+          >
+            Undo Delete ({deletedHistory.length})
+          </button>
+        </div>
+      )}
 
       {/* Table - Desktop */}
       <div className="hidden md:block overflow-x-auto">
