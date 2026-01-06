@@ -263,11 +263,12 @@ def upload_photos(item_id):
 
             result = cloudinary.uploader.upload(file)
             photo_id = str(uuid.uuid4())
+            created_at = datetime.utcnow().isoformat()
 
             conn.execute('''
                 INSERT INTO item_photos (id, item_id, url, position, created_at)
                 VALUES (?, ?, ?, ?, ?)
-            ''', [photo_id, item_id, result['secure_url'], next_position, datetime.utcnow().isoformat()])
+            ''', [photo_id, item_id, result['secure_url'], next_position, created_at])
 
             # Update main_photo if this is the first photo (position 0)
             if next_position == 0:
@@ -276,7 +277,8 @@ def upload_photos(item_id):
             uploaded_photos.append({
                 "id": photo_id,
                 "url": result['secure_url'],
-                "position": next_position
+                "position": next_position,
+                "createdAt": created_at
             })
             next_position += 1
             current_count += 1
