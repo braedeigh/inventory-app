@@ -9,6 +9,18 @@ function CommunityPage({ token, setShowLogin, handleLogout }) {
   const [communityList, setCommunityList] = useState([])
   const [pendingItems, setPendingItems] = useState([])
   const photoRef = useRef(null)
+
+  // Refs for Enter key navigation
+  const itemNameRef = useRef(null)
+  const submittedByRef = useRef(null)
+  const originRef = useRef(null)
+  const descriptionRef = useRef(null)
+  const submitRef = useRef(null)
+
+  // Scroll to top on mount
+  useEffect(() => {
+    window.scrollTo(0, 0)
+  }, [])
   
   const [formData, setFormData] = useState({
     itemName: '', 
@@ -112,7 +124,7 @@ function CommunityPage({ token, setShowLogin, handleLogout }) {
   }
 
   return (
-    <div className="min-h-screen px-4 py-6 md:px-8 md:py-10 text-neutral-800 dark:text-neutral-100 max-w-5xl mx-auto">
+    <div className="min-h-screen px-4 py-6 md:px-8 md:py-10 pb-[50vh] md:pb-10 text-neutral-800 dark:text-neutral-100 max-w-5xl mx-auto">
       
       {/* Header */}
       <div className="flex justify-between items-center mb-4">
@@ -144,7 +156,7 @@ function CommunityPage({ token, setShowLogin, handleLogout }) {
       </h1>
 
       {/* Submission Form */}
-      <section className="bg-white dark:bg-neutral-800 p-6 rounded-xl border border-neutral-200 dark:border-neutral-700 mb-10">
+      <section className="bg-white dark:bg-neutral-800 p-4 md:p-6 rounded-none md:rounded-xl border-y md:border border-neutral-200 dark:border-neutral-700 mb-10 -mx-4 md:mx-0 px-4 md:px-6">
         <h2 className="text-xl font-medium mb-4">Add to the Collection</h2>
         
         <form onSubmit={handleSubmit} className="space-y-4">
@@ -152,10 +164,17 @@ function CommunityPage({ token, setShowLogin, handleLogout }) {
             <label className="block text-sm font-medium text-neutral-500 dark:text-neutral-400 mb-1">Item Name</label>
             <input
               type="text"
+              ref={itemNameRef}
               placeholder="What is this item?"
               onChange={e => {
                 setFormData({...formData, itemName: e.target.value})
                 setErrors({...errors, itemName: false})
+              }}
+              onKeyDown={e => {
+                if (e.key === 'Enter') {
+                  e.preventDefault()
+                  submittedByRef.current?.focus()
+                }
               }}
               value={formData.itemName}
               className={`w-full px-3 py-3 md:py-2 text-base border rounded-lg bg-white dark:bg-neutral-900 focus:outline-none focus:ring-2 focus:ring-green-500 ${errors.itemName ? 'border-red-500' : 'border-neutral-300 dark:border-neutral-600'}`}
@@ -167,10 +186,17 @@ function CommunityPage({ token, setShowLogin, handleLogout }) {
             <label className="block text-sm font-medium text-neutral-500 dark:text-neutral-400 mb-1">Your Name</label>
             <input
               type="text"
+              ref={submittedByRef}
               placeholder="How should we credit you?"
               onChange={e => {
                 setFormData({...formData, submittedBy: e.target.value})
                 setErrors({...errors, submittedBy: false})
+              }}
+              onKeyDown={e => {
+                if (e.key === 'Enter') {
+                  e.preventDefault()
+                  originRef.current?.focus()
+                }
               }}
               value={formData.submittedBy}
               className={`w-full px-3 py-3 md:py-2 text-base border rounded-lg bg-white dark:bg-neutral-900 focus:outline-none focus:ring-2 focus:ring-green-500 ${errors.submittedBy ? 'border-red-500' : 'border-neutral-300 dark:border-neutral-600'}`}
@@ -182,10 +208,17 @@ function CommunityPage({ token, setShowLogin, handleLogout }) {
             <label className="block text-sm font-medium text-neutral-500 dark:text-neutral-400 mb-1">Origin</label>
             <input
               type="text"
+              ref={originRef}
               placeholder="Where did you get it?"
               onChange={e => {
                 setFormData({...formData, origin: e.target.value})
                 setErrors({...errors, origin: false})
+              }}
+              onKeyDown={e => {
+                if (e.key === 'Enter') {
+                  e.preventDefault()
+                  descriptionRef.current?.focus()
+                }
               }}
               value={formData.origin}
               className={`w-full px-3 py-3 md:py-2 text-base border rounded-lg bg-white dark:bg-neutral-900 focus:outline-none focus:ring-2 focus:ring-green-500 ${errors.origin ? 'border-red-500' : 'border-neutral-300 dark:border-neutral-600'}`}
@@ -196,10 +229,17 @@ function CommunityPage({ token, setShowLogin, handleLogout }) {
           <div>
             <label className="block text-sm font-medium text-neutral-500 dark:text-neutral-400 mb-1">The Story</label>
             <textarea
+              ref={descriptionRef}
               placeholder="What's the story behind this item?"
               onChange={e => {
                 setFormData({...formData, description: e.target.value})
                 setErrors({...errors, description: false})
+              }}
+              onKeyDown={e => {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                  e.preventDefault()
+                  photoRef.current?.click()
+                }
               }}
               value={formData.description}
               className={`w-full px-3 py-3 md:py-2 text-base border rounded-lg bg-white dark:bg-neutral-900 focus:outline-none focus:ring-2 focus:ring-green-500 min-h-[100px] ${errors.description ? 'border-red-500' : 'border-neutral-300 dark:border-neutral-600'}`}
@@ -279,28 +319,28 @@ function CommunityPage({ token, setShowLogin, handleLogout }) {
         <h2 className="text-2xl font-light text-center mb-6">The Archive</h2>
         
         {communityList.length === 0 ? (
-          <p className="text-center text-neutral-500 dark:text-neutral-400">No items in the archive yet.</p>
+          <p className="text-center text-neutral-500 dark:text-neutral-400">Loading...</p>
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="columns-1 sm:columns-2 lg:columns-3 gap-6">
             {communityList.map(item => (
-              <div 
-                key={item.id} 
-                className="bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl p-4 relative"
+              <div
+                key={item.id}
+                className="bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl p-4 relative break-inside-avoid mb-6"
               >
                 {/* Admin delete button */}
                 {token && (
-                  <button 
+                  <button
                     onClick={() => handleDelete(item.id)}
                     className="absolute top-3 right-3 px-2 py-1 bg-red-500 text-white text-xs rounded hover:bg-red-600 transition-all"
                   >
                     Delete
                   </button>
                 )}
-                
-                <img 
-                  src={item.mainPhoto} 
+
+                <img
+                  src={item.mainPhoto}
                   alt={item.itemName}
-                  className="w-full h-56 object-cover rounded-lg mb-4"
+                  className="w-full h-auto rounded-lg mb-4"
                 />
                 
                 <h3 className="font-medium text-lg mb-2">{item.itemName}</h3>
@@ -313,7 +353,7 @@ function CommunityPage({ token, setShowLogin, handleLogout }) {
                 
                 <div className="flex justify-between text-sm text-neutral-500 dark:text-neutral-400">
                   <span>From: {item.origin || '—'}</span>
-                  <span className="font-medium">— {item.submittedBy}</span>
+                  <span className="font-medium">by: {item.submittedBy}</span>
                 </div>
               </div>
             ))}

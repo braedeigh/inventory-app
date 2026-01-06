@@ -44,6 +44,11 @@ function Home({ list, setList, token, setShowLogin, handleLogout }) {
     origin: ''
   })
 
+  // Scroll to top on mount
+  useEffect(() => {
+    window.scrollTo(0, 0)
+  }, [])
+
   const handleKeyDown = (e, nextRef) => {
     if (e.key === 'Enter') {
       e.preventDefault()
@@ -254,7 +259,7 @@ function Home({ list, setList, token, setShowLogin, handleLogout }) {
     })
   
   return (
-    <div className="min-h-screen px-4 py-6 md:px-8 md:py-10 text-neutral-800 dark:text-neutral-100">
+    <div className="min-h-screen px-4 py-6 md:px-8 md:py-10 pb-[50vh] md:pb-10 text-neutral-800 dark:text-neutral-100">
       
 
 {/* Header */}
@@ -297,7 +302,7 @@ function Home({ list, setList, token, setShowLogin, handleLogout }) {
 
       {/* Add Item Form */}
       {token && ( 
-<form className="w-full md:w-3/4 mx-auto mb-10 p-6 bg-white dark:bg-neutral-800 rounded-xl border border-neutral-200 dark:border-neutral-700">
+<form className="w-full md:w-3/4 mx-auto mb-10 p-4 md:p-6 bg-white dark:bg-neutral-800 rounded-none md:rounded-xl border-y md:border border-neutral-200 dark:border-neutral-700 -mx-4 md:mx-auto px-4 md:px-6">
 
           <div className="mb-4">
             <label className="block text-sm font-medium mb-1">Item Name:</label>
@@ -463,8 +468,8 @@ function Home({ list, setList, token, setShowLogin, handleLogout }) {
       )}
 
       {/* My Items Header */}
-      <div className="flex justify-between items-center mb-4">
-        <h2 className="text-2xl font-light">My Items</h2>
+      <div className="flex justify-between items-center mb-4 mt-10">
+        <h2 className="text-3xl font-light text-green-700 dark:text-green-500">My Items</h2>
         {deletedHistory.length > 0 && token && (
           <button 
             onClick={handleUndo}
