@@ -660,9 +660,11 @@ function Home({ list, setList, token, setShowLogin, handleLogout }) {
         </div>
       )}
 
+      {/* Divider */}
+      <hr className="border-neutral-300 dark:border-neutral-600 mb-4" />
+
       {/* Source filters (new/secondhand/handmade/unknown) */}
       <div className="flex flex-wrap gap-2 mb-4">
-        <span className="text-sm text-neutral-500 dark:text-neutral-400 self-center mr-2">Source:</span>
         {['new', 'secondhand', 'handmade', 'unknown'].map(source => {
           const count = list.filter(item => item.secondhand === source).length
           return (
@@ -683,9 +685,11 @@ function Home({ list, setList, token, setShowLogin, handleLogout }) {
         })}
       </div>
 
+      {/* Divider */}
+      <hr className="border-neutral-300 dark:border-neutral-600 mb-4" />
+
       {/* Gifted filter */}
       <div className="flex flex-wrap gap-2 mb-6">
-        <span className="text-sm text-neutral-500 dark:text-neutral-400 self-center mr-2">Gifted:</span>
         <button
           onClick={() => setSelectedGifted(selectedGifted === true ? null : true)}
           className={`filter-button-sub ${selectedGifted === true ? 'active' : ''}`}
