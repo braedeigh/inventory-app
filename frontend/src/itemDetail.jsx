@@ -100,9 +100,16 @@ function ItemDetail({ list, setList, token }) {
 
     if (response.ok) {
       const result = await response.json()
-      console.log('Photo upload response:', result.photos) // Debug: check if createdAt is included
-      // Add new photos to state
-      setPhotos(prev => [...prev, ...result.photos])
+
+      // Refresh photos from server to get full data including createdAt
+      const photosResponse = await fetch(`${API_URL}/item/${id}/photos`)
+      if (photosResponse.ok) {
+        const photosData = await photosResponse.json()
+        setPhotos(photosData.photos || [])
+      } else {
+        // Fallback to adding response directly
+        setPhotos(prev => [...prev, ...result.photos])
+      }
 
       // Update mainPhoto in list if this was the first photo
       if (result.photos.length > 0 && photos.length === 0) {
