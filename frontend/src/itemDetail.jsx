@@ -160,10 +160,8 @@ function ItemDetail({ list, setList, token }) {
   }
 
   const handleUndoDeletePhoto = async () => {
-    console.log('Undo clicked', { deletedCount: deletedPhotos.length, undoing })
     if (deletedPhotos.length === 0 || !token || undoing) return
 
-    console.log('Setting undoing = true')
     setUndoing(true)
 
     // Get the most recently deleted photo
@@ -209,7 +207,6 @@ function ItemDetail({ list, setList, token }) {
       setDeletedPhotos(prev => [...prev, photoToRestore])
     }
 
-    console.log('Setting undoing = false')
     setUndoing(false)
   }
 
