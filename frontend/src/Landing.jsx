@@ -163,6 +163,9 @@ function Landing({ list, communityList, token, setShowLogin, handleLogout }) {
         <p className="text-neutral-500 text-sm md:text-base max-w-lg mx-auto mb-2 text-center mt-3">
           A performance art piece documenting personal belongings. Here you will find my personal inventory of every item that I own (in progress). I have also created a community show and tell project, and would love for others to contribute their favorite items!
         </p>
+        <p className="text-neutral-400 dark:text-neutral-500 text-xs max-w-lg mx-auto mb-2 text-center">
+          If the content does not load right away, please wait 50 seconds and refresh. I have the free tier for the database for now.
+        </p>
         <p className="text-green-700 dark:text-green-600 text-xs italic text-center">
           Click a card to shuffle
         </p>
