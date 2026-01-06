@@ -27,6 +27,7 @@ function ItemDetail({ list, setList, token }) {
   const [editSubcategory, setEditSubcategory] = useState(item?.subcategory || '')
   const [editOrigin, setEditOrigin] = useState(item?.origin || '')
   const [editSecondhand, setEditSecondhand] = useState(item?.secondhand || '')
+  const [editGifted, setEditGifted] = useState(item?.gifted === 'true' || item?.gifted === true)
 
   // Fetch photos for this item
   useEffect(() => {
@@ -260,6 +261,7 @@ function ItemDetail({ list, setList, token }) {
         subcategory: editSubcategory,
         origin: editOrigin,
         secondhand: editSecondhand,
+        gifted: editGifted ? 'true' : 'false',
       })
     })
 
@@ -270,6 +272,7 @@ function ItemDetail({ list, setList, token }) {
       )
       setList(updatedList)
       setIsEditing(false)
+      setDeletedPhotos([]) // Clear undo history on save
     } else {
       console.error("Failed to save.", await response.text())
     }
@@ -394,11 +397,24 @@ function ItemDetail({ list, setList, token }) {
             {loadingPhotos ? (
               <p className="text-neutral-400">Loading photos...</p>
             ) : photos.length > 0 ? (
-              <img
-                src={photos[selectedPhotoIndex]?.url || item.mainPhoto}
-                alt={item.itemName}
-                className="w-full h-full object-contain"
-              />
+              <div className="relative w-full h-full">
+                <img
+                  src={photos[selectedPhotoIndex]?.url || item.mainPhoto}
+                  alt={item.itemName}
+                  className="w-full h-full object-contain"
+                />
+                {/* Photo timestamp overlay */}
+                {photos[selectedPhotoIndex]?.createdAt && (
+                  <div className="absolute top-3 right-3 bg-black/50 backdrop-blur-sm text-white text-xs px-2 py-1 rounded-lg">
+                    {new Date(photos[selectedPhotoIndex].createdAt + 'Z').toLocaleDateString('en-US', {
+                      timeZone: 'America/Chicago',
+                      year: 'numeric',
+                      month: 'short',
+                      day: 'numeric'
+                    })}
+                  </div>
+                )}
+              </div>
             ) : item.mainPhoto ? (
               <img
                 src={item.mainPhoto}
@@ -583,12 +599,29 @@ function ItemDetail({ list, setList, token }) {
                 <option value="">-- Select --</option>
                 <option value="new">New</option>
                 <option value="secondhand">Secondhand</option>
-                <option value="gifted">Gifted</option>
                 <option value="handmade">Handmade</option>
                 <option value="unknown">Unknown</option>
               </select>
             ) : (
               <p className="capitalize">{item.secondhand || '—'}</p>
+            )}
+          </div>
+
+          {/* Gifted checkbox */}
+          <div>
+            <label className="block text-sm font-medium text-neutral-500 dark:text-neutral-400 mb-1">Gifted?</label>
+            {isEditing ? (
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={editGifted}
+                  onChange={(e) => setEditGifted(e.target.checked)}
+                  className="w-5 h-5 rounded border-neutral-300 dark:border-neutral-600 text-green-600 focus:ring-green-500"
+                />
+                <span>This item was a gift</span>
+              </label>
+            ) : (
+              <p>{item.gifted === 'true' || item.gifted === true ? 'Yes' : 'No'}</p>
             )}
           </div>
 
@@ -613,7 +646,7 @@ function ItemDetail({ list, setList, token }) {
             <p>{new Date(item.createdAt + 'Z').toLocaleString('en-US', {
               timeZone: 'America/Chicago',
               year: 'numeric',
-              month: 'long', 
+              month: 'long',
               day: 'numeric',
               hour: 'numeric',
               minute: '2-digit',
@@ -621,8 +654,34 @@ function ItemDetail({ list, setList, token }) {
             })}</p>
           </div>
 
+          {/* Last Edited - only show if different from created */}
+          {item.lastEdited && item.lastEdited !== item.createdAt && (
+            <div>
+              <label className="block text-sm font-medium text-neutral-500 dark:text-neutral-400 mb-1">Last Edited</label>
+              <p>{new Date(item.lastEdited + 'Z').toLocaleString('en-US', {
+                timeZone: 'America/Chicago',
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric',
+                hour: 'numeric',
+                minute: '2-digit',
+                hour12: true
+              })}</p>
+            </div>
+          )}
+
         </div>
       </div>
+
+      {/* Floating save button for mobile */}
+      {isEditing && (
+        <button
+          onClick={handleSave}
+          className="md:hidden fixed bottom-6 right-6 px-5 py-3 bg-green-600 text-white rounded-xl shadow-lg hover:bg-green-700 active:bg-green-800 transition-all font-medium z-50"
+        >
+          Save
+        </button>
+      )}
     </div>
   )
 }

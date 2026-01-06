@@ -57,16 +57,18 @@ def row_to_dict(row):
         "mainPhoto": row[5],
         "createdAt": row[6],
         "subcategory": row[7],
-        "secondhand": row[8]
+        "secondhand": row[8],
+        "lastEdited": row[9] if len(row) > 9 else None,
+        "gifted": row[10] if len(row) > 10 else None
     }
 
 def get_item_photos(conn, item_id):
     """Get all photos for an item, ordered by position"""
     result = conn.execute(
-        'SELECT id, url, position FROM item_photos WHERE item_id = ? ORDER BY position ASC',
+        'SELECT id, url, position, created_at FROM item_photos WHERE item_id = ? ORDER BY position ASC',
         [item_id]
     )
-    return [{"id": row[0], "url": row[1], "position": row[2]} for row in result.rows]
+    return [{"id": row[0], "url": row[1], "position": row[2], "createdAt": row[3]} for row in result.rows]
 
 def row_to_dict_with_photos(row, conn):
     """Convert row to dict and include photos array"""
@@ -119,6 +121,7 @@ def add_item():
         created_at = datetime.utcnow().isoformat()
     subcategory = request.form.get('subcategory')
     secondhand = request.form.get('secondhand')
+    gifted = request.form.get('gifted')
     main_photo_index = int(request.form.get('mainPhotoIndex', 0))
 
     conn = get_db()
@@ -170,8 +173,8 @@ def add_item():
 
     # Save item to database
     conn.execute(
-        'INSERT INTO item (id, item_name, description, category, origin, main_photo, created_at, subcategory, secondhand) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
-        [item_id, item_name, description, category, origin, main_photo_url, created_at, subcategory, secondhand]
+        'INSERT INTO item (id, item_name, description, category, origin, main_photo, created_at, subcategory, secondhand, gifted) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+        [item_id, item_name, description, category, origin, main_photo_url, created_at, subcategory, secondhand, gifted]
     )
 
     # Save photos to item_photos table
@@ -183,7 +186,7 @@ def add_item():
         ''', [photo_id, item_id, photo['url'], photo['position'], created_at])
 
     # Return the created item with photos
-    result = conn.execute('SELECT id, item_name, description, category, origin, main_photo, created_at, subcategory, secondhand FROM item WHERE id=?', [item_id])
+    result = conn.execute('SELECT id, item_name, description, category, origin, main_photo, created_at, subcategory, secondhand, last_edited, gifted FROM item WHERE id=?', [item_id])
     row = result.rows[0]
     item = row_to_dict(row)
     item['photos'] = get_item_photos(conn, item_id)
@@ -196,13 +199,14 @@ def add_item():
 def update_item(item_id):
     data = request.json
     conn = get_db()
+    last_edited = datetime.utcnow().isoformat()
     conn.execute('''
-        UPDATE item SET item_name=?, description=?, category=?, origin=?, subcategory=?, secondhand=?
+        UPDATE item SET item_name=?, description=?, category=?, origin=?, subcategory=?, secondhand=?, gifted=?, last_edited=?
         WHERE id=?
     ''', [data.get('itemName'), data.get('description'), data.get('category'),
-           data.get('origin'), data.get('subcategory'), data.get('secondhand'), item_id])
-    
-    result = conn.execute('SELECT id, item_name, description, category, origin, main_photo, created_at, subcategory, secondhand FROM item WHERE id=?', [item_id])    
+           data.get('origin'), data.get('subcategory'), data.get('secondhand'), data.get('gifted'), last_edited, item_id])
+
+    result = conn.execute('SELECT id, item_name, description, category, origin, main_photo, created_at, subcategory, secondhand, last_edited, gifted FROM item WHERE id=?', [item_id])
     rows = result.rows
     if not rows:
         return jsonify({"error": "Item not found"}), 404
@@ -411,7 +415,7 @@ def migrate_remove_new_purchase():
 @app.route('/', methods=['GET'])
 def list_return():
     conn = get_db()
-    result = conn.execute('SELECT id, item_name, description, category, origin, main_photo, created_at, subcategory, secondhand FROM item')
+    result = conn.execute('SELECT id, item_name, description, category, origin, main_photo, created_at, subcategory, secondhand, last_edited, gifted FROM item')
     items = [row_to_dict(row) for row in result.rows]
     return jsonify(items)
 
@@ -521,7 +525,7 @@ def delete_community_item(item_id):
 @app.route('/random', methods=['GET'])
 def get_random_item():
     conn = get_db()
-    result = conn.execute('SELECT id, item_name, description, category, origin, main_photo, created_at, subcategory, secondhand FROM item ORDER BY RANDOM() LIMIT 1')
+    result = conn.execute('SELECT id, item_name, description, category, origin, main_photo, created_at, subcategory, secondhand, last_edited, gifted FROM item ORDER BY RANDOM() LIMIT 1')
     if result.rows:
         return jsonify(row_to_dict(result.rows[0]))
     return jsonify(None)
@@ -651,6 +655,24 @@ def migrate_existing_photos():
         return jsonify({"message": f"Migrated {migrated} photos successfully"})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+
+@app.route('/migrate-add-last-edited-and-gifted', methods=['POST'])
+@token_required
+def migrate_add_last_edited_and_gifted():
+    conn = get_db()
+    errors = []
+    try:
+        conn.execute('ALTER TABLE item ADD COLUMN last_edited TEXT')
+    except Exception as e:
+        errors.append(f"last_edited: {str(e)}")
+    try:
+        conn.execute('ALTER TABLE item ADD COLUMN gifted TEXT')
+    except Exception as e:
+        errors.append(f"gifted: {str(e)}")
+
+    if errors:
+        return jsonify({"message": "Migration completed with notes", "notes": errors})
+    return jsonify({"message": "last_edited and gifted columns added successfully"})
 
 if __name__ == '__main__':
     app.run(debug=True, port=5000)
