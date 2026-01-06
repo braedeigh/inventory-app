@@ -267,6 +267,10 @@ function Home({ list, setList, token, setShowLogin, handleLogout }) {
       if (selectedCategories.length === 0) return true
       if (!selectedCategories.includes(item.category)) return false
       if (item.category === 'clothing' && selectedSubcategories.length > 0) {
+        // Handle "uncategorized" filter for items with no subcategory
+        if (selectedSubcategories.includes('uncategorized')) {
+          if (!item.subcategory || item.subcategory === '') return true
+        }
         return selectedSubcategories.includes(item.subcategory)
       }
       return true
@@ -608,6 +612,24 @@ function Home({ list, setList, token, setShowLogin, handleLogout }) {
       {/* Subcategory filters */}
       {selectedCategories.includes('clothing') && (
         <div className="flex flex-wrap gap-2 mb-6">
+          {/* Uncategorized filter */}
+          {(() => {
+            const uncategorizedCount = list.filter(item => item.category === 'clothing' && (!item.subcategory || item.subcategory === '')).length
+            return uncategorizedCount > 0 && (
+              <button
+                onClick={() => {
+                  if (selectedSubcategories.includes('uncategorized')) {
+                    setSelectedSubcategories(selectedSubcategories.filter(s => s !== 'uncategorized'))
+                  } else {
+                    setSelectedSubcategories([...selectedSubcategories, 'uncategorized'])
+                  }
+                }}
+                className={`filter-button-sub ${selectedSubcategories.includes('uncategorized') ? 'active' : ''}`}
+              >
+                Uncategorized ({uncategorizedCount})
+              </button>
+            )
+          })()}
           {['undershirt', 'shirt', 'sweater', 'jacket', 'dress', 'pants', 'shorts', 'skirt', 'shoes', 'socks', 'underwear', 'accessories', 'other'].map(sub => {
             const count = list.filter(item => item.category === 'clothing' && item.subcategory === sub).length
             return (
