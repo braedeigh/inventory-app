@@ -176,9 +176,10 @@ function Landing({ list, communityList, token, setShowLogin, handleLogout }) {
           onClick={refreshCommunityItem}
           className="w-full md:w-[380px] mx-auto md:mx-0 bg-white/80 dark:bg-white/[0.03] backdrop-blur-xl border border-neutral-200 dark:border-white/10 rounded-3xl p-6 cursor-pointer hover:scale-[1.02] hover:border-amber-400 dark:hover:border-amber-800/40 hover:shadow-xl dark:hover:shadow-2xl hover:shadow-amber-200/50 dark:hover:shadow-amber-900/20 transition-all duration-300"
         >
-          <div className="flex justify-between items-center mb-3">
+          <div className="flex justify-between items-start mb-3">
             <h3 className="text-lg font-semibold uppercase tracking-[0.2em] text-amber-700 dark:text-amber-600">
-              Show & Tell
+              <span className="block">Community</span>
+              <span className="block">Show & Tell</span>
             </h3>
             <span className="text-xs text-neutral-400 dark:text-neutral-600">
               {communityList.findIndex(item => item.id === randomCommunityItem?.id) + 1} / {communityList.length}
@@ -218,9 +219,10 @@ function Landing({ list, communityList, token, setShowLogin, handleLogout }) {
           onClick={refreshMyItem}
           className="w-full md:w-[380px] mx-auto md:mx-0 bg-white/80 dark:bg-white/[0.03] backdrop-blur-xl border border-neutral-200 dark:border-white/10 rounded-3xl p-6 cursor-pointer hover:scale-[1.02] hover:border-green-400 dark:hover:border-green-800/40 hover:shadow-xl dark:hover:shadow-2xl hover:shadow-green-200/50 dark:hover:shadow-green-900/20 transition-all duration-300"
         >
-          <div className="flex justify-between items-center mb-3">
+          <div className="flex justify-between items-start mb-3">
             <h3 className="text-lg font-semibold uppercase tracking-[0.2em] text-green-700 dark:text-green-600">
-              My Inventory
+              <span className="block">Personal</span>
+              <span className="block">Inventory</span>
             </h3>
             <span className="text-xs text-neutral-400 dark:text-neutral-600">
               {list.findIndex(item => item.id === randomMyItem?.id) + 1} / {list.length}
