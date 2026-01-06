@@ -36,6 +36,7 @@ function Home({ list, setList, token, setShowLogin, handleLogout }) {
   const [confirmDelete, setConfirmDelete] = useState(null)
   const [searchQuery, setSearchQuery] = useState('')
   const [secondhand, setSecondhand] = useState('')
+  const [gifted, setGifted] = useState(false)
 
   const [editForm, setEditForm] = useState({
     itemName: '',
@@ -112,6 +113,7 @@ function Home({ list, setList, token, setShowLogin, handleLogout }) {
     formData.append('subcategory', subcategory)
     formData.append('origin', origin)
     formData.append('secondhand', secondhand)
+    formData.append('gifted', gifted ? 'true' : 'false')
     formData.append('mainPhotoIndex', mainPhotoIndex)
 
     // Append all photos
@@ -136,6 +138,7 @@ function Home({ list, setList, token, setShowLogin, handleLogout }) {
       setSubcategory('')
       setOrigin('')
       setSecondhand('')
+      setGifted(false)
       setPhotoFiles([])
       setPhotoPreviews([])
       setMainPhotoIndex(0)
@@ -436,10 +439,21 @@ function Home({ list, setList, token, setShowLogin, handleLogout }) {
               <option value="">-- Select --</option>
               <option value="new">New</option>
               <option value="secondhand">Secondhand</option>
-              <option value="gifted">Gifted</option>
               <option value="handmade">Handmade</option>
               <option value="unknown">Unknown</option>
             </select>
+          </div>
+
+          <div className="mb-4">
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={gifted}
+                onChange={(e) => setGifted(e.target.checked)}
+                className="w-5 h-5 rounded border-neutral-300 dark:border-neutral-600 text-green-600 focus:ring-green-500"
+              />
+              <span className="text-sm font-medium">Gifted?</span>
+            </label>
           </div>
 
 <div className="mb-4">
