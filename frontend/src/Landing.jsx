@@ -123,7 +123,7 @@ function Landing({ list, communityList, token, setShowLogin, handleLogout }) {
       <h4 className="text-xl font-normal text-neutral-800 dark:text-neutral-100 mb-2 font-serif">
         {item.itemName}
       </h4>
-      <p className="text-sm text-neutral-600 dark:text-neutral-400 leading-relaxed mb-3">
+      <p className="text-sm text-neutral-600 dark:text-neutral-400 leading-relaxed mb-3 line-clamp-5">
         <PrivateText text={item.description} isAuthenticated={!!token} />
       </p>
 <p className="text-xs text-neutral-500">
