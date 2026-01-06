@@ -405,13 +405,17 @@ function ItemDetail({ list, setList, token }) {
                 />
                 {/* Photo timestamp overlay */}
                 {photos[selectedPhotoIndex]?.createdAt && (
-                  <div className="absolute top-3 right-3 bg-black/50 backdrop-blur-sm text-white text-xs px-2 py-1 rounded-lg">
-                    {new Date(photos[selectedPhotoIndex].createdAt + 'Z').toLocaleDateString('en-US', {
+                  <div className="absolute top-3 right-3 bg-black/50 backdrop-blur-sm text-white text-xs px-2 py-1.5 rounded-lg text-center">
+                    <div>Photo uploaded:</div>
+                    <div>{new Date(photos[selectedPhotoIndex].createdAt + 'Z').toLocaleString('en-US', {
                       timeZone: 'America/Chicago',
-                      year: 'numeric',
                       month: 'short',
-                      day: 'numeric'
-                    })}
+                      day: 'numeric',
+                      year: 'numeric',
+                      hour: 'numeric',
+                      minute: '2-digit',
+                      hour12: true
+                    })}</div>
                   </div>
                 )}
               </div>

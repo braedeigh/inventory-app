@@ -674,5 +674,24 @@ def migrate_add_last_edited_and_gifted():
         return jsonify({"message": "Migration completed with notes", "notes": errors})
     return jsonify({"message": "last_edited and gifted columns added successfully"})
 
+@app.route('/migrate-fix-photo-timestamps', methods=['POST'])
+@token_required
+def migrate_fix_photo_timestamps():
+    """Fix photo timestamps to match their parent item's created_at"""
+    conn = get_db()
+    try:
+        # Update each photo's created_at to match its parent item's created_at
+        conn.execute('''
+            UPDATE item_photos
+            SET created_at = (
+                SELECT item.created_at
+                FROM item
+                WHERE item.id = item_photos.item_id
+            )
+        ''')
+        return jsonify({"message": "Photo timestamps updated to match item creation dates"})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
 if __name__ == '__main__':
     app.run(debug=True, port=5000)
