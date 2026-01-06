@@ -48,9 +48,17 @@ function Home({ list, setList, token, setShowLogin, handleLogout }) {
     origin: ''
   })
 
-  // Scroll to top on mount
+  // Restore scroll position from sessionStorage on mount
   useEffect(() => {
-    window.scrollTo(0, 0)
+    const savedScrollPosition = sessionStorage.getItem('inventoryScrollPosition')
+    if (savedScrollPosition) {
+      // Small delay to ensure content is rendered before scrolling
+      setTimeout(() => {
+        window.scrollTo(0, parseInt(savedScrollPosition, 10))
+      }, 100)
+      // Clear after restoring so fresh visits start at top
+      sessionStorage.removeItem('inventoryScrollPosition')
+    }
   }, [])
 
   const handleKeyDown = (e, nextRef) => {
@@ -251,6 +259,12 @@ function Home({ list, setList, token, setShowLogin, handleLogout }) {
 
   const handleCancel = () => {
     setEditingIndex(null)
+  }
+
+  // Save scroll position before navigating to item detail
+  const navigateToItem = (itemId, editMode = false) => {
+    sessionStorage.setItem('inventoryScrollPosition', window.scrollY.toString())
+    navigate(`/item/${itemId}${editMode ? '?edit=true' : ''}`)
   }
   
   const filteredAndSortedList = list
@@ -734,7 +748,7 @@ function Home({ list, setList, token, setShowLogin, handleLogout }) {
                 key={index} 
                 onClick={() => {
                   if (editingIndex !== index) {
-                    navigate(`/item/${item.id}`)
+                    navigateToItem(item.id)
                   }
                 }} 
                 className="border-b border-neutral-200 dark:border-neutral-700 hover:bg-neutral-100 dark:hover:bg-neutral-800 cursor-pointer"
@@ -788,10 +802,10 @@ function Home({ list, setList, token, setShowLogin, handleLogout }) {
                 {token && (
                   <td className="p-3">
                     <div className="flex gap-2">
-                      <button 
+                      <button
                         onClick={(e) => {
                           e.stopPropagation()
-                          navigate(`/item/${item.id}?edit=true`)
+                          navigateToItem(item.id, true)
                         }}
                         className="px-3 py-1 text-sm bg-blue-200 text-black rounded hover:bg-blue-400 transition-all"
                       >
@@ -818,10 +832,10 @@ function Home({ list, setList, token, setShowLogin, handleLogout }) {
       {/* Mobile Card View */}
       <div className="md:hidden space-y-4">
         {filteredAndSortedList.map((item, index) => (
-          <div 
-            key={index} 
+          <div
+            key={index}
             className="bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl p-4 cursor-pointer"
-            onClick={() => navigate(`/item/${item.id}`)}
+            onClick={() => navigateToItem(item.id)}
           >
             {item.mainPhoto && (
               <img src={item.mainPhoto} alt={item.itemName} className="w-full max-w-[200px] h-auto rounded-lg mb-3" />
@@ -865,7 +879,7 @@ function Home({ list, setList, token, setShowLogin, handleLogout }) {
                 ) : (
                   <div className="flex gap-2">
                     <button
-                      onClick={() => navigate(`/item/${item.id}?edit=true`)}
+                      onClick={() => navigateToItem(item.id, true)}
                       className="flex-1 py-2 text-base bg-blue-200 text-black rounded-lg hover:bg-blue-300 transition-all"
                     >
                       Edit
