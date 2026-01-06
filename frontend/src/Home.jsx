@@ -25,6 +25,7 @@ function Home({ list, setList, token, setShowLogin, handleLogout }) {
   const navigate = useNavigate()
   const [isUploading, setIsUploading] = useState(false)
   const [sortOrder, setSortOrder] = useState('newest')
+  const [randomKey, setRandomKey] = useState(0) // Used to force re-randomization
   const [selectedCategories, setSelectedCategories] = useState([])
   const [selectedSubcategories, setSelectedSubcategories] = useState([])
   const [selectedSources, setSelectedSources] = useState([])
@@ -600,18 +601,27 @@ function Home({ list, setList, token, setShowLogin, handleLogout }) {
 
       {/* Filters */}
       <div className="flex flex-wrap gap-4 items-center mb-6">
-        <div>
-          <label className="text-sm mr-2">Sort by:</label>
-          <select 
-            value={sortOrder} 
+        <div className="flex items-center gap-2">
+          <label className="text-sm">Sort by:</label>
+          <select
+            value={sortOrder}
             onChange={(e) => setSortOrder(e.target.value)}
             className="px-3 py-2 border border-neutral-300 dark:border-neutral-600 rounded-lg bg-white dark:bg-neutral-800 text-neutral-800 dark:text-neutral-100"
           >
             <option value="newest">Newest first</option>
             <option value="oldest">Oldest first</option>
             <option value="alphabetical">A-Z</option>
-            <option value="random">Random</option>
           </select>
+          <button
+            type="button"
+            onClick={() => {
+              setSortOrder('random')
+              setRandomKey(k => k + 1)
+            }}
+            className="px-3 py-2 border border-neutral-300 dark:border-neutral-600 rounded-lg bg-white dark:bg-neutral-800 text-neutral-800 dark:text-neutral-100 hover:bg-neutral-100 dark:hover:bg-neutral-700 transition-all"
+          >
+            Randomize
+          </button>
         </div>
 
         <input
