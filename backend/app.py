@@ -199,12 +199,34 @@ def add_item():
 def update_item(item_id):
     data = request.json
     conn = get_db()
-    last_edited = datetime.utcnow().isoformat()
-    conn.execute('''
-        UPDATE item SET item_name=?, description=?, category=?, origin=?, subcategory=?, secondhand=?, gifted=?, last_edited=?
-        WHERE id=?
-    ''', [data.get('itemName'), data.get('description'), data.get('category'),
-           data.get('origin'), data.get('subcategory'), data.get('secondhand'), data.get('gifted'), last_edited, item_id])
+
+    # Get current item to check if anything changed
+    current = conn.execute('SELECT item_name, description, category, origin, subcategory, secondhand, gifted FROM item WHERE id=?', [item_id])
+    current_row = current.rows[0] if current.rows else None
+
+    if not current_row:
+        return jsonify({"error": "Item not found"}), 404
+
+    # Check if anything actually changed
+    new_values = (
+        data.get('itemName'),
+        data.get('description'),
+        data.get('category'),
+        data.get('origin'),
+        data.get('subcategory'),
+        data.get('secondhand'),
+        data.get('gifted')
+    )
+    current_values = tuple(current_row)
+
+    # Only update last_edited if something changed
+    if new_values != current_values:
+        last_edited = datetime.utcnow().isoformat()
+        conn.execute('''
+            UPDATE item SET item_name=?, description=?, category=?, origin=?, subcategory=?, secondhand=?, gifted=?, last_edited=?
+            WHERE id=?
+        ''', [data.get('itemName'), data.get('description'), data.get('category'),
+               data.get('origin'), data.get('subcategory'), data.get('secondhand'), data.get('gifted'), last_edited, item_id])
 
     result = conn.execute('SELECT id, item_name, description, category, origin, main_photo, created_at, subcategory, secondhand, last_edited, gifted FROM item WHERE id=?', [item_id])
     rows = result.rows
@@ -282,6 +304,10 @@ def upload_photos(item_id):
             })
             next_position += 1
             current_count += 1
+
+    # Update last_edited if photos were uploaded
+    if uploaded_photos:
+        conn.execute('UPDATE item SET last_edited=? WHERE id=?', [datetime.utcnow().isoformat(), item_id])
 
     return jsonify({"photos": uploaded_photos})
 
