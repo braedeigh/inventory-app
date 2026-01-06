@@ -39,6 +39,7 @@ function Home({ list, setList, token, setShowLogin, handleLogout }) {
   const [searchQuery, setSearchQuery] = useState('')
   const [secondhand, setSecondhand] = useState('')
   const [gifted, setGifted] = useState(false)
+  const [privateItem, setPrivateItem] = useState(false)
 
   const [editForm, setEditForm] = useState({
     itemName: '',
@@ -124,6 +125,7 @@ function Home({ list, setList, token, setShowLogin, handleLogout }) {
     formData.append('origin', origin)
     formData.append('secondhand', secondhand)
     formData.append('gifted', gifted ? 'true' : 'false')
+    formData.append('private', privateItem ? 'true' : 'false')
     formData.append('mainPhotoIndex', mainPhotoIndex)
 
     // Append all photos
@@ -149,6 +151,7 @@ function Home({ list, setList, token, setShowLogin, handleLogout }) {
       setOrigin('')
       setSecondhand('')
       setGifted(false)
+      setPrivateItem(false)
       setPhotoFiles([])
       setPhotoPreviews([])
       setMainPhotoIndex(0)
@@ -479,7 +482,7 @@ function Home({ list, setList, token, setShowLogin, handleLogout }) {
             </select>
           </div>
 
-          <div className="mb-4">
+          <div className="mb-4 flex gap-6">
             <label className="flex items-center gap-2 cursor-pointer">
               <input
                 type="checkbox"
@@ -488,6 +491,15 @@ function Home({ list, setList, token, setShowLogin, handleLogout }) {
                 className="w-5 h-5 rounded border-neutral-300 dark:border-neutral-600 text-green-600 focus:ring-green-500"
               />
               <span className="text-sm font-medium">Gifted?</span>
+            </label>
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={privateItem}
+                onChange={(e) => setPrivateItem(e.target.checked)}
+                className="w-5 h-5 rounded border-neutral-300 dark:border-neutral-600 text-green-600 focus:ring-green-500"
+              />
+              <span className="text-sm font-medium">Private?</span>
             </label>
           </div>
 
@@ -743,19 +755,21 @@ function Home({ list, setList, token, setShowLogin, handleLogout }) {
   </tr>
 </thead>
           <tbody>
-            {filteredAndSortedList.map((item, index) => (
-              <tr 
-                key={index} 
+            {filteredAndSortedList.map((item, index) => {
+              const isPrivate = (item.private === 'true' || item.private === true) && !token
+              return (
+              <tr
+                key={index}
                 onClick={() => {
                   if (editingIndex !== index) {
                     navigateToItem(item.id)
                   }
-                }} 
+                }}
                 className="border-b border-neutral-200 dark:border-neutral-700 hover:bg-neutral-100 dark:hover:bg-neutral-800 cursor-pointer"
               >
                 <td className="p-3 w-16" onClick={(e) => e.stopPropagation()}>
                   {item.mainPhoto ? (
-                    <img src={item.mainPhoto} alt={item.itemName} className="w-12 h-12 object-cover rounded" />
+                    <img src={item.mainPhoto} alt={item.itemName} className={`w-12 h-12 object-cover rounded ${isPrivate ? 'blur-md' : ''}`} />
                   ) : (
                     <div className="w-12 h-12 bg-neutral-200 dark:bg-neutral-700 rounded flex items-center justify-center text-neutral-400">+</div>
                   )}
@@ -763,25 +777,25 @@ function Home({ list, setList, token, setShowLogin, handleLogout }) {
 
                 <td className="p-3">
                   {editingIndex === index ? (
-                    <input 
+                    <input
                       value={editForm.itemName}
                       onChange={(e) => setEditForm({...editForm, itemName: e.target.value})}
                       className="px-2 py-1 border rounded bg-white dark:bg-neutral-900"
                     />
                   ) : (
-                    <span className="block truncate">{item.itemName}</span>
+                    <span className={`block truncate ${isPrivate ? 'blur-sm' : ''}`}>{item.itemName}</span>
                   )}
                 </td>
 
                 <td className="p-3">
                   {editingIndex === index ? (
-                    <textarea 
+                    <textarea
                       value={editForm.description}
                       onChange={(e) => setEditForm({...editForm, description: e.target.value})}
                       className="px-2 py-1 border rounded bg-white dark:bg-neutral-900 w-full"
                     />
                   ) : (
-                    <span className="block truncate">
+                    <span className={`block truncate ${isPrivate ? 'blur-sm' : ''}`}>
                       <PrivateText text={item.description} isAuthenticated={!!token} />
                     </span>
                   )}
@@ -789,13 +803,13 @@ function Home({ list, setList, token, setShowLogin, handleLogout }) {
 
                 <td className="p-3">
                   {editingIndex === index ? (
-                    <input 
+                    <input
                       value={editForm.origin}
                       onChange={(e) => setEditForm({...editForm, origin: e.target.value})}
                       className="px-2 py-1 border rounded bg-white dark:bg-neutral-900"
                     />
                   ) : (
-                    <span className="block truncate">{item.origin}</span>
+                    <span className={`block truncate ${isPrivate ? 'blur-sm' : ''}`}>{item.origin}</span>
                   )}
                 </td>
                 
@@ -824,32 +838,35 @@ function Home({ list, setList, token, setShowLogin, handleLogout }) {
                   </td>
                 )}
               </tr>
-            ))}
+              )
+            })}
           </tbody>
         </table>
       </div>
 
       {/* Mobile Card View */}
       <div className="md:hidden space-y-4">
-        {filteredAndSortedList.map((item, index) => (
+        {filteredAndSortedList.map((item, index) => {
+          const isPrivate = (item.private === 'true' || item.private === true) && !token
+          return (
           <div
             key={index}
             className="bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl p-4 cursor-pointer"
             onClick={() => navigateToItem(item.id)}
           >
             {item.mainPhoto && (
-              <img src={item.mainPhoto} alt={item.itemName} className="w-full max-w-[200px] h-auto rounded-lg mb-3" />
+              <img src={item.mainPhoto} alt={item.itemName} className={`w-full max-w-[200px] h-auto rounded-lg mb-3 ${isPrivate ? 'blur-lg' : ''}`} />
             )}
-            <div className="mb-2">
+            <div className={`mb-2 ${isPrivate ? 'blur-sm' : ''}`}>
               <strong className="text-neutral-500 dark:text-neutral-400">Name:</strong> {item.itemName}
             </div>
-            <div className="mb-2">
+            <div className={`mb-2 ${isPrivate ? 'blur-sm' : ''}`}>
               <strong className="text-neutral-500 dark:text-neutral-400">Description:</strong> <PrivateText text={item.description} isAuthenticated={!!token} />
             </div>
-            <div className="mb-2">
+            <div className={`mb-2 ${isPrivate ? 'blur-sm' : ''}`}>
               <strong className="text-neutral-500 dark:text-neutral-400">Category:</strong> {item.category}
             </div>
-            <div className="mb-2">
+            <div className={`mb-2 ${isPrivate ? 'blur-sm' : ''}`}>
               <strong className="text-neutral-500 dark:text-neutral-400">Origin:</strong> {item.origin}
             </div>
             
@@ -895,7 +912,8 @@ function Home({ list, setList, token, setShowLogin, handleLogout }) {
               </div>
             )}
           </div>
-        ))}
+          )
+        })}
       </div>
     </div>
   )
