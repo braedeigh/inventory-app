@@ -6,9 +6,9 @@ import cloudinary.uploader
 from libsql_client import create_client_sync
 import os
 import jwt
+import uuid
 from datetime import datetime, timedelta
 from functools import wraps
-from datetime import datetime
 
 load_dotenv()
 
