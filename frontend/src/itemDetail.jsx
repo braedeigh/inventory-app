@@ -18,7 +18,7 @@ function ItemDetail({ list, setList, token }) {
   const [photos, setPhotos] = useState([])
   const [selectedPhotoIndex, setSelectedPhotoIndex] = useState(0)
   const [loadingPhotos, setLoadingPhotos] = useState(true)
-  const [deletedPhoto, setDeletedPhoto] = useState(null) // For undo functionality
+  const [deletedPhotos, setDeletedPhotos] = useState([]) // For undo functionality - array of deleted photos
 
   const [editName, setEditName] = useState(item?.itemName || '')
   const [editDescription, setEditDescription] = useState(item?.description || '')
@@ -130,8 +130,8 @@ function ItemDetail({ list, setList, token }) {
       setSelectedPhotoIndex(Math.max(0, photos.length - 2))
     }
 
-    // Store for undo (with original position)
-    setDeletedPhoto({ ...photoToDelete, originalIndex: deletedIndex })
+    // Store for undo (with original position) - add to array
+    setDeletedPhotos(prev => [...prev, { ...photoToDelete, originalIndex: deletedIndex }])
 
     // Actually delete from backend
     const response = await fetch(`${API_URL}/item/${id}/photos/${photoId}`, {
@@ -159,12 +159,15 @@ function ItemDetail({ list, setList, token }) {
   }
 
   const handleUndoDeletePhoto = async () => {
-    if (!deletedPhoto || !token) return
+    if (deletedPhotos.length === 0 || !token) return
+
+    // Get the most recently deleted photo
+    const photoToRestore = deletedPhotos[deletedPhotos.length - 1]
 
     // Re-upload the photo using its Cloudinary URL
     // We need to fetch the image and re-upload it
     try {
-      const response = await fetch(deletedPhoto.url)
+      const response = await fetch(photoToRestore.url)
       const blob = await response.blob()
       const file = new File([blob], 'restored-photo.jpg', { type: blob.type })
 
@@ -192,11 +195,12 @@ function ItemDetail({ list, setList, token }) {
           setList(updatedList)
         }
       }
+
+      // Remove this photo from the deleted array
+      setDeletedPhotos(prev => prev.slice(0, -1))
     } catch (error) {
       console.error('Failed to restore photo:', error)
     }
-
-    setDeletedPhoto(null)
   }
 
   const handleSetMainPhoto = async (photoId) => {
@@ -452,9 +456,11 @@ function ItemDetail({ list, setList, token }) {
           )}
 
           {/* Undo delete photo button */}
-          {deletedPhoto && (
+          {deletedPhotos.length > 0 && (
             <div className="mt-3 p-3 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-300 dark:border-yellow-700 rounded-lg flex items-center justify-between">
-              <span className="text-sm text-yellow-800 dark:text-yellow-200">Photo deleted</span>
+              <span className="text-sm text-yellow-800 dark:text-yellow-200">
+                {deletedPhotos.length} photo{deletedPhotos.length > 1 ? 's' : ''} deleted
+              </span>
               <button
                 type="button"
                 onClick={handleUndoDeletePhoto}
