@@ -66,7 +66,7 @@ def get_item_photos(conn, item_id):
         'SELECT id, url, position FROM item_photos WHERE item_id = ? ORDER BY position ASC',
         [item_id]
     )
-    return [{"id": row[0], "url": row[1], "position": row[2]} for row in result.fetchall()]
+    return [{"id": row[0], "url": row[1], "position": row[2]} for row in result.rows]
 
 def row_to_dict_with_photos(row, conn):
     """Convert row to dict and include photos array"""
@@ -241,12 +241,12 @@ def upload_photos(item_id):
 
     # Get current max position
     result = conn.execute('SELECT MAX(position) FROM item_photos WHERE item_id = ?', [item_id])
-    max_pos = result.fetchone()[0]
+    max_pos = result.rows[0][0] if result.rows else None
     next_position = (max_pos + 1) if max_pos is not None else 0
 
     # Check current photo count
     count_result = conn.execute('SELECT COUNT(*) FROM item_photos WHERE item_id = ?', [item_id])
-    current_count = count_result.fetchone()[0]
+    current_count = count_result.rows[0][0] if count_result.rows else 0
 
     uploaded_photos = []
     files = request.files.getlist('photos') or [request.files.get('photo')]
@@ -287,7 +287,7 @@ def delete_photo(item_id, photo_id):
 
     # Get the photo being deleted
     result = conn.execute('SELECT position, url FROM item_photos WHERE id = ? AND item_id = ?', [photo_id, item_id])
-    photo = result.fetchone()
+    photo = result.rows[0] if result.rows else None
 
     if not photo:
         return jsonify({"error": "Photo not found"}), 404
@@ -306,10 +306,10 @@ def delete_photo(item_id, photo_id):
 
     # If we deleted position 0 (main photo), update the item's main_photo
     if deleted_position == 0:
-        new_main = conn.execute(
+        new_main_result = conn.execute(
             'SELECT url FROM item_photos WHERE item_id = ? AND position = 0', [item_id]
-        ).fetchone()
-        new_main_url = new_main[0] if new_main else None
+        )
+        new_main_url = new_main_result.rows[0][0] if new_main_result.rows else None
         conn.execute('UPDATE item SET main_photo=? WHERE id=?', [new_main_url, item_id])
 
     return jsonify({"message": "Photo deleted"})
@@ -331,11 +331,11 @@ def reorder_photos(item_id):
 
     # Update main_photo to be the first photo
     if photo_ids:
-        first_photo = conn.execute(
+        first_photo_result = conn.execute(
             'SELECT url FROM item_photos WHERE id = ?', [photo_ids[0]]
-        ).fetchone()
-        if first_photo:
-            conn.execute('UPDATE item SET main_photo=? WHERE id=?', [first_photo[0], item_id])
+        )
+        if first_photo_result.rows:
+            conn.execute('UPDATE item SET main_photo=? WHERE id=?', [first_photo_result.rows[0][0], item_id])
 
     return jsonify({"photos": get_item_photos(conn, item_id)})
 
@@ -634,14 +634,14 @@ def migrate_existing_photos():
     conn = get_db()
     try:
         # Get all items with mainPhoto
-        result = conn.execute('SELECT id, main_photo FROM item WHERE main_photo IS NOT NULL AND main_photo != ""').fetchall()
+        result = conn.execute('SELECT id, main_photo FROM item WHERE main_photo IS NOT NULL AND main_photo != ""')
         migrated = 0
-        for row in result:
+        for row in result.rows:
             item_id = row[0]
             photo_url = row[1]
             # Check if already migrated
-            existing = conn.execute('SELECT id FROM item_photos WHERE item_id = ? AND position = 0', [item_id]).fetchone()
-            if not existing:
+            existing = conn.execute('SELECT id FROM item_photos WHERE item_id = ? AND position = 0', [item_id])
+            if not existing.rows:
                 photo_id = str(uuid.uuid4())
                 conn.execute('''
                     INSERT INTO item_photos (id, item_id, url, position, created_at)
