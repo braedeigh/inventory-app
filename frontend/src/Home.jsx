@@ -27,6 +27,8 @@ function Home({ list, setList, token, setShowLogin, handleLogout }) {
   const [sortOrder, setSortOrder] = useState('newest')
   const [selectedCategories, setSelectedCategories] = useState([])
   const [selectedSubcategories, setSelectedSubcategories] = useState([])
+  const [selectedSources, setSelectedSources] = useState([])
+  const [selectedGifted, setSelectedGifted] = useState(null) // null = all, true = gifted only, false = not gifted only
   const [errors, setErrors] = useState({
     itemName: false,
     description: false,
@@ -46,9 +48,17 @@ function Home({ list, setList, token, setShowLogin, handleLogout }) {
     origin: ''
   })
 
-  // Scroll to top on mount
+  // Restore scroll position from sessionStorage on mount
   useEffect(() => {
-    window.scrollTo(0, 0)
+    const savedScrollPosition = sessionStorage.getItem('inventoryScrollPosition')
+    if (savedScrollPosition) {
+      // Small delay to ensure content is rendered before scrolling
+      setTimeout(() => {
+        window.scrollTo(0, parseInt(savedScrollPosition, 10))
+      }, 100)
+      // Clear after restoring so fresh visits start at top
+      sessionStorage.removeItem('inventoryScrollPosition')
+    }
   }, [])
 
   const handleKeyDown = (e, nextRef) => {
@@ -250,6 +260,12 @@ function Home({ list, setList, token, setShowLogin, handleLogout }) {
   const handleCancel = () => {
     setEditingIndex(null)
   }
+
+  // Save scroll position before navigating to item detail
+  const navigateToItem = (itemId, editMode = false) => {
+    sessionStorage.setItem('inventoryScrollPosition', window.scrollY.toString())
+    navigate(`/item/${itemId}${editMode ? '?edit=true' : ''}`)
+  }
   
   const filteredAndSortedList = list
     .filter(item => {
@@ -264,11 +280,30 @@ function Home({ list, setList, token, setShowLogin, handleLogout }) {
         if (!matchesSearch) return false
       }
 
-      if (selectedCategories.length === 0) return true
-      if (!selectedCategories.includes(item.category)) return false
+      // Category filter
+      if (selectedCategories.length > 0 && !selectedCategories.includes(item.category)) return false
+
+      // Subcategory filter (for clothing)
       if (item.category === 'clothing' && selectedSubcategories.length > 0) {
-        return selectedSubcategories.includes(item.subcategory)
+        // Handle "uncategorized" filter for items with no subcategory
+        const isUncategorized = !item.subcategory || item.subcategory === ''
+        if (selectedSubcategories.includes('uncategorized') && isUncategorized) {
+          // passes subcategory filter
+        } else if (!selectedSubcategories.includes(item.subcategory)) {
+          return false
+        }
       }
+
+      // Source filter (new/secondhand/handmade/unknown)
+      if (selectedSources.length > 0 && !selectedSources.includes(item.secondhand)) return false
+
+      // Gifted filter
+      if (selectedGifted !== null) {
+        const isGifted = item.gifted === 'true' || item.gifted === true
+        if (selectedGifted && !isGifted) return false
+        if (!selectedGifted && isGifted) return false
+      }
+
       return true
     })
     .sort((a, b) => {
@@ -549,14 +584,6 @@ function Home({ list, setList, token, setShowLogin, handleLogout }) {
       {/* My Items Header */}
       <div className="flex justify-between items-center mb-4 mt-10">
         <h2 className="text-3xl font-light text-green-700 dark:text-green-500">My Items</h2>
-        {deletedHistory.length > 0 && token && (
-          <button 
-            onClick={handleUndo}
-            className="px-4 py-2 text-sm bg-yellow-300 text-black rounded-lg hover:bg-yellow-400 transition-all"
-          >
-            Undo Delete
-          </button>
-        )}
       </div>
 
       {/* Filters */}
@@ -608,6 +635,24 @@ function Home({ list, setList, token, setShowLogin, handleLogout }) {
       {/* Subcategory filters */}
       {selectedCategories.includes('clothing') && (
         <div className="flex flex-wrap gap-2 mb-6">
+          {/* Uncategorized filter */}
+          {(() => {
+            const uncategorizedCount = list.filter(item => item.category === 'clothing' && (!item.subcategory || item.subcategory === '')).length
+            return uncategorizedCount > 0 && (
+              <button
+                onClick={() => {
+                  if (selectedSubcategories.includes('uncategorized')) {
+                    setSelectedSubcategories(selectedSubcategories.filter(s => s !== 'uncategorized'))
+                  } else {
+                    setSelectedSubcategories([...selectedSubcategories, 'uncategorized'])
+                  }
+                }}
+                className={`filter-button-sub ${selectedSubcategories.includes('uncategorized') ? 'active' : ''}`}
+              >
+                Uncategorized ({uncategorizedCount})
+              </button>
+            )
+          })()}
           {['undershirt', 'shirt', 'sweater', 'jacket', 'dress', 'pants', 'shorts', 'skirt', 'shoes', 'socks', 'underwear', 'accessories', 'other'].map(sub => {
             const count = list.filter(item => item.category === 'clothing' && item.subcategory === sub).length
             return (
@@ -629,6 +674,62 @@ function Home({ list, setList, token, setShowLogin, handleLogout }) {
         </div>
       )}
 
+      {/* Divider */}
+      <hr className="border-neutral-300 dark:border-neutral-600 mb-4" />
+
+      {/* Source filters (new/secondhand/handmade/unknown) */}
+      <div className="flex flex-wrap gap-2 mb-4">
+        {['new', 'secondhand', 'handmade', 'unknown'].map(source => {
+          const count = list.filter(item => item.secondhand === source).length
+          return (
+            <button
+              key={source}
+              onClick={() => {
+                if (selectedSources.includes(source)) {
+                  setSelectedSources(selectedSources.filter(s => s !== source))
+                } else {
+                  setSelectedSources([...selectedSources, source])
+                }
+              }}
+              className={`filter-button-sub ${selectedSources.includes(source) ? 'active' : ''}`}
+            >
+              {source.charAt(0).toUpperCase() + source.slice(1)} ({count})
+            </button>
+          )
+        })}
+      </div>
+
+      {/* Divider */}
+      <hr className="border-neutral-300 dark:border-neutral-600 mb-4" />
+
+      {/* Gifted filter */}
+      <div className="flex flex-wrap gap-2 mb-6">
+        <button
+          onClick={() => setSelectedGifted(selectedGifted === true ? null : true)}
+          className={`filter-button-sub ${selectedGifted === true ? 'active' : ''}`}
+        >
+          Gifted ({list.filter(item => item.gifted === 'true' || item.gifted === true).length})
+        </button>
+        <button
+          onClick={() => setSelectedGifted(selectedGifted === false ? null : false)}
+          className={`filter-button-sub ${selectedGifted === false ? 'active' : ''}`}
+        >
+          Not Gifted ({list.filter(item => item.gifted !== 'true' && item.gifted !== true).length})
+        </button>
+      </div>
+
+      {/* Undo Delete button */}
+      {deletedHistory.length > 0 && token && (
+        <div className="flex justify-end mb-4">
+          <button
+            onClick={handleUndo}
+            className="px-4 py-2 text-sm bg-yellow-300 text-black rounded-lg hover:bg-yellow-400 transition-all"
+          >
+            Undo Delete ({deletedHistory.length})
+          </button>
+        </div>
+      )}
+
       {/* Table - Desktop */}
       <div className="hidden md:block overflow-x-auto">
         <table className="w-full border-collapse">
@@ -647,7 +748,7 @@ function Home({ list, setList, token, setShowLogin, handleLogout }) {
                 key={index} 
                 onClick={() => {
                   if (editingIndex !== index) {
-                    navigate(`/item/${item.id}`)
+                    navigateToItem(item.id)
                   }
                 }} 
                 className="border-b border-neutral-200 dark:border-neutral-700 hover:bg-neutral-100 dark:hover:bg-neutral-800 cursor-pointer"
@@ -701,10 +802,10 @@ function Home({ list, setList, token, setShowLogin, handleLogout }) {
                 {token && (
                   <td className="p-3">
                     <div className="flex gap-2">
-                      <button 
+                      <button
                         onClick={(e) => {
                           e.stopPropagation()
-                          navigate(`/item/${item.id}?edit=true`)
+                          navigateToItem(item.id, true)
                         }}
                         className="px-3 py-1 text-sm bg-blue-200 text-black rounded hover:bg-blue-400 transition-all"
                       >
@@ -731,10 +832,10 @@ function Home({ list, setList, token, setShowLogin, handleLogout }) {
       {/* Mobile Card View */}
       <div className="md:hidden space-y-4">
         {filteredAndSortedList.map((item, index) => (
-          <div 
-            key={index} 
+          <div
+            key={index}
             className="bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl p-4 cursor-pointer"
-            onClick={() => navigate(`/item/${item.id}`)}
+            onClick={() => navigateToItem(item.id)}
           >
             {item.mainPhoto && (
               <img src={item.mainPhoto} alt={item.itemName} className="w-full max-w-[200px] h-auto rounded-lg mb-3" />
@@ -778,7 +879,7 @@ function Home({ list, setList, token, setShowLogin, handleLogout }) {
                 ) : (
                   <div className="flex gap-2">
                     <button
-                      onClick={() => navigate(`/item/${item.id}?edit=true`)}
+                      onClick={() => navigateToItem(item.id, true)}
                       className="flex-1 py-2 text-base bg-blue-200 text-black rounded-lg hover:bg-blue-300 transition-all"
                     >
                       Edit
