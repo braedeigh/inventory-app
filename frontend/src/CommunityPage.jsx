@@ -156,7 +156,7 @@ function CommunityPage({ token, setShowLogin, handleLogout }) {
       </h1>
 
       {/* Submission Form */}
-      <section className="bg-white dark:bg-neutral-800 p-4 md:p-6 rounded-none md:rounded-xl border-y md:border border-neutral-200 dark:border-neutral-700 mb-10 -mx-4 md:mx-0 px-4 md:px-6">
+      <section className="bg-white dark:bg-neutral-800 p-4 md:p-6 rounded-xl border border-neutral-200 dark:border-neutral-700 mb-10">
         <h2 className="text-xl font-medium mb-4">Add to the Collection</h2>
         
         <form onSubmit={handleSubmit} className="space-y-4">
