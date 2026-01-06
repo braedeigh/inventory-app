@@ -28,6 +28,7 @@ function ItemDetail({ list, setList, token }) {
   const [editOrigin, setEditOrigin] = useState(item?.origin || '')
   const [editSecondhand, setEditSecondhand] = useState(item?.secondhand || '')
   const [editGifted, setEditGifted] = useState(item?.gifted === 'true' || item?.gifted === true)
+  const [editPrivate, setEditPrivate] = useState(item?.private === 'true' || item?.private === true)
 
   // Fetch photos for this item
   useEffect(() => {
@@ -269,6 +270,7 @@ function ItemDetail({ list, setList, token }) {
         origin: editOrigin,
         secondhand: editSecondhand,
         gifted: editGifted ? 'true' : 'false',
+        private: editPrivate ? 'true' : 'false',
       })
     })
 
@@ -380,16 +382,19 @@ function ItemDetail({ list, setList, token }) {
       </div>
 
       {/* Title */}
-      {isEditing ? (
-        <input 
-          type="text"
-          value={editName}
-          onChange={(e) => setEditName(e.target.value)}
-          className="w-full text-3xl md:text-4xl font-light font-serif mb-6 px-3 py-2 border border-neutral-300 dark:border-neutral-600 rounded-lg bg-white dark:bg-neutral-900"
-        />
-      ) : (
-        <h1 className="text-3xl md:text-4xl font-light font-serif mb-6">{item.itemName}</h1>
-      )}
+      {(() => {
+        const isPrivateItem = (item.private === 'true' || item.private === true) && !token
+        return isEditing ? (
+          <input
+            type="text"
+            value={editName}
+            onChange={(e) => setEditName(e.target.value)}
+            className="w-full text-3xl md:text-4xl font-light font-serif mb-6 px-3 py-2 border border-neutral-300 dark:border-neutral-600 rounded-lg bg-white dark:bg-neutral-900"
+          />
+        ) : (
+          <h1 className={`text-3xl md:text-4xl font-light font-serif mb-6 ${isPrivateItem ? 'blur-md' : ''}`}>{item.itemName}</h1>
+        )
+      })()}
 
       {/* Main content grid */}
       <div className="grid md:grid-cols-2 gap-8">
@@ -408,7 +413,7 @@ function ItemDetail({ list, setList, token }) {
                 <img
                   src={photos[selectedPhotoIndex]?.url || item.mainPhoto}
                   alt={item.itemName}
-                  className="w-full h-full object-contain"
+                  className={`w-full h-full object-contain ${(item.private === 'true' || item.private === true) && !token ? 'blur-xl' : ''}`}
                 />
                 {/* Photo timestamp overlay */}
                 {photos[selectedPhotoIndex]?.createdAt && (
@@ -430,7 +435,7 @@ function ItemDetail({ list, setList, token }) {
               <img
                 src={item.mainPhoto}
                 alt={item.itemName}
-                className="w-full h-full object-contain"
+                className={`w-full h-full object-contain ${(item.private === 'true' || item.private === true) && !token ? 'blur-xl' : ''}`}
               />
             ) : (
               <p className="text-neutral-400">
@@ -455,7 +460,7 @@ function ItemDetail({ list, setList, token }) {
                   <img
                     src={photo.url}
                     alt={`${item.itemName} ${index + 1}`}
-                    className="w-full h-full object-cover"
+                    className={`w-full h-full object-cover ${(item.private === 'true' || item.private === true) && !token ? 'blur-lg' : ''}`}
                   />
                   {index === 0 && (
                     <div className="absolute top-0.5 left-0.5 bg-green-500 text-white text-[10px] px-1 rounded">
@@ -536,14 +541,16 @@ function ItemDetail({ list, setList, token }) {
           <div>
             <label className="block text-sm font-medium text-neutral-500 dark:text-neutral-400 mb-1">Description</label>
             {isEditing ? (
-              <textarea 
+              <textarea
                 value={editDescription}
                 onChange={(e) => setEditDescription(e.target.value)}
                 placeholder="Use ||text|| to mark private sections"
                 className="w-full px-3 py-2 border border-neutral-300 dark:border-neutral-600 rounded-lg bg-white dark:bg-neutral-900 min-h-[120px]"
               />
             ) : (
-              <p><PrivateText text={item.description} isAuthenticated={!!token} /></p>
+              <p className={(item.private === 'true' || item.private === true) && !token ? 'blur-sm' : ''}>
+                <PrivateText text={item.description} isAuthenticated={!!token} />
+              </p>
             )}
           </div>
 
@@ -618,36 +625,54 @@ function ItemDetail({ list, setList, token }) {
             )}
           </div>
 
-          {/* Gifted checkbox */}
-          <div>
-            <label className="block text-sm font-medium text-neutral-500 dark:text-neutral-400 mb-1">Gifted?</label>
-            {isEditing ? (
-              <label className="flex items-center gap-2 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={editGifted}
-                  onChange={(e) => setEditGifted(e.target.checked)}
-                  className="w-5 h-5 rounded border-neutral-300 dark:border-neutral-600 text-green-600 focus:ring-green-500"
-                />
-                <span>This item was a gift</span>
-              </label>
-            ) : (
-              <p>{item.gifted === 'true' || item.gifted === true ? 'Yes' : 'No'}</p>
-            )}
+          {/* Gifted and Private checkboxes */}
+          <div className="flex gap-8">
+            <div>
+              <label className="block text-sm font-medium text-neutral-500 dark:text-neutral-400 mb-1">Gifted?</label>
+              {isEditing ? (
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={editGifted}
+                    onChange={(e) => setEditGifted(e.target.checked)}
+                    className="w-5 h-5 rounded border-neutral-300 dark:border-neutral-600 text-green-600 focus:ring-green-500"
+                  />
+                  <span>Gift</span>
+                </label>
+              ) : (
+                <p>{item.gifted === 'true' || item.gifted === true ? 'Yes' : 'No'}</p>
+              )}
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-neutral-500 dark:text-neutral-400 mb-1">Private?</label>
+              {isEditing ? (
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={editPrivate}
+                    onChange={(e) => setEditPrivate(e.target.checked)}
+                    className="w-5 h-5 rounded border-neutral-300 dark:border-neutral-600 text-green-600 focus:ring-green-500"
+                  />
+                  <span>Private</span>
+                </label>
+              ) : (
+                <p>{item.private === 'true' || item.private === true ? 'Yes' : 'No'}</p>
+              )}
+            </div>
           </div>
 
           {/* Origin */}
           <div>
             <label className="block text-sm font-medium text-neutral-500 dark:text-neutral-400 mb-1">Origin</label>
             {isEditing ? (
-              <input 
+              <input
                 type="text"
                 value={editOrigin}
                 onChange={(e) => setEditOrigin(e.target.value)}
                 className="w-full px-3 py-2 border border-neutral-300 dark:border-neutral-600 rounded-lg bg-white dark:bg-neutral-900"
               />
             ) : (
-              <p>{item.origin}</p>
+              <p className={(item.private === 'true' || item.private === true) && !token ? 'blur-sm' : ''}>{item.origin}</p>
             )}
           </div>
 

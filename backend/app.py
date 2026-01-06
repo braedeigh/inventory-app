@@ -59,7 +59,8 @@ def row_to_dict(row):
         "subcategory": row[7],
         "secondhand": row[8],
         "lastEdited": row[9] if len(row) > 9 else None,
-        "gifted": row[10] if len(row) > 10 else None
+        "gifted": row[10] if len(row) > 10 else None,
+        "private": row[11] if len(row) > 11 else None
     }
 
 def get_item_photos(conn, item_id):
@@ -122,6 +123,7 @@ def add_item():
     subcategory = request.form.get('subcategory')
     secondhand = request.form.get('secondhand')
     gifted = request.form.get('gifted')
+    private = request.form.get('private')
     main_photo_index = int(request.form.get('mainPhotoIndex', 0))
 
     conn = get_db()
@@ -173,8 +175,8 @@ def add_item():
 
     # Save item to database
     conn.execute(
-        'INSERT INTO item (id, item_name, description, category, origin, main_photo, created_at, subcategory, secondhand, gifted) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
-        [item_id, item_name, description, category, origin, main_photo_url, created_at, subcategory, secondhand, gifted]
+        'INSERT INTO item (id, item_name, description, category, origin, main_photo, created_at, subcategory, secondhand, gifted, private) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+        [item_id, item_name, description, category, origin, main_photo_url, created_at, subcategory, secondhand, gifted, private]
     )
 
     # Save photos to item_photos table
@@ -186,7 +188,7 @@ def add_item():
         ''', [photo_id, item_id, photo['url'], photo['position'], created_at])
 
     # Return the created item with photos
-    result = conn.execute('SELECT id, item_name, description, category, origin, main_photo, created_at, subcategory, secondhand, last_edited, gifted FROM item WHERE id=?', [item_id])
+    result = conn.execute('SELECT id, item_name, description, category, origin, main_photo, created_at, subcategory, secondhand, last_edited, gifted, private FROM item WHERE id=?', [item_id])
     row = result.rows[0]
     item = row_to_dict(row)
     item['photos'] = get_item_photos(conn, item_id)
@@ -201,13 +203,13 @@ def update_item(item_id):
     conn = get_db()
 
     # Get current item to check if anything changed
-    current = conn.execute('SELECT item_name, description, category, origin, subcategory, secondhand, gifted, last_edited FROM item WHERE id=?', [item_id])
+    current = conn.execute('SELECT item_name, description, category, origin, subcategory, secondhand, gifted, private, last_edited FROM item WHERE id=?', [item_id])
     current_row = current.rows[0] if current.rows else None
 
     if not current_row:
         return jsonify({"error": "Item not found"}), 404
 
-    # Check if anything actually changed (compare first 7 fields)
+    # Check if anything actually changed (compare first 8 fields)
     new_values = (
         data.get('itemName'),
         data.get('description'),
@@ -215,10 +217,11 @@ def update_item(item_id):
         data.get('origin'),
         data.get('subcategory'),
         data.get('secondhand'),
-        data.get('gifted')
+        data.get('gifted'),
+        data.get('private')
     )
-    current_values = tuple(current_row[:7])
-    current_last_edited = current_row[7]
+    current_values = tuple(current_row[:8])
+    current_last_edited = current_row[8]
 
     # Only update last_edited if data actually changed
     if new_values != current_values:
@@ -228,12 +231,12 @@ def update_item(item_id):
 
     # Always run the UPDATE to ensure data is saved
     conn.execute('''
-        UPDATE item SET item_name=?, description=?, category=?, origin=?, subcategory=?, secondhand=?, gifted=?, last_edited=?
+        UPDATE item SET item_name=?, description=?, category=?, origin=?, subcategory=?, secondhand=?, gifted=?, private=?, last_edited=?
         WHERE id=?
     ''', [data.get('itemName'), data.get('description'), data.get('category'),
-           data.get('origin'), data.get('subcategory'), data.get('secondhand'), data.get('gifted'), last_edited, item_id])
+           data.get('origin'), data.get('subcategory'), data.get('secondhand'), data.get('gifted'), data.get('private'), last_edited, item_id])
 
-    result = conn.execute('SELECT id, item_name, description, category, origin, main_photo, created_at, subcategory, secondhand, last_edited, gifted FROM item WHERE id=?', [item_id])
+    result = conn.execute('SELECT id, item_name, description, category, origin, main_photo, created_at, subcategory, secondhand, last_edited, gifted, private FROM item WHERE id=?', [item_id])
     rows = result.rows
     if not rows:
         return jsonify({"error": "Item not found"}), 404
@@ -448,7 +451,7 @@ def migrate_remove_new_purchase():
 @app.route('/', methods=['GET'])
 def list_return():
     conn = get_db()
-    result = conn.execute('SELECT id, item_name, description, category, origin, main_photo, created_at, subcategory, secondhand, last_edited, gifted FROM item')
+    result = conn.execute('SELECT id, item_name, description, category, origin, main_photo, created_at, subcategory, secondhand, last_edited, gifted, private FROM item')
     items = [row_to_dict(row) for row in result.rows]
     return jsonify(items)
 
@@ -558,7 +561,7 @@ def delete_community_item(item_id):
 @app.route('/random', methods=['GET'])
 def get_random_item():
     conn = get_db()
-    result = conn.execute('SELECT id, item_name, description, category, origin, main_photo, created_at, subcategory, secondhand, last_edited, gifted FROM item ORDER BY RANDOM() LIMIT 1')
+    result = conn.execute('SELECT id, item_name, description, category, origin, main_photo, created_at, subcategory, secondhand, last_edited, gifted, private FROM item ORDER BY RANDOM() LIMIT 1')
     if result.rows:
         return jsonify(row_to_dict(result.rows[0]))
     return jsonify(None)
@@ -723,6 +726,17 @@ def migrate_fix_photo_timestamps():
             )
         ''')
         return jsonify({"message": "Photo timestamps updated to match item creation dates"})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.route('/migrate-add-private', methods=['POST'])
+@token_required
+def migrate_add_private():
+    """Add private column to item table"""
+    conn = get_db()
+    try:
+        conn.execute('ALTER TABLE item ADD COLUMN private TEXT')
+        return jsonify({"message": "private column added successfully"})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
