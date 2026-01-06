@@ -17,8 +17,9 @@ function Home({ list, setList, token, setShowLogin, handleLogout }) {
   const [category, setCategory] = useState('')
   const [subcategory, setSubcategory] = useState('')
   const [origin, setOrigin] = useState('')
-  const [photoFile, setPhotoFile] = useState(null)
-  const [photoPreview, setPhotoPreview] = useState(null)
+  const [photoFiles, setPhotoFiles] = useState([])
+  const [photoPreviews, setPhotoPreviews] = useState([])
+  const [mainPhotoIndex, setMainPhotoIndex] = useState(0)
   const [editingIndex, setEditingIndex] = useState(null)
   const [deletedHistory, setDeletedHistory] = useState([])
   const navigate = useNavigate()
@@ -59,11 +60,29 @@ function Home({ list, setList, token, setShowLogin, handleLogout }) {
   }
 
   const handlePhotoSelect = (e) => {
-    const file = e.target.files[0]
-    if (file) {
-      setPhotoFile(file)
-      const previewUrl = URL.createObjectURL(file)
-      setPhotoPreview(previewUrl)
+    const files = Array.from(e.target.files)
+    if (files.length > 0) {
+      // Limit to 5 photos total
+      const newFiles = files.slice(0, 5 - photoFiles.length)
+      const newPreviews = newFiles.map(file => URL.createObjectURL(file))
+
+      setPhotoFiles(prev => [...prev, ...newFiles].slice(0, 5))
+      setPhotoPreviews(prev => [...prev, ...newPreviews].slice(0, 5))
+    }
+  }
+
+  const removePhoto = (index) => {
+    // Revoke the URL to free memory
+    URL.revokeObjectURL(photoPreviews[index])
+
+    setPhotoFiles(prev => prev.filter((_, i) => i !== index))
+    setPhotoPreviews(prev => prev.filter((_, i) => i !== index))
+
+    // Adjust main photo index if needed
+    if (mainPhotoIndex === index) {
+      setMainPhotoIndex(0)
+    } else if (mainPhotoIndex > index) {
+      setMainPhotoIndex(prev => prev - 1)
     }
   }
 
@@ -93,10 +112,12 @@ function Home({ list, setList, token, setShowLogin, handleLogout }) {
     formData.append('subcategory', subcategory)
     formData.append('origin', origin)
     formData.append('secondhand', secondhand)
+    formData.append('mainPhotoIndex', mainPhotoIndex)
 
-    if (photoFile) {
-      formData.append('photo', photoFile)
-    }
+    // Append all photos
+    photoFiles.forEach((file) => {
+      formData.append('photos', file)
+    })
 
     const response = await fetch(`${API_URL}/`, {
       method: 'POST',
@@ -115,8 +136,9 @@ function Home({ list, setList, token, setShowLogin, handleLogout }) {
       setSubcategory('')
       setOrigin('')
       setSecondhand('')
-      setPhotoFile(null)
-      setPhotoPreview(null)
+      setPhotoFiles([])
+      setPhotoPreviews([])
+      setMainPhotoIndex(0)
     } else {
       console.error("Failed to add item.", await response.text())
     }
@@ -421,37 +443,80 @@ function Home({ list, setList, token, setShowLogin, handleLogout }) {
           </div>
 
 <div className="mb-4">
-  <label className="block text-sm font-medium mb-1">Photo:</label>
+  <label className="block text-sm font-medium mb-1">Photos (up to 5):</label>
 
   {/* Hidden file input */}
   <input
     type="file"
     ref={photoRef}
     accept="image/*"
+    multiple
     onChange={handlePhotoSelect}
     className="hidden"
   />
 
   {/* Styled button that triggers the file input */}
-  <button
-    type="button"
-    onClick={() => photoRef.current?.click()}
-    className="w-full md:w-auto px-4 py-3 md:py-2 text-base bg-neutral-200 dark:bg-neutral-700 rounded-lg hover:bg-neutral-300 dark:hover:bg-neutral-600 transition-all border border-neutral-300 dark:border-neutral-600"
-  >
-    Choose File
-  </button>
+  {photoFiles.length < 5 && (
+    <button
+      type="button"
+      onClick={() => photoRef.current?.click()}
+      className="w-full md:w-auto px-4 py-3 md:py-2 text-base bg-neutral-200 dark:bg-neutral-700 rounded-lg hover:bg-neutral-300 dark:hover:bg-neutral-600 transition-all border border-neutral-300 dark:border-neutral-600"
+    >
+      {photoFiles.length === 0 ? 'Choose Photos' : 'Add More Photos'}
+    </button>
+  )}
 
-  {/* Show filename if selected */}
-  {photoFile && <span className="block md:inline mt-2 md:mt-0 md:ml-2 text-sm">{photoFile.name}</span>}
+  {/* Photo count */}
+  {photoFiles.length > 0 && (
+    <span className="block md:inline mt-2 md:mt-0 md:ml-2 text-sm text-neutral-500">
+      {photoFiles.length}/5 photos selected
+    </span>
+  )}
 
-  {photoPreview && (
-    <div className="mt-3">
-      <img
-        src={photoPreview}
-        alt="Preview"
-        className="w-full max-w-[200px] h-auto object-cover rounded-lg"
-      />
+  {/* Photo previews grid */}
+  {photoPreviews.length > 0 && (
+    <div className="mt-3 grid grid-cols-3 sm:grid-cols-5 gap-2">
+      {photoPreviews.map((preview, index) => (
+        <div
+          key={index}
+          className={`relative cursor-pointer rounded-lg overflow-hidden border-2 transition-all ${
+            mainPhotoIndex === index
+              ? 'border-green-500 ring-2 ring-green-500/50'
+              : 'border-transparent hover:border-neutral-400'
+          }`}
+          onClick={() => setMainPhotoIndex(index)}
+        >
+          <img
+            src={preview}
+            alt={`Preview ${index + 1}`}
+            className="w-full aspect-square object-cover"
+          />
+          {/* Main badge */}
+          {mainPhotoIndex === index && (
+            <div className="absolute top-1 left-1 bg-green-500 text-white text-xs px-1.5 py-0.5 rounded">
+              Main
+            </div>
+          )}
+          {/* Remove button */}
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation()
+              removePhoto(index)
+            }}
+            className="absolute top-1 right-1 w-5 h-5 bg-red-500 text-white rounded-full flex items-center justify-center text-xs hover:bg-red-600"
+          >
+            ×
+          </button>
+        </div>
+      ))}
     </div>
+  )}
+
+  {photoPreviews.length > 0 && (
+    <p className="mt-2 text-xs text-neutral-500">
+      Click a photo to set it as the main photo
+    </p>
   )}
 </div>
 

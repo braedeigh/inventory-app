@@ -14,12 +14,37 @@ function ItemDetail({ list, setList, token }) {
   const item = list.find(item => item.id === id)
   const [uploading, setUploading] = useState(false)
 
+  // Photo gallery state
+  const [photos, setPhotos] = useState([])
+  const [selectedPhotoIndex, setSelectedPhotoIndex] = useState(0)
+  const [loadingPhotos, setLoadingPhotos] = useState(true)
+
   const [editName, setEditName] = useState(item?.itemName || '')
   const [editDescription, setEditDescription] = useState(item?.description || '')
   const [editCategory, setEditCategory] = useState(item?.category || '')
   const [editSubcategory, setEditSubcategory] = useState(item?.subcategory || '')
   const [editOrigin, setEditOrigin] = useState(item?.origin || '')
   const [editSecondhand, setEditSecondhand] = useState(item?.secondhand || '')
+
+  // Fetch photos for this item
+  useEffect(() => {
+    const fetchPhotos = async () => {
+      try {
+        const response = await fetch(`${API_URL}/item/${id}/photos`)
+        if (response.ok) {
+          const data = await response.json()
+          setPhotos(data.photos || [])
+        }
+      } catch (error) {
+        console.error('Failed to fetch photos:', error)
+      }
+      setLoadingPhotos(false)
+    }
+
+    if (id) {
+      fetchPhotos()
+    }
+  }, [id])
 
   // Scroll to top on mount
   useEffect(() => {
@@ -41,20 +66,28 @@ function ItemDetail({ list, setList, token }) {
   }
 
   const handlePhotoUpload = async (e) => {
-    const file = e.target.files[0]
-    if (!file) return
+    const files = Array.from(e.target.files)
+    if (files.length === 0) return
 
     if (!token) {
       console.error("User not logged in. Cannot upload photo.")
       return
     }
 
+    // Check if we're at the limit
+    if (photos.length >= 5) {
+      alert('Maximum 5 photos allowed')
+      return
+    }
+
     setUploading(true)
 
     const formData = new FormData()
-    formData.append('photo', file)
+    // Only upload up to the remaining slots
+    const filesToUpload = files.slice(0, 5 - photos.length)
+    filesToUpload.forEach(file => formData.append('photos', file))
 
-    const response = await fetch(`${API_URL}/item/${id}/photo`, {
+    const response = await fetch(`${API_URL}/item/${id}/photos`, {
       method: 'POST',
       body: formData,
       headers: {
@@ -64,15 +97,87 @@ function ItemDetail({ list, setList, token }) {
 
     if (response.ok) {
       const result = await response.json()
-      const updatedList = list.map(i => 
-        i.id === id ? { ...i, mainPhoto: result.url } : i
-      )
-      setList(updatedList)
+      // Add new photos to state
+      setPhotos(prev => [...prev, ...result.photos])
+
+      // Update mainPhoto in list if this was the first photo
+      if (result.photos.length > 0 && photos.length === 0) {
+        const updatedList = list.map(i =>
+          i.id === id ? { ...i, mainPhoto: result.photos[0].url } : i
+        )
+        setList(updatedList)
+      }
     } else {
       console.error("Photo upload failed.", await response.text())
     }
-    
+
     setUploading(false)
+  }
+
+  const handleDeletePhoto = async (photoId) => {
+    if (!token) return
+
+    const response = await fetch(`${API_URL}/item/${id}/photos/${photoId}`, {
+      method: 'DELETE',
+      headers: {
+        'Authorization': `Bearer ${token}`
+      }
+    })
+
+    if (response.ok) {
+      const deletedIndex = photos.findIndex(p => p.id === photoId)
+      setPhotos(prev => prev.filter(p => p.id !== photoId))
+
+      // Adjust selected index if needed
+      if (selectedPhotoIndex >= photos.length - 1) {
+        setSelectedPhotoIndex(Math.max(0, photos.length - 2))
+      }
+
+      // Update mainPhoto in list
+      if (deletedIndex === 0 && photos.length > 1) {
+        const newMainPhoto = photos[1]?.url || null
+        const updatedList = list.map(i =>
+          i.id === id ? { ...i, mainPhoto: newMainPhoto } : i
+        )
+        setList(updatedList)
+      } else if (photos.length === 1) {
+        const updatedList = list.map(i =>
+          i.id === id ? { ...i, mainPhoto: null } : i
+        )
+        setList(updatedList)
+      }
+    }
+  }
+
+  const handleSetMainPhoto = async (photoId) => {
+    if (!token) return
+
+    // Reorder so the selected photo becomes position 0
+    const selectedPhoto = photos.find(p => p.id === photoId)
+    const otherPhotos = photos.filter(p => p.id !== photoId)
+    const newOrder = [selectedPhoto, ...otherPhotos]
+    const photoIds = newOrder.map(p => p.id)
+
+    const response = await fetch(`${API_URL}/item/${id}/photos/reorder`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      },
+      body: JSON.stringify({ photoIds })
+    })
+
+    if (response.ok) {
+      const result = await response.json()
+      setPhotos(result.photos)
+      setSelectedPhotoIndex(0)
+
+      // Update mainPhoto in list
+      const updatedList = list.map(i =>
+        i.id === id ? { ...i, mainPhoto: selectedPhoto.url } : i
+      )
+      setList(updatedList)
+    }
   }
 
   const handleSave = async () => {
@@ -220,15 +325,24 @@ function ItemDetail({ list, setList, token }) {
         
         {/* Photo section */}
         <div>
-          <div 
-            className={`aspect-square rounded-xl overflow-hidden border-2 border-dashed border-neutral-300 dark:border-neutral-600 flex items-center justify-center bg-neutral-100 dark:bg-neutral-800 ${token ? 'cursor-pointer hover:border-green-500' : ''}`}
-            onClick={token ? () => document.getElementById('photo-input').click() : undefined}
+          {/* Main photo display */}
+          <div
+            className={`aspect-square rounded-xl overflow-hidden border-2 border-dashed border-neutral-300 dark:border-neutral-600 flex items-center justify-center bg-neutral-100 dark:bg-neutral-800 ${token && photos.length < 5 ? 'cursor-pointer hover:border-green-500' : ''}`}
+            onClick={token && photos.length < 5 ? () => document.getElementById('photo-input').click() : undefined}
           >
-            {item.mainPhoto ? (
-              <img 
-                src={item.mainPhoto} 
-                alt={item.itemName} 
-                className="w-full h-full object-cover"
+            {loadingPhotos ? (
+              <p className="text-neutral-400">Loading photos...</p>
+            ) : photos.length > 0 ? (
+              <img
+                src={photos[selectedPhotoIndex]?.url || item.mainPhoto}
+                alt={item.itemName}
+                className="w-full h-full object-contain"
+              />
+            ) : item.mainPhoto ? (
+              <img
+                src={item.mainPhoto}
+                alt={item.itemName}
+                className="w-full h-full object-contain"
               />
             ) : (
               <p className="text-neutral-400">
@@ -236,12 +350,74 @@ function ItemDetail({ list, setList, token }) {
               </p>
             )}
           </div>
-          
+
+          {/* Photo thumbnails */}
+          {photos.length > 1 && (
+            <div className="mt-3 grid grid-cols-5 gap-2">
+              {photos.map((photo, index) => (
+                <div
+                  key={photo.id}
+                  className={`relative aspect-square rounded-lg overflow-hidden cursor-pointer border-2 transition-all ${
+                    selectedPhotoIndex === index
+                      ? 'border-green-500 ring-2 ring-green-500/50'
+                      : 'border-transparent hover:border-neutral-400'
+                  }`}
+                  onClick={() => setSelectedPhotoIndex(index)}
+                >
+                  <img
+                    src={photo.url}
+                    alt={`${item.itemName} ${index + 1}`}
+                    className="w-full h-full object-cover"
+                  />
+                  {index === 0 && (
+                    <div className="absolute top-0.5 left-0.5 bg-green-500 text-white text-[10px] px-1 rounded">
+                      Main
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Photo management buttons (when editing) */}
+          {token && isEditing && photos.length > 0 && (
+            <div className="mt-3 flex flex-wrap gap-2">
+              {selectedPhotoIndex !== 0 && (
+                <button
+                  type="button"
+                  onClick={() => handleSetMainPhoto(photos[selectedPhotoIndex].id)}
+                  className="px-3 py-1.5 text-sm bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 rounded-lg hover:bg-green-200 dark:hover:bg-green-900/50 transition-all"
+                >
+                  Set as Main
+                </button>
+              )}
+              <button
+                type="button"
+                onClick={() => handleDeletePhoto(photos[selectedPhotoIndex].id)}
+                className="px-3 py-1.5 text-sm bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400 rounded-lg hover:bg-red-200 dark:hover:bg-red-900/50 transition-all"
+              >
+                Delete Photo
+              </button>
+            </div>
+          )}
+
+          {/* Add more photos button */}
+          {token && photos.length > 0 && photos.length < 5 && (
+            <button
+              type="button"
+              onClick={() => document.getElementById('photo-input').click()}
+              className="mt-3 w-full py-2 text-sm border border-dashed border-neutral-300 dark:border-neutral-600 rounded-lg hover:border-green-500 hover:text-green-600 transition-all"
+            >
+              {uploading ? 'Uploading...' : `Add More Photos (${photos.length}/5)`}
+            </button>
+          )}
+
           {token && (
-            <input 
-              type="file" 
-              id="photo-input" 
-              accept="image/*" 
+            <input
+              type="file"
+              id="photo-input"
+              accept="image/*"
+              multiple
               onChange={handlePhotoUpload}
               className="hidden"
             />
