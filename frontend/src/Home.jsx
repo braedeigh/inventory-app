@@ -314,7 +314,7 @@ function Home({ list, setList, token, setShowLogin, handleLogout }) {
                 setItemName(e.target.value)
                 setErrors({...errors, itemName: false})
               }}
-              className={`w-full px-3 py-2 border rounded-lg bg-white dark:bg-neutral-900 text-neutral-800 dark:text-neutral-100 focus:outline-none focus:ring-2 focus:ring-green-500 ${errors.itemName ? 'border-red-500' : 'border-neutral-300 dark:border-neutral-600'}`}
+              className={`w-full px-3 py-2 text-base border rounded-lg bg-white dark:bg-neutral-900 text-neutral-800 dark:text-neutral-100 focus:outline-none focus:ring-2 focus:ring-green-500 ${errors.itemName ? 'border-red-500' : 'border-neutral-300 dark:border-neutral-600'}`}
               onKeyDown={(e) => handleKeyDown(e, descriptionRef)}
             />
             {errors.itemName && <span className="text-red-500 text-xs">Required</span>}
@@ -329,7 +329,7 @@ function Home({ list, setList, token, setShowLogin, handleLogout }) {
                 setDescription(e.target.value)
                 setErrors({...errors, description: false})
               }}
-              className={`w-full px-3 py-2 border rounded-lg bg-white dark:bg-neutral-900 text-neutral-800 dark:text-neutral-100 focus:outline-none focus:ring-2 focus:ring-green-500 min-h-[100px] ${errors.description ? 'border-red-500' : 'border-neutral-300 dark:border-neutral-600'}`}
+              className={`w-full px-3 py-2 text-base border rounded-lg bg-white dark:bg-neutral-900 text-neutral-800 dark:text-neutral-100 focus:outline-none focus:ring-2 focus:ring-green-500 min-h-[100px] ${errors.description ? 'border-red-500' : 'border-neutral-300 dark:border-neutral-600'}`}
               onKeyDown={(e) => {
                 if (e.key === 'Enter' && !e.shiftKey) {
                   e.preventDefault()
@@ -351,7 +351,7 @@ function Home({ list, setList, token, setShowLogin, handleLogout }) {
                 setOrigin(e.target.value)
                 setErrors({...errors, origin: false})
               }}
-              className={`w-full px-3 py-2 border rounded-lg bg-white dark:bg-neutral-900 text-neutral-800 dark:text-neutral-100 focus:outline-none focus:ring-2 focus:ring-green-500 ${errors.origin ? 'border-red-500' : 'border-neutral-300 dark:border-neutral-600'}`}
+              className={`w-full px-3 py-2 text-base border rounded-lg bg-white dark:bg-neutral-900 text-neutral-800 dark:text-neutral-100 focus:outline-none focus:ring-2 focus:ring-green-500 ${errors.origin ? 'border-red-500' : 'border-neutral-300 dark:border-neutral-600'}`}
               onKeyDown={(e) => handleKeyDown(e, categoryRef)}
             />
             {errors.origin && <span className="text-red-500 text-xs">Required</span>}
@@ -366,7 +366,7 @@ function Home({ list, setList, token, setShowLogin, handleLogout }) {
                 setCategory(e.target.value)
                 setErrors({...errors, category: false})
               }}
-              className={`w-full px-3 py-2 border rounded-lg bg-white dark:bg-neutral-900 text-neutral-800 dark:text-neutral-100 focus:outline-none focus:ring-2 focus:ring-green-500 ${errors.category ? 'border-red-500' : 'border-neutral-300 dark:border-neutral-600'}`}
+              className={`w-full px-3 py-2 text-base border rounded-lg bg-white dark:bg-neutral-900 text-neutral-800 dark:text-neutral-100 focus:outline-none focus:ring-2 focus:ring-green-500 ${errors.category ? 'border-red-500' : 'border-neutral-300 dark:border-neutral-600'}`}
             >
               <option value="">-- Select --</option>
               <option value="clothing">Clothing</option>
@@ -384,7 +384,7 @@ function Home({ list, setList, token, setShowLogin, handleLogout }) {
               <select
                 value={subcategory}
                 onChange={(e) => setSubcategory(e.target.value)}
-                className="w-full px-3 py-2 border border-neutral-300 dark:border-neutral-600 rounded-lg bg-white dark:bg-neutral-900 text-neutral-800 dark:text-neutral-100 focus:outline-none focus:ring-2 focus:ring-green-500"
+                className="w-full px-3 py-2 text-base border border-neutral-300 dark:border-neutral-600 rounded-lg bg-white dark:bg-neutral-900 text-neutral-800 dark:text-neutral-100 focus:outline-none focus:ring-2 focus:ring-green-500"
               >
                 <option value="">-- Select --</option>
                 <option value="undershirt">Undershirt</option>
@@ -409,7 +409,7 @@ function Home({ list, setList, token, setShowLogin, handleLogout }) {
             <select
               value={secondhand}
               onChange={(e) => setSecondhand(e.target.value)}
-              className="w-full px-3 py-2 border border-neutral-300 dark:border-neutral-600 rounded-lg bg-white dark:bg-neutral-900 text-neutral-800 dark:text-neutral-100 focus:outline-none focus:ring-2 focus:ring-green-500"
+              className="w-full px-3 py-2 text-base border border-neutral-300 dark:border-neutral-600 rounded-lg bg-white dark:bg-neutral-900 text-neutral-800 dark:text-neutral-100 focus:outline-none focus:ring-2 focus:ring-green-500"
             >
               <option value="">-- Select --</option>
               <option value="new">New</option>
