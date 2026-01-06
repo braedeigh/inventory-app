@@ -174,7 +174,7 @@ function Landing({ list, communityList, token, setShowLogin, handleLogout }) {
         {/* Show & Tell Card (Community) - First */}
         <div
           onClick={refreshCommunityItem}
-          className="w-full md:w-[380px] md:min-h-[620px] mx-auto md:mx-0 bg-white/80 dark:bg-white/[0.03] backdrop-blur-xl border border-neutral-200 dark:border-white/10 rounded-3xl p-6 cursor-pointer hover:scale-[1.02] hover:border-amber-400 dark:hover:border-amber-800/40 hover:shadow-xl dark:hover:shadow-2xl hover:shadow-amber-200/50 dark:hover:shadow-amber-900/20 transition-all duration-300 flex flex-col"
+          className="w-full md:w-[380px] mx-auto md:mx-0 bg-white/80 dark:bg-white/[0.03] backdrop-blur-xl border border-neutral-200 dark:border-white/10 rounded-3xl p-6 cursor-pointer hover:scale-[1.02] hover:border-amber-400 dark:hover:border-amber-800/40 hover:shadow-xl dark:hover:shadow-2xl hover:shadow-amber-200/50 dark:hover:shadow-amber-900/20 transition-all duration-300"
         >
           <div className="flex justify-between items-start mb-3">
             <h3 className="text-lg font-semibold uppercase tracking-[0.2em] text-amber-700 dark:text-amber-600">
@@ -208,7 +208,7 @@ function Landing({ list, communityList, token, setShowLogin, handleLogout }) {
 
           <button
             onClick={(e) => { e.stopPropagation(); navigate('/community'); }}
-            className="w-full mt-auto pt-4 py-3 bg-amber-700 hover:bg-amber-800 text-white text-sm font-medium rounded-xl transition-colors"
+            className="w-full mt-4 py-3 bg-amber-700 hover:bg-amber-800 text-white text-sm font-medium rounded-xl transition-colors"
           >
             Explore Community Archive
           </button>
@@ -217,7 +217,7 @@ function Landing({ list, communityList, token, setShowLogin, handleLogout }) {
         {/* My Inventory Card - Second */}
         <div
           onClick={refreshMyItem}
-          className="w-full md:w-[380px] md:min-h-[620px] mx-auto md:mx-0 bg-white/80 dark:bg-white/[0.03] backdrop-blur-xl border border-neutral-200 dark:border-white/10 rounded-3xl p-6 cursor-pointer hover:scale-[1.02] hover:border-green-400 dark:hover:border-green-800/40 hover:shadow-xl dark:hover:shadow-2xl hover:shadow-green-200/50 dark:hover:shadow-green-900/20 transition-all duration-300 flex flex-col"
+          className="w-full md:w-[380px] mx-auto md:mx-0 bg-white/80 dark:bg-white/[0.03] backdrop-blur-xl border border-neutral-200 dark:border-white/10 rounded-3xl p-6 cursor-pointer hover:scale-[1.02] hover:border-green-400 dark:hover:border-green-800/40 hover:shadow-xl dark:hover:shadow-2xl hover:shadow-green-200/50 dark:hover:shadow-green-900/20 transition-all duration-300"
         >
           <div className="flex justify-between items-start mb-3">
             <h3 className="text-lg font-semibold uppercase tracking-[0.2em] text-green-700 dark:text-green-600">
@@ -251,7 +251,7 @@ function Landing({ list, communityList, token, setShowLogin, handleLogout }) {
 
           <button
             onClick={(e) => { e.stopPropagation(); navigate('/inventory'); }}
-            className="w-full mt-auto pt-4 py-3 bg-green-700 hover:bg-green-800 text-white text-sm font-medium rounded-xl transition-colors"
+            className="w-full mt-4 py-3 bg-green-700 hover:bg-green-800 text-white text-sm font-medium rounded-xl transition-colors"
           >
             View Full Inventory
           </button>
