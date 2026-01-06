@@ -19,6 +19,7 @@ function ItemDetail({ list, setList, token }) {
   const [selectedPhotoIndex, setSelectedPhotoIndex] = useState(0)
   const [loadingPhotos, setLoadingPhotos] = useState(true)
   const [deletedPhotos, setDeletedPhotos] = useState([]) // For undo functionality - array of deleted photos
+  const [undoing, setUndoing] = useState(false) // Loading state for undo
 
   const [editName, setEditName] = useState(item?.itemName || '')
   const [editDescription, setEditDescription] = useState(item?.description || '')
@@ -159,10 +160,15 @@ function ItemDetail({ list, setList, token }) {
   }
 
   const handleUndoDeletePhoto = async () => {
-    if (deletedPhotos.length === 0 || !token) return
+    if (deletedPhotos.length === 0 || !token || undoing) return
+
+    setUndoing(true)
 
     // Get the most recently deleted photo
     const photoToRestore = deletedPhotos[deletedPhotos.length - 1]
+
+    // Remove from deleted array immediately to prevent double-clicks
+    setDeletedPhotos(prev => prev.slice(0, -1))
 
     // Re-upload the photo using its Cloudinary URL
     // We need to fetch the image and re-upload it
@@ -195,12 +201,13 @@ function ItemDetail({ list, setList, token }) {
           setList(updatedList)
         }
       }
-
-      // Remove this photo from the deleted array
-      setDeletedPhotos(prev => prev.slice(0, -1))
     } catch (error) {
       console.error('Failed to restore photo:', error)
+      // If failed, add back to deleted array
+      setDeletedPhotos(prev => [...prev, photoToRestore])
     }
+
+    setUndoing(false)
   }
 
   const handleSetMainPhoto = async (photoId) => {
@@ -456,17 +463,18 @@ function ItemDetail({ list, setList, token }) {
           )}
 
           {/* Undo delete photo button */}
-          {deletedPhotos.length > 0 && (
+          {(deletedPhotos.length > 0 || undoing) && (
             <div className="mt-3 p-3 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-300 dark:border-yellow-700 rounded-lg flex items-center justify-between">
               <span className="text-sm text-yellow-800 dark:text-yellow-200">
-                {deletedPhotos.length} photo{deletedPhotos.length > 1 ? 's' : ''} deleted
+                {undoing ? 'Restoring photo...' : `${deletedPhotos.length} photo${deletedPhotos.length > 1 ? 's' : ''} deleted`}
               </span>
               <button
                 type="button"
                 onClick={handleUndoDeletePhoto}
-                className="px-3 py-1.5 text-sm bg-yellow-200 dark:bg-yellow-800 text-yellow-800 dark:text-yellow-100 rounded-lg hover:bg-yellow-300 dark:hover:bg-yellow-700 transition-all font-medium"
+                disabled={undoing || deletedPhotos.length === 0}
+                className="px-3 py-1.5 text-sm bg-yellow-200 dark:bg-yellow-800 text-yellow-800 dark:text-yellow-100 rounded-lg hover:bg-yellow-300 dark:hover:bg-yellow-700 transition-all font-medium disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                Undo
+                {undoing ? 'Undoing...' : 'Undo'}
               </button>
             </div>
           )}
