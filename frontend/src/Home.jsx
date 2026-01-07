@@ -655,7 +655,7 @@ function Home({ list, setList, token, setShowLogin, handleLogout }) {
 
               {/* Selected materials with percentage inputs */}
               {materials.length > 0 && (
-                <div className="space-y-2 p-3 bg-neutral-100 dark:bg-neutral-800 rounded-lg">
+                <div className="w-fit space-y-2 p-3 bg-neutral-100 dark:bg-neutral-800 rounded-lg">
                   <p className="text-xs text-neutral-500 mb-2">Click percentage to edit (optional):</p>
                   {materials.map(mat => (
                     <div key={mat.material} className="flex items-center gap-2">
