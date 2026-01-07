@@ -13,7 +13,7 @@ from functools import wraps
 load_dotenv()
 
 app = Flask(__name__)
-CORS(app)
+CORS(app, resources={r"/*": {"origins": "*", "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"], "allow_headers": ["Content-Type", "Authorization"]}})
 
 def get_db():
     return create_client_sync(
@@ -825,6 +825,36 @@ def add_material():
     conn.execute('INSERT INTO materials (id, name) VALUES (?, ?)', [material_id, formatted_name])
 
     return jsonify({"id": material_id, "name": formatted_name}), 201
+
+@app.route('/materials/<material_id>', methods=['DELETE'])
+@token_required
+def delete_material(material_id):
+    """Delete a material if it's not in use by any items"""
+    conn = get_db()
+
+    # Get the material name first
+    material = conn.execute('SELECT name FROM materials WHERE id = ?', [material_id])
+    if not material.rows:
+        return jsonify({"error": "Material not found"}), 404
+
+    material_name = material.rows[0][0]
+
+    # Check if any items use this material
+    # We need to search the JSON materials column for this material name
+    items = conn.execute('SELECT id, materials FROM item WHERE materials IS NOT NULL')
+    for row in items.rows:
+        try:
+            import json
+            item_materials = json.loads(row[1]) if row[1] else []
+            for mat in item_materials:
+                if mat.get('material') == material_name:
+                    return jsonify({"error": f"Cannot delete - material is in use by items"}), 400
+        except:
+            pass
+
+    # Safe to delete
+    conn.execute('DELETE FROM materials WHERE id = ?', [material_id])
+    return jsonify({"message": "Material deleted"})
 
 if __name__ == '__main__':
     app.run(debug=True, port=5000)
