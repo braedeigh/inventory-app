@@ -30,6 +30,7 @@ function Home({ list, setList, token, setShowLogin, handleLogout }) {
   const [selectedSubcategories, setSelectedSubcategories] = useState([])
   const [selectedSources, setSelectedSources] = useState([])
   const [selectedGifted, setSelectedGifted] = useState(null) // null = all, true = gifted only, false = not gifted only
+  const [selectedMaterials, setSelectedMaterials] = useState([]) // OR logic filter
   const [errors, setErrors] = useState({
     itemName: false,
     description: false,
@@ -41,6 +42,9 @@ function Home({ list, setList, token, setShowLogin, handleLogout }) {
   const [secondhand, setSecondhand] = useState('')
   const [gifted, setGifted] = useState(false)
   const [privateItem, setPrivateItem] = useState(false)
+  const [materials, setMaterials] = useState([]) // [{material: 'Cotton', percentage: 80}]
+  const [availableMaterials, setAvailableMaterials] = useState([])
+  const [newMaterialName, setNewMaterialName] = useState('')
 
   const [editForm, setEditForm] = useState({
     itemName: '',
@@ -61,6 +65,22 @@ function Home({ list, setList, token, setShowLogin, handleLogout }) {
       // Clear after restoring so fresh visits start at top
       sessionStorage.removeItem('inventoryScrollPosition')
     }
+  }, [])
+
+  // Fetch available materials
+  useEffect(() => {
+    const fetchMaterials = async () => {
+      try {
+        const response = await fetch(`${API_URL}/materials`)
+        if (response.ok) {
+          const data = await response.json()
+          setAvailableMaterials(data)
+        }
+      } catch (err) {
+        console.error('Failed to fetch materials:', err)
+      }
+    }
+    fetchMaterials()
   }, [])
 
   const handleKeyDown = (e, nextRef) => {
@@ -99,6 +119,48 @@ function Home({ list, setList, token, setShowLogin, handleLogout }) {
     }
   }
 
+  // Material management functions
+  const addMaterial = (materialName) => {
+    if (materials.find(m => m.material === materialName)) return
+    setMaterials([...materials, { material: materialName, percentage: null }])
+  }
+
+  const removeMaterial = (materialName) => {
+    setMaterials(materials.filter(m => m.material !== materialName))
+  }
+
+  const updateMaterialPercentage = (materialName, percentage) => {
+    setMaterials(materials.map(m =>
+      m.material === materialName
+        ? { ...m, percentage: percentage === '' ? null : parseInt(percentage) }
+        : m
+    ))
+  }
+
+  const addNewMaterial = async () => {
+    if (!newMaterialName.trim() || !token) return
+    try {
+      const response = await fetch(`${API_URL}/materials`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ name: newMaterialName })
+      })
+      if (response.ok) {
+        const data = await response.json()
+        if (!data.existed) {
+          setAvailableMaterials([...availableMaterials, data].sort((a, b) => a.name.localeCompare(b.name)))
+        }
+        addMaterial(data.name)
+        setNewMaterialName('')
+      }
+    } catch (err) {
+      console.error('Failed to add material:', err)
+    }
+  }
+
   const handleAddItem = async () => {
     if (!token) {
       console.error("User not logged in. Cannot add item.")
@@ -128,6 +190,9 @@ function Home({ list, setList, token, setShowLogin, handleLogout }) {
     formData.append('gifted', gifted ? 'true' : 'false')
     formData.append('private', privateItem ? 'true' : 'false')
     formData.append('mainPhotoIndex', mainPhotoIndex)
+    if (materials.length > 0) {
+      formData.append('materials', JSON.stringify(materials))
+    }
 
     // Append all photos
     photoFiles.forEach((file) => {
@@ -153,6 +218,7 @@ function Home({ list, setList, token, setShowLogin, handleLogout }) {
       setSecondhand('')
       setGifted(false)
       setPrivateItem(false)
+      setMaterials([])
       setPhotoFiles([])
       setPhotoPreviews([])
       setMainPhotoIndex(0)
@@ -306,6 +372,14 @@ function Home({ list, setList, token, setShowLogin, handleLogout }) {
         const isGifted = item.gifted === 'true' || item.gifted === true
         if (selectedGifted && !isGifted) return false
         if (!selectedGifted && isGifted) return false
+      }
+
+      // Materials filter (OR logic)
+      if (selectedMaterials.length > 0) {
+        if (!item.materials || item.materials.length === 0) return false
+        const itemMaterialNames = item.materials.map(m => m.material)
+        const hasAnySelectedMaterial = selectedMaterials.some(mat => itemMaterialNames.includes(mat))
+        if (!hasAnySelectedMaterial) return false
       }
 
       return true
@@ -482,6 +556,86 @@ function Home({ list, setList, token, setShowLogin, handleLogout }) {
               <option value="unknown">Unknown</option>
             </select>
           </div>
+
+          {/* Materials section - only for clothing and bedding */}
+          {(category === 'clothing' || category === 'bedding') && (
+            <div className="mb-4">
+              <label className="block text-sm font-medium mb-2">Materials:</label>
+
+              {/* Available materials as buttons */}
+              <div className="flex flex-wrap gap-2 mb-3">
+                {availableMaterials.map(mat => {
+                  const isSelected = materials.find(m => m.material === mat.name)
+                  return (
+                    <button
+                      key={mat.id}
+                      type="button"
+                      onClick={() => isSelected ? removeMaterial(mat.name) : addMaterial(mat.name)}
+                      className={`px-3 py-1.5 text-sm rounded-lg border transition-all ${
+                        isSelected
+                          ? 'bg-green-600 text-white border-green-600'
+                          : 'bg-white dark:bg-neutral-800 border-neutral-300 dark:border-neutral-600 hover:border-green-500'
+                      }`}
+                    >
+                      {mat.name}
+                    </button>
+                  )
+                })}
+              </div>
+
+              {/* Add new material input */}
+              <div className="flex gap-2 mb-3">
+                <input
+                  type="text"
+                  value={newMaterialName}
+                  onChange={(e) => setNewMaterialName(e.target.value)}
+                  placeholder="Add new material..."
+                  className="flex-1 px-3 py-2 text-sm border border-neutral-300 dark:border-neutral-600 rounded-lg bg-white dark:bg-neutral-900"
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault()
+                      addNewMaterial()
+                    }
+                  }}
+                />
+                <button
+                  type="button"
+                  onClick={addNewMaterial}
+                  className="px-4 py-2 text-sm bg-green-600 text-white rounded-lg hover:bg-green-700"
+                >
+                  Add
+                </button>
+              </div>
+
+              {/* Selected materials with percentage inputs */}
+              {materials.length > 0 && (
+                <div className="space-y-2 p-3 bg-neutral-100 dark:bg-neutral-800 rounded-lg">
+                  <p className="text-xs text-neutral-500 mb-2">Click percentage to edit (optional):</p>
+                  {materials.map(mat => (
+                    <div key={mat.material} className="flex items-center gap-2">
+                      <input
+                        type="number"
+                        min="1"
+                        max="100"
+                        value={mat.percentage || ''}
+                        onChange={(e) => updateMaterialPercentage(mat.material, e.target.value)}
+                        placeholder="%"
+                        className="w-16 px-2 py-1 text-sm border border-neutral-300 dark:border-neutral-600 rounded bg-white dark:bg-neutral-900 text-center"
+                      />
+                      <span className="text-sm">{mat.material}</span>
+                      <button
+                        type="button"
+                        onClick={() => removeMaterial(mat.material)}
+                        className="ml-auto text-red-500 hover:text-red-700 text-sm"
+                      >
+                        ×
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
 
           <div className="mb-4 flex gap-6">
             <label className="flex items-center gap-2 cursor-pointer">
@@ -725,7 +879,7 @@ function Home({ list, setList, token, setShowLogin, handleLogout }) {
       <hr className="border-neutral-300 dark:border-neutral-600 mb-4" />
 
       {/* Gifted filter */}
-      <div className="flex flex-wrap gap-2 mb-6">
+      <div className="flex flex-wrap gap-2 mb-4">
         <button
           onClick={() => setSelectedGifted(selectedGifted === true ? null : true)}
           className={`filter-button-sub ${selectedGifted === true ? 'active' : ''}`}
@@ -739,6 +893,36 @@ function Home({ list, setList, token, setShowLogin, handleLogout }) {
           Not Gifted ({list.filter(item => item.gifted !== 'true' && item.gifted !== true).length})
         </button>
       </div>
+
+      {/* Materials filter - only show if we have items with materials */}
+      {availableMaterials.length > 0 && (
+        <>
+          <hr className="border-neutral-300 dark:border-neutral-600 mb-4" />
+          <div className="flex flex-wrap gap-2 mb-6">
+            {availableMaterials.map(mat => {
+              const count = list.filter(item =>
+                item.materials && item.materials.some(m => m.material === mat.name)
+              ).length
+              if (count === 0) return null
+              return (
+                <button
+                  key={mat.id}
+                  onClick={() => {
+                    if (selectedMaterials.includes(mat.name)) {
+                      setSelectedMaterials(selectedMaterials.filter(m => m !== mat.name))
+                    } else {
+                      setSelectedMaterials([...selectedMaterials, mat.name])
+                    }
+                  }}
+                  className={`filter-button-sub ${selectedMaterials.includes(mat.name) ? 'active' : ''}`}
+                >
+                  {mat.name} ({count})
+                </button>
+              )
+            })}
+          </div>
+        </>
+      )}
 
       {/* Undo Delete button */}
       {deletedHistory.length > 0 && token && (

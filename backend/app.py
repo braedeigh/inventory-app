@@ -48,6 +48,14 @@ with app.app_context():
     init_db()
 
 def row_to_dict(row):
+    import json
+    materials_raw = row[12] if len(row) > 12 else None
+    materials = None
+    if materials_raw:
+        try:
+            materials = json.loads(materials_raw)
+        except:
+            materials = None
     return {
         "id": row[0],
         "itemName": row[1],
@@ -60,7 +68,8 @@ def row_to_dict(row):
         "secondhand": row[8],
         "lastEdited": row[9] if len(row) > 9 else None,
         "gifted": row[10] if len(row) > 10 else None,
-        "private": row[11] if len(row) > 11 else None
+        "private": row[11] if len(row) > 11 else None,
+        "materials": materials
     }
 
 def get_item_photos(conn, item_id):
@@ -111,6 +120,7 @@ def login():
 @app.route('/', methods=['POST'])
 @token_required
 def add_item():
+    import json as json_lib
     # Get form fields
     item_id = request.form.get('id')
     item_name = request.form.get('itemName')
@@ -124,6 +134,7 @@ def add_item():
     secondhand = request.form.get('secondhand')
     gifted = request.form.get('gifted')
     private = request.form.get('private')
+    materials = request.form.get('materials')  # JSON string
     main_photo_index = int(request.form.get('mainPhotoIndex', 0))
 
     conn = get_db()
@@ -175,8 +186,8 @@ def add_item():
 
     # Save item to database
     conn.execute(
-        'INSERT INTO item (id, item_name, description, category, origin, main_photo, created_at, subcategory, secondhand, gifted, private) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
-        [item_id, item_name, description, category, origin, main_photo_url, created_at, subcategory, secondhand, gifted, private]
+        'INSERT INTO item (id, item_name, description, category, origin, main_photo, created_at, subcategory, secondhand, gifted, private, materials) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+        [item_id, item_name, description, category, origin, main_photo_url, created_at, subcategory, secondhand, gifted, private, materials]
     )
 
     # Save photos to item_photos table
@@ -188,7 +199,7 @@ def add_item():
         ''', [photo_id, item_id, photo['url'], photo['position'], created_at])
 
     # Return the created item with photos
-    result = conn.execute('SELECT id, item_name, description, category, origin, main_photo, created_at, subcategory, secondhand, last_edited, gifted, private FROM item WHERE id=?', [item_id])
+    result = conn.execute('SELECT id, item_name, description, category, origin, main_photo, created_at, subcategory, secondhand, last_edited, gifted, private, materials FROM item WHERE id=?', [item_id])
     row = result.rows[0]
     item = row_to_dict(row)
     item['photos'] = get_item_photos(conn, item_id)
@@ -199,17 +210,22 @@ def add_item():
 @app.route('/item/<item_id>', methods=['PUT'])
 @token_required
 def update_item(item_id):
+    import json as json_lib
     data = request.json
     conn = get_db()
 
     # Get current item to check if anything changed
-    current = conn.execute('SELECT item_name, description, category, origin, subcategory, secondhand, gifted, private, last_edited FROM item WHERE id=?', [item_id])
+    current = conn.execute('SELECT item_name, description, category, origin, subcategory, secondhand, gifted, private, last_edited, materials FROM item WHERE id=?', [item_id])
     current_row = current.rows[0] if current.rows else None
 
     if not current_row:
         return jsonify({"error": "Item not found"}), 404
 
-    # Check if anything actually changed (compare first 8 fields)
+    # Convert materials to JSON string for comparison and storage
+    new_materials = data.get('materials')
+    materials_json = json_lib.dumps(new_materials) if new_materials else None
+
+    # Check if anything actually changed (compare first 8 fields + materials)
     new_values = (
         data.get('itemName'),
         data.get('description'),
@@ -218,9 +234,10 @@ def update_item(item_id):
         data.get('subcategory'),
         data.get('secondhand'),
         data.get('gifted'),
-        data.get('private')
+        data.get('private'),
+        materials_json
     )
-    current_values = tuple(current_row[:8])
+    current_values = tuple(current_row[:8]) + (current_row[9],)  # first 8 + materials
     current_last_edited = current_row[8]
 
     # Only update last_edited if data actually changed
@@ -231,12 +248,12 @@ def update_item(item_id):
 
     # Always run the UPDATE to ensure data is saved
     conn.execute('''
-        UPDATE item SET item_name=?, description=?, category=?, origin=?, subcategory=?, secondhand=?, gifted=?, private=?, last_edited=?
+        UPDATE item SET item_name=?, description=?, category=?, origin=?, subcategory=?, secondhand=?, gifted=?, private=?, last_edited=?, materials=?
         WHERE id=?
     ''', [data.get('itemName'), data.get('description'), data.get('category'),
-           data.get('origin'), data.get('subcategory'), data.get('secondhand'), data.get('gifted'), data.get('private'), last_edited, item_id])
+           data.get('origin'), data.get('subcategory'), data.get('secondhand'), data.get('gifted'), data.get('private'), last_edited, materials_json, item_id])
 
-    result = conn.execute('SELECT id, item_name, description, category, origin, main_photo, created_at, subcategory, secondhand, last_edited, gifted, private FROM item WHERE id=?', [item_id])
+    result = conn.execute('SELECT id, item_name, description, category, origin, main_photo, created_at, subcategory, secondhand, last_edited, gifted, private, materials FROM item WHERE id=?', [item_id])
     rows = result.rows
     if not rows:
         return jsonify({"error": "Item not found"}), 404
@@ -451,7 +468,7 @@ def migrate_remove_new_purchase():
 @app.route('/', methods=['GET'])
 def list_return():
     conn = get_db()
-    result = conn.execute('SELECT id, item_name, description, category, origin, main_photo, created_at, subcategory, secondhand, last_edited, gifted, private FROM item')
+    result = conn.execute('SELECT id, item_name, description, category, origin, main_photo, created_at, subcategory, secondhand, last_edited, gifted, private, materials FROM item')
     items = [row_to_dict(row) for row in result.rows]
     return jsonify(items)
 
@@ -561,7 +578,7 @@ def delete_community_item(item_id):
 @app.route('/random', methods=['GET'])
 def get_random_item():
     conn = get_db()
-    result = conn.execute('SELECT id, item_name, description, category, origin, main_photo, created_at, subcategory, secondhand, last_edited, gifted, private FROM item ORDER BY RANDOM() LIMIT 1')
+    result = conn.execute('SELECT id, item_name, description, category, origin, main_photo, created_at, subcategory, secondhand, last_edited, gifted, private, materials FROM item ORDER BY RANDOM() LIMIT 1')
     if result.rows:
         return jsonify(row_to_dict(result.rows[0]))
     return jsonify(None)
@@ -739,6 +756,75 @@ def migrate_add_private():
         return jsonify({"message": "private column added successfully"})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+
+@app.route('/migrate-add-materials', methods=['POST'])
+@token_required
+def migrate_add_materials():
+    """Create materials table and add materials column to item table"""
+    conn = get_db()
+    errors = []
+
+    # Create materials table
+    try:
+        conn.execute('''
+            CREATE TABLE IF NOT EXISTS materials (
+                id TEXT PRIMARY KEY,
+                name TEXT NOT NULL UNIQUE
+            )
+        ''')
+        # Insert default materials
+        default_materials = ['Cotton', 'Polyester', 'Rayon']
+        for mat in default_materials:
+            try:
+                conn.execute('INSERT INTO materials (id, name) VALUES (?, ?)',
+                           [str(uuid.uuid4()), mat])
+            except:
+                pass  # Already exists
+    except Exception as e:
+        errors.append(f"materials table: {str(e)}")
+
+    # Add materials column to item table
+    try:
+        conn.execute('ALTER TABLE item ADD COLUMN materials TEXT')
+    except Exception as e:
+        errors.append(f"materials column: {str(e)}")
+
+    if errors:
+        return jsonify({"message": "Migration completed with notes", "notes": errors})
+    return jsonify({"message": "Materials table and column added successfully"})
+
+@app.route('/materials', methods=['GET'])
+def get_materials():
+    """Get all available materials"""
+    conn = get_db()
+    result = conn.execute('SELECT id, name FROM materials ORDER BY name ASC')
+    materials = [{"id": row[0], "name": row[1]} for row in result.rows]
+    return jsonify(materials)
+
+@app.route('/materials', methods=['POST'])
+@token_required
+def add_material():
+    """Add a new material"""
+    data = request.json
+    name = data.get('name', '').strip()
+
+    if not name:
+        return jsonify({"error": "Material name is required"}), 400
+
+    # Capitalize first letter, lowercase rest
+    formatted_name = name[0].upper() + name[1:].lower() if len(name) > 1 else name.upper()
+
+    conn = get_db()
+
+    # Check if already exists
+    existing = conn.execute('SELECT id, name FROM materials WHERE LOWER(name) = LOWER(?)', [formatted_name])
+    if existing.rows:
+        return jsonify({"id": existing.rows[0][0], "name": existing.rows[0][1], "existed": True})
+
+    material_id = str(uuid.uuid4())
+    conn.execute('INSERT INTO materials (id, name) VALUES (?, ?)', [material_id, formatted_name])
+
+    return jsonify({"id": material_id, "name": formatted_name}), 201
 
 if __name__ == '__main__':
     app.run(debug=True, port=5000)
