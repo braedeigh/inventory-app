@@ -280,6 +280,34 @@ function ItemDetail({ list, setList, token }) {
     }
   }
 
+  const deleteMaterialFromDb = async (materialId, materialName) => {
+    if (!token) return
+    // Check if it's in use locally first
+    const inUseCount = list.filter(item =>
+      item.materials && item.materials.some(m => m.material === materialName)
+    ).length
+    if (inUseCount > 0) {
+      alert(`Cannot delete "${materialName}" - it's used by ${inUseCount} item(s)`)
+      return
+    }
+    try {
+      const response = await fetch(`${API_URL}/materials/${materialId}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      })
+      if (response.ok) {
+        setAvailableMaterials(availableMaterials.filter(m => m.id !== materialId))
+      } else {
+        const data = await response.json()
+        alert(data.error || 'Failed to delete material')
+      }
+    } catch (err) {
+      console.error('Failed to delete material:', err)
+    }
+  }
+
   const handleSetMainPhoto = async (photoId) => {
     if (!token) return
 
@@ -697,19 +725,37 @@ function ItemDetail({ list, setList, token }) {
                   <div className="flex flex-wrap gap-2 mb-3">
                     {availableMaterials.map(mat => {
                       const isSelected = editMaterials.find(m => m.material === mat.name)
+                      const inUseCount = list.filter(item =>
+                        item.materials && item.materials.some(m => m.material === mat.name)
+                      ).length
                       return (
-                        <button
-                          key={mat.id}
-                          type="button"
-                          onClick={() => isSelected ? removeMaterial(mat.name) : addMaterial(mat.name)}
-                          className={`px-3 py-1.5 text-sm rounded-lg border transition-all ${
-                            isSelected
-                              ? 'bg-green-600 text-white border-green-600'
-                              : 'bg-white dark:bg-neutral-800 border-neutral-300 dark:border-neutral-600 hover:border-green-500'
-                          }`}
-                        >
-                          {mat.name}
-                        </button>
+                        <div key={mat.id} className="relative group">
+                          <button
+                            type="button"
+                            onClick={() => isSelected ? removeMaterial(mat.name) : addMaterial(mat.name)}
+                            className={`px-3 py-1.5 text-sm rounded-lg border transition-all ${
+                              isSelected
+                                ? 'bg-green-600 text-white border-green-600'
+                                : 'bg-white dark:bg-neutral-800 border-neutral-300 dark:border-neutral-600 hover:border-green-500'
+                            }`}
+                          >
+                            {mat.name}
+                          </button>
+                          {/* Delete button - only show for unused materials */}
+                          {inUseCount === 0 && !isSelected && (
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                deleteMaterialFromDb(mat.id, mat.name)
+                              }}
+                              className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 text-white rounded-full text-xs leading-none opacity-0 group-hover:opacity-100 transition-opacity"
+                              title="Delete material"
+                            >
+                              ×
+                            </button>
+                          )}
+                        </div>
                       )
                     })}
                   </div>
