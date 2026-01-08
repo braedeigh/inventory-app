@@ -33,8 +33,10 @@ function Home({ list, setList, token, userRole, setShowLogin, handleLogout }) {
   const [selectedMaterials, setSelectedMaterials] = useState([])
   const [showFilters, setShowFilters] = useState(false)
 
-  // UI state
-  const [viewMode, setViewMode] = useState('list') // 'list' or 'cloud'
+  // UI state - default to cloud view, restore from session if available
+  const [viewMode, setViewMode] = useState(() => {
+    return sessionStorage.getItem('inventoryViewMode') || 'cloud'
+  })
   const [confirmDelete, setConfirmDelete] = useState(null)
   const [deletedHistory, setDeletedHistory] = useState([])
   const [editingIndex] = useState(null)
@@ -131,9 +133,10 @@ function Home({ list, setList, token, userRole, setShowLogin, handleLogout }) {
     }
   }
 
-  // Save scroll position before navigating to item detail
+  // Save scroll position and view mode before navigating to item detail
   const navigateToItem = (itemId, editMode = false) => {
     sessionStorage.setItem('inventoryScrollPosition', window.scrollY.toString())
+    sessionStorage.setItem('inventoryViewMode', viewMode)
     navigate(`/item/${itemId}${editMode ? '?edit=true' : ''}`)
   }
 
@@ -208,9 +211,9 @@ function Home({ list, setList, token, userRole, setShowLogin, handleLogout }) {
         <h2 className="text-3xl font-light text-green-700 dark:text-green-500">My Items</h2>
       </div>
 
-      {/* Sort, Search, and Filters Toggle */}
-      <div className="flex flex-wrap gap-4 items-center mb-4">
-        <div className="flex items-center gap-2">
+      {/* Sort controls - only in list view, on its own line */}
+      {viewMode === 'list' && (
+        <div className="flex items-center gap-2 mb-4">
           <label className="text-sm">Sort by:</label>
           <select
             value={sortOrder}
@@ -229,15 +232,10 @@ function Home({ list, setList, token, userRole, setShowLogin, handleLogout }) {
             Randomize
           </button>
         </div>
+      )}
 
-        <input
-          type="text"
-          placeholder="Search items..."
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          className="px-3 py-2 border border-neutral-300 dark:border-neutral-600 rounded-lg bg-white dark:bg-neutral-800 text-neutral-800 dark:text-neutral-100 w-48"
-        />
-
+      {/* Filters, Search, and View Toggle */}
+      <div className="flex flex-wrap gap-4 items-center mb-4">
         {/* Filters toggle button */}
         <button
           type="button"
@@ -267,8 +265,17 @@ function Home({ list, setList, token, userRole, setShowLogin, handleLogout }) {
           </button>
         )}
 
+        {/* Search - fills space between filters and view toggle */}
+        <input
+          type="text"
+          placeholder="Search items..."
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          className="flex-1 min-w-[120px] px-3 py-2 border border-neutral-300 dark:border-neutral-600 rounded-lg bg-white dark:bg-neutral-800 text-neutral-800 dark:text-neutral-100"
+        />
+
         {/* View toggle */}
-        <div className="flex items-center gap-1 ml-auto">
+        <div className="flex items-center gap-1">
           <button
             type="button"
             onClick={() => setViewMode('list')}
