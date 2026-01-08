@@ -1,7 +1,11 @@
 import './PrivateText.css'
 
-function PrivateText({ text, isAuthenticated }) {
+function PrivateText({ text, isAuthenticated, isAdmin }) {
   if (!text) return null
+
+  // Only admin can see private || text || sections
+  // Friends and logged-out users see blurred content
+  const canSeePrivate = isAdmin === true
 
   // Parse text for ||private|| sections
   const parts = []
@@ -10,7 +14,7 @@ function PrivateText({ text, isAuthenticated }) {
 
   while (remaining.length > 0) {
     const startIndex = remaining.indexOf('||')
-    
+
     if (startIndex === -1) {
       // No more private sections
       parts.push({ type: 'public', content: remaining, key: key++ })
@@ -46,8 +50,8 @@ function PrivateText({ text, isAuthenticated }) {
         if (part.type === 'public') {
           return <span key={part.key}>{part.content}</span>
         } else {
-          // Private section
-          if (isAuthenticated) {
+          // Private section - only admin can see
+          if (canSeePrivate) {
             return (
               <span key={part.key} className="private-text-revealed">
                 {part.content}

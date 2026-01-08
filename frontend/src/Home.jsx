@@ -7,8 +7,8 @@ const API_URL = 'https://bradie-inventory-api.onrender.com'
 function Home({ list, setList, token, userRole, setShowLogin, handleLogout }) {
   const isAdmin = userRole === 'admin'
 
-  // Filter out private items for non-admin users
-  const visibleList = isAdmin ? list : list.filter(item => item.private !== 'true' && item.private !== true)
+  // Show all items - private ones will be blurred for non-admin users
+  const visibleList = list
   const itemNameRef = useRef(null)
   const descriptionRef = useRef(null)
   const categoryRef = useRef(null)
@@ -1340,22 +1340,23 @@ function Home({ list, setList, token, userRole, setShowLogin, handleLogout }) {
 </thead>
           <tbody>
             {filteredAndSortedList.map((item, index) => {
-              const isPrivate = (item.private === 'true' || item.private === true) && !token
+              const isPrivateItem = item.private === 'true' || item.private === true
+              const shouldBlur = isPrivateItem && !isAdmin
               return (
               <tr
                 key={index}
                 onClick={() => {
-                  if (editingIndex !== index) {
+                  if (editingIndex !== index && !shouldBlur) {
                     navigateToItem(item.id)
                   }
                 }}
-                className="border-b border-neutral-200 dark:border-neutral-700 hover:bg-neutral-100 dark:hover:bg-neutral-800 cursor-pointer"
+                className={`border-b border-neutral-200 dark:border-neutral-700 ${shouldBlur ? 'opacity-60' : 'hover:bg-neutral-100 dark:hover:bg-neutral-800 cursor-pointer'}`}
               >
                 <td className="p-3 w-16" onClick={(e) => e.stopPropagation()}>
                   {item.mainPhoto ? (
-                    <img src={item.mainPhoto} alt={item.itemName} className={`w-12 h-12 object-cover rounded ${isPrivate ? 'blur-md' : ''}`} />
+                    <img src={item.mainPhoto} alt={item.itemName} className={`w-12 h-12 object-cover rounded ${shouldBlur ? 'blur-md' : ''}`} />
                   ) : (
-                    <div className="w-12 h-12 bg-neutral-200 dark:bg-neutral-700 rounded flex items-center justify-center text-neutral-400">+</div>
+                    <div className={`w-12 h-12 bg-neutral-200 dark:bg-neutral-700 rounded flex items-center justify-center text-neutral-400 ${shouldBlur ? 'blur-sm' : ''}`}>+</div>
                   )}
                 </td>
 
@@ -1367,7 +1368,9 @@ function Home({ list, setList, token, userRole, setShowLogin, handleLogout }) {
                       className="px-2 py-1 border rounded bg-white dark:bg-neutral-900"
                     />
                   ) : (
-                    <span className={`block truncate ${isPrivate ? 'blur-sm' : ''}`}>{item.itemName}</span>
+                    <span className={`block truncate ${shouldBlur ? 'blur-sm' : ''}`}>
+                      {shouldBlur ? 'Private Item' : item.itemName}
+                    </span>
                   )}
                 </td>
 
@@ -1379,8 +1382,8 @@ function Home({ list, setList, token, userRole, setShowLogin, handleLogout }) {
                       className="px-2 py-1 border rounded bg-white dark:bg-neutral-900 w-full"
                     />
                   ) : (
-                    <span className={`block truncate ${isPrivate ? 'blur-sm' : ''}`}>
-                      <PrivateText text={item.description} isAuthenticated={!!token} />
+                    <span className={`block truncate ${shouldBlur ? 'blur-sm' : ''}`}>
+                      {shouldBlur ? '••••••••••••••••' : <PrivateText text={item.description} isAuthenticated={!!token} isAdmin={isAdmin} />}
                     </span>
                   )}
                 </td>
@@ -1393,7 +1396,9 @@ function Home({ list, setList, token, userRole, setShowLogin, handleLogout }) {
                       className="px-2 py-1 border rounded bg-white dark:bg-neutral-900"
                     />
                   ) : (
-                    <span className={`block truncate ${isPrivate ? 'blur-sm' : ''}`}>{item.origin}</span>
+                    <span className={`block truncate ${shouldBlur ? 'blur-sm' : ''}`}>
+                      {shouldBlur ? '••••••' : item.origin}
+                    </span>
                   )}
                 </td>
                 
@@ -1431,27 +1436,28 @@ function Home({ list, setList, token, userRole, setShowLogin, handleLogout }) {
       {/* Mobile Card View */}
       <div className="md:hidden space-y-4">
         {filteredAndSortedList.map((item, index) => {
-          const isPrivate = (item.private === 'true' || item.private === true) && !token
+          const isPrivateItem = item.private === 'true' || item.private === true
+          const shouldBlur = isPrivateItem && !isAdmin
           return (
           <div
             key={index}
-            className="bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl p-4 cursor-pointer"
-            onClick={() => navigateToItem(item.id)}
+            className={`bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl p-4 ${shouldBlur ? 'opacity-60' : 'cursor-pointer'}`}
+            onClick={() => !shouldBlur && navigateToItem(item.id)}
           >
             {item.mainPhoto && (
-              <img src={item.mainPhoto} alt={item.itemName} className={`w-full max-w-[200px] h-auto rounded-lg mb-3 ${isPrivate ? 'blur-lg' : ''}`} />
+              <img src={item.mainPhoto} alt={item.itemName} className={`w-full max-w-[200px] h-auto rounded-lg mb-3 ${shouldBlur ? 'blur-lg' : ''}`} />
             )}
-            <div className={`mb-2 ${isPrivate ? 'blur-sm' : ''}`}>
-              <strong className="text-neutral-500 dark:text-neutral-400">Name:</strong> {item.itemName}
+            <div className={`mb-2 ${shouldBlur ? 'blur-sm' : ''}`}>
+              <strong className="text-neutral-500 dark:text-neutral-400">Name:</strong> {shouldBlur ? 'Private Item' : item.itemName}
             </div>
-            <div className={`mb-2 ${isPrivate ? 'blur-sm' : ''}`}>
-              <strong className="text-neutral-500 dark:text-neutral-400">Description:</strong> <PrivateText text={item.description} isAuthenticated={!!token} />
+            <div className={`mb-2 ${shouldBlur ? 'blur-sm' : ''}`}>
+              <strong className="text-neutral-500 dark:text-neutral-400">Description:</strong> {shouldBlur ? '••••••••••••••••' : <PrivateText text={item.description} isAuthenticated={!!token} isAdmin={isAdmin} />}
             </div>
-            <div className={`mb-2 ${isPrivate ? 'blur-sm' : ''}`}>
-              <strong className="text-neutral-500 dark:text-neutral-400">Category:</strong> {item.category}
+            <div className={`mb-2 ${shouldBlur ? 'blur-sm' : ''}`}>
+              <strong className="text-neutral-500 dark:text-neutral-400">Category:</strong> {shouldBlur ? '••••••' : item.category}
             </div>
-            <div className={`mb-2 ${isPrivate ? 'blur-sm' : ''}`}>
-              <strong className="text-neutral-500 dark:text-neutral-400">Origin:</strong> {item.origin}
+            <div className={`mb-2 ${shouldBlur ? 'blur-sm' : ''}`}>
+              <strong className="text-neutral-500 dark:text-neutral-400">Origin:</strong> {shouldBlur ? '••••••' : item.origin}
             </div>
             
             {isAdmin && (

@@ -655,8 +655,8 @@ function ItemDetail({ list, setList, token, userRole }) {
                 className="w-full px-3 py-2 border border-neutral-300 dark:border-neutral-600 rounded-lg bg-white dark:bg-neutral-900 min-h-[120px]"
               />
             ) : (
-              <p className={(item.private === 'true' || item.private === true) && !token ? 'blur-sm' : ''}>
-                <PrivateText text={item.description} isAuthenticated={!!token} />
+              <p className={(item.private === 'true' || item.private === true) && !isAdmin ? 'blur-sm' : ''}>
+                <PrivateText text={item.description} isAuthenticated={!!token} isAdmin={isAdmin} />
               </p>
             )}
           </div>
