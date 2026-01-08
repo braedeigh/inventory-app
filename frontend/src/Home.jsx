@@ -235,7 +235,7 @@ function Home({ list, setList, token, userRole, setShowLogin, handleLogout }) {
       )}
 
       {/* Filters, Search, and View Toggle */}
-      <div className="flex flex-wrap gap-4 items-center mb-4">
+      <div className="flex gap-4 items-center mb-4">
         {/* Filters toggle button */}
         <button
           type="button"
@@ -274,11 +274,8 @@ function Home({ list, setList, token, userRole, setShowLogin, handleLogout }) {
           className="w-48 px-3 py-2 border border-neutral-300 dark:border-neutral-600 rounded-lg bg-white dark:bg-neutral-800 text-neutral-800 dark:text-neutral-100"
         />
 
-        {/* Spacer */}
-        <div className="flex-1" />
-
         {/* View toggle */}
-        <div className="flex items-center gap-1">
+        <div className="flex items-center gap-1 ml-auto">
           <button
             type="button"
             onClick={() => setViewMode('list')}
