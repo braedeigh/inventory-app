@@ -4,6 +4,7 @@ import ItemForm from './components/ItemForm.jsx'
 import FilterPanel from './components/FilterPanel.jsx'
 import ItemTable from './components/ItemTable.jsx'
 import ItemCard from './components/ItemCard.jsx'
+import CloudView from './components/CloudView.jsx'
 import { useInventoryData, useItemFilters } from './hooks/useInventoryData.js'
 
 const API_URL = 'https://bradie-inventory-api.onrender.com'
@@ -33,6 +34,7 @@ function Home({ list, setList, token, userRole, setShowLogin, handleLogout }) {
   const [showFilters, setShowFilters] = useState(false)
 
   // UI state
+  const [viewMode, setViewMode] = useState('list') // 'list' or 'cloud'
   const [confirmDelete, setConfirmDelete] = useState(null)
   const [deletedHistory, setDeletedHistory] = useState([])
   const [editingIndex] = useState(null)
@@ -264,6 +266,34 @@ function Home({ list, setList, token, userRole, setShowLogin, handleLogout }) {
             Clear all
           </button>
         )}
+
+        {/* View toggle */}
+        <div className="flex items-center gap-1 ml-auto">
+          <button
+            type="button"
+            onClick={() => setViewMode('list')}
+            className={`px-3 py-2 border rounded-l-lg transition-all ${
+              viewMode === 'list'
+                ? 'bg-green-600 text-white border-green-600'
+                : 'bg-white dark:bg-neutral-800 border-neutral-300 dark:border-neutral-600 text-neutral-800 dark:text-neutral-100 hover:bg-neutral-100 dark:hover:bg-neutral-700'
+            }`}
+            title="List view"
+          >
+            ☰
+          </button>
+          <button
+            type="button"
+            onClick={() => setViewMode('cloud')}
+            className={`px-3 py-2 border rounded-r-lg transition-all ${
+              viewMode === 'cloud'
+                ? 'bg-green-600 text-white border-green-600'
+                : 'bg-white dark:bg-neutral-800 border-neutral-300 dark:border-neutral-600 text-neutral-800 dark:text-neutral-100 hover:bg-neutral-100 dark:hover:bg-neutral-700'
+            }`}
+            title="Cloud view"
+          >
+            ✦
+          </button>
+        </div>
       </div>
 
       {/* Collapsible Filters Section */}
@@ -297,34 +327,47 @@ function Home({ list, setList, token, userRole, setShowLogin, handleLogout }) {
         </div>
       )}
 
-      {/* Table - Desktop */}
-      <ItemTable
-        items={filteredAndSortedList}
-        isAdmin={isAdmin}
-        token={token}
-        editingIndex={editingIndex}
-        editForm={editForm}
-        setEditForm={setEditForm}
-        onNavigate={navigateToItem}
-        onDelete={handleDelete}
-      />
-
-      {/* Mobile Card View */}
-      <div className="md:hidden space-y-4">
-        {filteredAndSortedList.map((item, index) => (
-          <ItemCard
-            key={index}
-            item={item}
-            index={index}
+      {/* View Content */}
+      {viewMode === 'cloud' ? (
+        <CloudView
+          items={list}
+          filteredItems={filteredAndSortedList}
+          availableCategories={availableCategories}
+          isAdmin={isAdmin}
+          onNavigate={navigateToItem}
+        />
+      ) : (
+        <>
+          {/* Table - Desktop */}
+          <ItemTable
+            items={filteredAndSortedList}
             isAdmin={isAdmin}
             token={token}
-            confirmDelete={confirmDelete}
-            setConfirmDelete={setConfirmDelete}
-            onDelete={handleDelete}
+            editingIndex={editingIndex}
+            editForm={editForm}
+            setEditForm={setEditForm}
             onNavigate={navigateToItem}
+            onDelete={handleDelete}
           />
-        ))}
-      </div>
+
+          {/* Mobile Card View */}
+          <div className="md:hidden space-y-4">
+            {filteredAndSortedList.map((item, index) => (
+              <ItemCard
+                key={index}
+                item={item}
+                index={index}
+                isAdmin={isAdmin}
+                token={token}
+                confirmDelete={confirmDelete}
+                setConfirmDelete={setConfirmDelete}
+                onDelete={handleDelete}
+                onNavigate={navigateToItem}
+              />
+            ))}
+          </div>
+        </>
+      )}
     </div>
   )
 }
