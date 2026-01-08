@@ -364,7 +364,56 @@ function Home({ list, setList, token, setShowLogin, handleLogout }) {
     sessionStorage.setItem('inventoryScrollPosition', window.scrollY.toString())
     navigate(`/item/${itemId}${editMode ? '?edit=true' : ''}`)
   }
-  
+
+  // Helper to filter items, optionally excluding a specific filter type
+  const getFilteredItems = (excludeFilter = null) => {
+    return list.filter(item => {
+      if (searchQuery) {
+        const query = searchQuery.toLowerCase()
+        const matchesSearch =
+          item.itemName.toLowerCase().includes(query) ||
+          item.description?.toLowerCase().includes(query) ||
+          item.origin?.toLowerCase().includes(query) ||
+          item.category?.toLowerCase().includes(query) ||
+          item.subcategory?.toLowerCase().includes(query)
+        if (!matchesSearch) return false
+      }
+
+      // Category filter
+      if (excludeFilter !== 'category' && selectedCategories.length > 0 && !selectedCategories.includes(item.category)) return false
+
+      // Subcategory filter (for clothing)
+      if (excludeFilter !== 'subcategory' && item.category === 'clothing' && selectedSubcategories.length > 0) {
+        const isUncategorized = !item.subcategory || item.subcategory === ''
+        if (selectedSubcategories.includes('uncategorized') && isUncategorized) {
+          // passes
+        } else if (!selectedSubcategories.includes(item.subcategory)) {
+          return false
+        }
+      }
+
+      // Source filter
+      if (excludeFilter !== 'source' && selectedSources.length > 0 && !selectedSources.includes(item.secondhand)) return false
+
+      // Gifted filter
+      if (excludeFilter !== 'gifted' && selectedGifted !== null) {
+        const isGifted = item.gifted === 'true' || item.gifted === true
+        if (selectedGifted && !isGifted) return false
+        if (!selectedGifted && isGifted) return false
+      }
+
+      // Materials filter
+      if (excludeFilter !== 'materials' && selectedMaterials.length > 0) {
+        if (!item.materials || item.materials.length === 0) return false
+        const itemMaterialNames = item.materials.map(m => m.material)
+        const hasAnySelectedMaterial = selectedMaterials.some(mat => itemMaterialNames.includes(mat))
+        if (!hasAnySelectedMaterial) return false
+      }
+
+      return true
+    })
+  }
+
   const filteredAndSortedList = list
     .filter(item => {
       if (searchQuery) {
@@ -834,7 +883,8 @@ function Home({ list, setList, token, setShowLogin, handleLogout }) {
         
         <div className="flex flex-wrap gap-2">
           {['clothing', 'jewelry', 'sentimental', 'bedding', 'other'].map(cat => {
-            const count = list.filter(item => item.category === cat).length
+            const baseItems = getFilteredItems('category')
+            const count = baseItems.filter(item => item.category === cat).length
             return (
 <button
   key={cat}
@@ -859,7 +909,8 @@ function Home({ list, setList, token, setShowLogin, handleLogout }) {
         <div className="flex flex-wrap gap-2 mb-6">
           {/* Uncategorized filter */}
           {(() => {
-            const uncategorizedCount = list.filter(item => item.category === 'clothing' && (!item.subcategory || item.subcategory === '')).length
+            const baseItems = getFilteredItems('subcategory')
+            const uncategorizedCount = baseItems.filter(item => item.category === 'clothing' && (!item.subcategory || item.subcategory === '')).length
             return uncategorizedCount > 0 && (
               <button
                 onClick={() => {
@@ -876,7 +927,8 @@ function Home({ list, setList, token, setShowLogin, handleLogout }) {
             )
           })()}
           {['undershirt', 'shirt', 'sweater', 'jacket', 'dress', 'pants', 'shorts', 'skirt', 'shoes', 'socks', 'underwear', 'accessories', 'other'].map(sub => {
-            const count = list.filter(item => item.category === 'clothing' && item.subcategory === sub).length
+            const baseItems = getFilteredItems('subcategory')
+            const count = baseItems.filter(item => item.category === 'clothing' && item.subcategory === sub).length
             return (
 <button
   key={sub}
@@ -902,7 +954,8 @@ function Home({ list, setList, token, setShowLogin, handleLogout }) {
       {/* Source filters (new/secondhand/handmade/unknown) */}
       <div className="flex flex-wrap gap-2 mb-4">
         {['new', 'secondhand', 'handmade', 'unknown'].map(source => {
-          const count = list.filter(item => item.secondhand === source).length
+          const baseItems = getFilteredItems('source')
+          const count = baseItems.filter(item => item.secondhand === source).length
           return (
             <button
               key={source}
@@ -926,18 +979,25 @@ function Home({ list, setList, token, setShowLogin, handleLogout }) {
 
       {/* Gifted filter */}
       <div className="flex flex-wrap gap-2 mb-4">
-        <button
-          onClick={() => setSelectedGifted(selectedGifted === true ? null : true)}
-          className={`filter-button-sub ${selectedGifted === true ? 'active' : ''}`}
-        >
-          Gifted ({list.filter(item => item.gifted === 'true' || item.gifted === true).length})
-        </button>
-        <button
-          onClick={() => setSelectedGifted(selectedGifted === false ? null : false)}
-          className={`filter-button-sub ${selectedGifted === false ? 'active' : ''}`}
-        >
-          Not Gifted ({list.filter(item => item.gifted !== 'true' && item.gifted !== true).length})
-        </button>
+        {(() => {
+          const baseItems = getFilteredItems('gifted')
+          return (
+            <>
+              <button
+                onClick={() => setSelectedGifted(selectedGifted === true ? null : true)}
+                className={`filter-button-sub ${selectedGifted === true ? 'active' : ''}`}
+              >
+                Gifted ({baseItems.filter(item => item.gifted === 'true' || item.gifted === true).length})
+              </button>
+              <button
+                onClick={() => setSelectedGifted(selectedGifted === false ? null : false)}
+                className={`filter-button-sub ${selectedGifted === false ? 'active' : ''}`}
+              >
+                Not Gifted ({baseItems.filter(item => item.gifted !== 'true' && item.gifted !== true).length})
+              </button>
+            </>
+          )
+        })()}
       </div>
 
       {/* Materials filter - only show if clothing or bedding is selected */}
@@ -946,7 +1006,8 @@ function Home({ list, setList, token, setShowLogin, handleLogout }) {
           <hr className="border-neutral-300 dark:border-neutral-600 mb-4" />
           <div className="flex flex-wrap gap-2 mb-6">
             {availableMaterials.map(mat => {
-              const count = list.filter(item =>
+              const baseItems = getFilteredItems('materials')
+              const count = baseItems.filter(item =>
                 item.materials && item.materials.some(m => m.material === mat.name)
               ).length
               if (count === 0) return null
