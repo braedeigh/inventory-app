@@ -826,6 +826,94 @@ def add_material():
 
     return jsonify({"id": material_id, "name": formatted_name}), 201
 
+@app.route('/extract-item', methods=['POST'])
+@token_required
+def extract_item():
+    """Use Anthropic Claude to extract item fields from natural language description"""
+    import json as json_lib
+
+    # Check if API key is configured
+    anthropic_key = os.getenv('ANTHROPIC_API_KEY')
+    if not anthropic_key:
+        return jsonify({"error": "ANTHROPIC_API_KEY not configured"}), 503
+
+    data = request.json
+    description = data.get('description', '')
+    image_base64 = data.get('image')  # Optional base64 image
+    image_media_type = data.get('imageMediaType', 'image/jpeg')  # e.g., image/jpeg, image/png
+
+    if not description and not image_base64:
+        return jsonify({"error": "Description or image required"}), 400
+
+    try:
+        import anthropic
+        client = anthropic.Anthropic(api_key=anthropic_key)
+
+        # Get available materials for context
+        conn = get_db()
+        materials_result = conn.execute('SELECT name FROM materials ORDER BY name ASC')
+        available_materials = [row[0] for row in materials_result.rows]
+
+        # Build the extraction prompt
+        system_prompt = """You are a helpful assistant that extracts structured data from item descriptions for a personal inventory catalog.
+
+Extract the following fields from the user's description:
+- itemName: A concise name for the item
+- description: A brief description (1-2 sentences)
+- category: One of: clothing, electronics, books, furniture, kitchen, toys, tools, sports, decor, bedding, other
+- subcategory: For clothing only - one of: tops, bottoms, dresses, outerwear, shoes, accessories, underwear, swimwear, activewear, other
+- origin: Where the item was purchased/obtained (store name, website, or location)
+- materials: Array of {material: string, percentage: number} for clothing/bedding items. Use these known materials when applicable: """ + ', '.join(available_materials) + """
+- secondhand: "new" or "used" based on context
+- gifted: "yes" if it was a gift, "no" otherwise
+
+Return ONLY a valid JSON object with these fields. Use null for fields you cannot determine. For materials, only include if it's clothing or bedding and materials are mentioned."""
+
+        # Build messages with optional image
+        content = []
+        if image_base64:
+            content.append({
+                "type": "image",
+                "source": {
+                    "type": "base64",
+                    "media_type": image_media_type,
+                    "data": image_base64
+                }
+            })
+        if description:
+            content.append({
+                "type": "text",
+                "text": f"Extract inventory item data from this description:\n\n{description}"
+            })
+
+        message = client.messages.create(
+            model="claude-sonnet-4-20250514",
+            max_tokens=1024,
+            system=system_prompt,
+            messages=[
+                {"role": "user", "content": content}
+            ]
+        )
+
+        # Parse the response
+        response_text = message.content[0].text
+
+        # Try to extract JSON from the response (handle markdown code blocks)
+        if "```json" in response_text:
+            response_text = response_text.split("```json")[1].split("```")[0]
+        elif "```" in response_text:
+            response_text = response_text.split("```")[1].split("```")[0]
+
+        extracted_data = json_lib.loads(response_text.strip())
+
+        return jsonify(extracted_data)
+
+    except json_lib.JSONDecodeError as e:
+        return jsonify({"error": f"Failed to parse extraction result: {str(e)}"}), 500
+    except Exception as e:
+        return jsonify({"error": f"Extraction failed: {str(e)}"}), 500
+
+
 @app.route('/materials/<material_id>', methods=['DELETE'])
 @token_required
 def delete_material(material_id):

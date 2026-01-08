@@ -46,6 +46,15 @@ function Home({ list, setList, token, setShowLogin, handleLogout }) {
   const [availableMaterials, setAvailableMaterials] = useState([])
   const [newMaterialName, setNewMaterialName] = useState('')
 
+  // AI Assistant state
+  const [isAiExpanded, setIsAiExpanded] = useState(false)
+  const [aiDescription, setAiDescription] = useState('')
+  const [aiPhoto, setAiPhoto] = useState(null)
+  const [aiPhotoPreview, setAiPhotoPreview] = useState(null)
+  const [isExtracting, setIsExtracting] = useState(false)
+  const [isListening, setIsListening] = useState(false)
+  const [aiError, setAiError] = useState(null)
+
   const [editForm, setEditForm] = useState({
     itemName: '',
     description: '',
@@ -187,6 +196,143 @@ function Home({ list, setList, token, setShowLogin, handleLogout }) {
     } catch (err) {
       console.error('Failed to delete material:', err)
     }
+  }
+
+  // AI Assistant functions
+  const handleAiPhotoSelect = (e) => {
+    const file = e.target.files[0]
+    if (file) {
+      setAiPhoto(file)
+      setAiPhotoPreview(URL.createObjectURL(file))
+    }
+  }
+
+  const removeAiPhoto = () => {
+    if (aiPhotoPreview) URL.revokeObjectURL(aiPhotoPreview)
+    setAiPhoto(null)
+    setAiPhotoPreview(null)
+  }
+
+  const startVoiceInput = () => {
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition
+    if (!SpeechRecognition) {
+      setAiError('Speech recognition not supported in this browser')
+      return
+    }
+
+    const recognition = new SpeechRecognition()
+    recognition.continuous = true
+    recognition.interimResults = true
+    recognition.lang = 'en-US'
+
+    recognition.onstart = () => setIsListening(true)
+    recognition.onend = () => setIsListening(false)
+    recognition.onerror = (e) => {
+      setIsListening(false)
+      if (e.error !== 'no-speech') {
+        setAiError(`Speech error: ${e.error}`)
+      }
+    }
+
+    recognition.onresult = (event) => {
+      let finalTranscript = ''
+      for (let i = event.resultIndex; i < event.results.length; i++) {
+        const transcript = event.results[i][0].transcript
+        if (event.results[i].isFinal) {
+          finalTranscript += transcript
+        }
+      }
+      if (finalTranscript) {
+        setAiDescription(prev => prev + (prev ? ' ' : '') + finalTranscript)
+      }
+    }
+
+    recognition.start()
+
+    // Store recognition instance to stop it later
+    window.currentRecognition = recognition
+  }
+
+  const stopVoiceInput = () => {
+    if (window.currentRecognition) {
+      window.currentRecognition.stop()
+      window.currentRecognition = null
+    }
+    setIsListening(false)
+  }
+
+  const handleExtract = async () => {
+    if (!aiDescription && !aiPhoto) {
+      setAiError('Please provide a description or photo')
+      return
+    }
+
+    setIsExtracting(true)
+    setAiError(null)
+
+    try {
+      const body = { description: aiDescription }
+
+      // If there's a photo, convert to base64
+      if (aiPhoto) {
+        const base64 = await new Promise((resolve) => {
+          const reader = new FileReader()
+          reader.onloadend = () => {
+            const base64Data = reader.result.split(',')[1]
+            resolve(base64Data)
+          }
+          reader.readAsDataURL(aiPhoto)
+        })
+        body.image = base64
+        body.imageMediaType = aiPhoto.type || 'image/jpeg'
+      }
+
+      const response = await fetch(`${API_URL}/extract-item`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify(body)
+      })
+
+      const data = await response.json()
+
+      if (!response.ok) {
+        setAiError(data.error || 'Extraction failed')
+        setIsExtracting(false)
+        return
+      }
+
+      // Populate form fields from extraction
+      if (data.itemName) setItemName(data.itemName)
+      if (data.description) setDescription(data.description)
+      if (data.category) setCategory(data.category)
+      if (data.subcategory) setSubcategory(data.subcategory)
+      if (data.origin) setOrigin(data.origin)
+      if (data.secondhand) setSecondhand(data.secondhand)
+      if (data.gifted === 'yes') setGifted(true)
+      if (data.materials && Array.isArray(data.materials)) {
+        setMaterials(data.materials)
+      }
+
+      // Transfer AI photo to main photos section
+      if (aiPhoto && photoFiles.length < 5) {
+        setPhotoFiles(prev => [...prev, aiPhoto].slice(0, 5))
+        setPhotoPreviews(prev => [...prev, aiPhotoPreview].slice(0, 5))
+      }
+
+      // Clear AI section and collapse
+      setAiDescription('')
+      setAiPhoto(null)
+      setAiPhotoPreview(null)
+      setIsAiExpanded(false)
+
+    } catch (err) {
+      setAiError(`Error: ${err.message}`)
+    }
+
+    setIsExtracting(false)
   }
 
   const handleAddItem = async () => {
@@ -516,8 +662,117 @@ function Home({ list, setList, token, setShowLogin, handleLogout }) {
 )}
 
       {/* Add Item Form */}
-      {token && ( 
+      {token && (
 <form className="w-full md:w-3/4 mx-auto mb-10 p-4 md:p-6 bg-white dark:bg-neutral-800 rounded-xl border border-neutral-200 dark:border-neutral-700">
+
+          {/* AI Assistant Section */}
+          <div className="mb-6 border border-neutral-300 dark:border-neutral-600 rounded-lg overflow-hidden">
+            <button
+              type="button"
+              onClick={() => setIsAiExpanded(!isAiExpanded)}
+              className="w-full px-4 py-3 flex items-center justify-between bg-neutral-100 dark:bg-neutral-700 hover:bg-neutral-200 dark:hover:bg-neutral-600 transition-colors"
+            >
+              <span className="font-medium text-sm">AI Assistant</span>
+              <span className="text-lg">{isAiExpanded ? '−' : '+'}</span>
+            </button>
+
+            {isAiExpanded && (
+              <div className="p-4 space-y-4">
+                <p className="text-xs text-neutral-500 dark:text-neutral-400">
+                  Describe your item using voice or text, optionally add a photo, and let AI fill in the form.
+                </p>
+
+                {/* Description textarea with voice input */}
+                <div>
+                  <label className="block text-sm font-medium mb-1">Description:</label>
+                  <div className="relative">
+                    <textarea
+                      value={aiDescription}
+                      onChange={(e) => setAiDescription(e.target.value)}
+                      placeholder="Describe the item... (e.g., 'Blue cotton t-shirt from Target, bought new last week, size medium')"
+                      className="w-full px-3 py-2 pr-12 text-base border border-neutral-300 dark:border-neutral-600 rounded-lg bg-white dark:bg-neutral-900 text-neutral-800 dark:text-neutral-100 focus:outline-none focus:ring-2 focus:ring-green-500 min-h-[100px]"
+                    />
+                    <button
+                      type="button"
+                      onClick={isListening ? stopVoiceInput : startVoiceInput}
+                      className={`absolute bottom-2 right-2 p-2 rounded-lg transition-colors ${
+                        isListening
+                          ? 'bg-red-500 text-white animate-pulse'
+                          : 'bg-neutral-200 dark:bg-neutral-700 hover:bg-neutral-300 dark:hover:bg-neutral-600'
+                      }`}
+                      title={isListening ? 'Stop recording' : 'Start voice input'}
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/>
+                        <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
+                        <line x1="12" x2="12" y1="19" y2="22"/>
+                      </svg>
+                    </button>
+                  </div>
+                  {isListening && (
+                    <p className="mt-1 text-xs text-red-500">Recording... click mic to stop</p>
+                  )}
+                </div>
+
+                {/* Photo upload toggle */}
+                <div>
+                  {!aiPhotoPreview ? (
+                    <label className="inline-flex items-center gap-2 text-sm text-green-600 dark:text-green-400 hover:underline cursor-pointer">
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={handleAiPhotoSelect}
+                        className="hidden"
+                      />
+                      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <rect width="18" height="18" x="3" y="3" rx="2" ry="2"/>
+                        <circle cx="9" cy="9" r="2"/>
+                        <path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/>
+                      </svg>
+                      Add photo for AI context (optional, costs more)
+                    </label>
+                  ) : (
+                    <div className="flex items-start gap-3">
+                      <div className="relative">
+                        <img
+                          src={aiPhotoPreview}
+                          alt="AI context"
+                          className="w-24 h-24 object-cover rounded-lg"
+                        />
+                        <button
+                          type="button"
+                          onClick={removeAiPhoto}
+                          className="absolute -top-2 -right-2 w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center text-sm hover:bg-red-600"
+                        >
+                          ×
+                        </button>
+                      </div>
+                      <p className="text-xs text-neutral-500 dark:text-neutral-400">
+                        Photo will be used for AI analysis and added to item photos after extraction.
+                      </p>
+                    </div>
+                  )}
+                </div>
+
+                {/* Error display */}
+                {aiError && (
+                  <p className="text-sm text-red-500 bg-red-100 dark:bg-red-900/30 px-3 py-2 rounded">
+                    {aiError}
+                  </p>
+                )}
+
+                {/* Extract button */}
+                <button
+                  type="button"
+                  onClick={handleExtract}
+                  disabled={isExtracting || (!aiDescription && !aiPhoto)}
+                  className="w-full py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {isExtracting ? 'Extracting...' : 'Extract & Fill Form'}
+                </button>
+              </div>
+            )}
+          </div>
 
           <div className="mb-4">
             <label className="block text-sm font-medium mb-1">Item Name:</label>
