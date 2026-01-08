@@ -33,8 +33,10 @@ function Home({ list, setList, token, userRole, setShowLogin, handleLogout }) {
   const [selectedMaterials, setSelectedMaterials] = useState([])
   const [showFilters, setShowFilters] = useState(false)
 
-  // UI state
-  const [viewMode, setViewMode] = useState('list') // 'list' or 'cloud'
+  // UI state - default to cloud view, restore from session if available
+  const [viewMode, setViewMode] = useState(() => {
+    return sessionStorage.getItem('inventoryViewMode') || 'cloud'
+  })
   const [confirmDelete, setConfirmDelete] = useState(null)
   const [deletedHistory, setDeletedHistory] = useState([])
   const [editingIndex] = useState(null)
@@ -131,9 +133,10 @@ function Home({ list, setList, token, userRole, setShowLogin, handleLogout }) {
     }
   }
 
-  // Save scroll position before navigating to item detail
+  // Save scroll position and view mode before navigating to item detail
   const navigateToItem = (itemId, editMode = false) => {
     sessionStorage.setItem('inventoryScrollPosition', window.scrollY.toString())
+    sessionStorage.setItem('inventoryViewMode', viewMode)
     navigate(`/item/${itemId}${editMode ? '?edit=true' : ''}`)
   }
 
