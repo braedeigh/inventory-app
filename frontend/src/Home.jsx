@@ -334,15 +334,15 @@ function Home({ list, setList, token, userRole, setShowLogin, handleLogout }) {
       }
       setAiExtractedFields(filled)
 
-      // Populate form fields from extraction
-      if (data.itemName) setItemName(data.itemName)
-      if (data.description) setDescription(data.description)
-      if (data.category) setCategory(data.category)
-      if (data.subcategory) setSubcategory(data.subcategory)
-      if (data.origin) setOrigin(data.origin)
-      if (data.secondhand) setSecondhand(data.secondhand)
-      if (data.gifted === 'yes') setGifted(true)
-      if (data.materials && Array.isArray(data.materials)) {
+      // Populate form fields from extraction - only fill empty fields
+      if (data.itemName && !itemName) setItemName(data.itemName)
+      if (data.description && !description) setDescription(data.description)
+      if (data.category && !category) setCategory(data.category)
+      if (data.subcategory && !subcategory) setSubcategory(data.subcategory)
+      if (data.origin && !origin) setOrigin(data.origin)
+      if (data.secondhand && !secondhand) setSecondhand(data.secondhand)
+      if (data.gifted === 'yes' && !gifted) setGifted(true)
+      if (data.materials && Array.isArray(data.materials) && data.materials.length > 0 && materials.length === 0) {
         setMaterials(data.materials)
       }
 
