@@ -1050,9 +1050,19 @@ def migrate_add_categories():
 def get_categories():
     """Get all available categories"""
     conn = get_db()
-    result = conn.execute('SELECT id, name, display_name FROM categories ORDER BY display_name ASC')
-    categories = [{"id": row[0], "name": row[1], "displayName": row[2]} for row in result.rows]
-    return jsonify(categories)
+    try:
+        result = conn.execute('SELECT id, name, display_name FROM categories ORDER BY display_name ASC')
+        categories = [{"id": row[0], "name": row[1], "displayName": row[2]} for row in result.rows]
+        return jsonify(categories)
+    except Exception:
+        # Table doesn't exist yet - return default categories for frontend to work
+        return jsonify([
+            {"id": "default-clothing", "name": "clothing", "displayName": "Clothing"},
+            {"id": "default-jewelry", "name": "jewelry", "displayName": "Jewelry"},
+            {"id": "default-sentimental", "name": "sentimental", "displayName": "Sentimental"},
+            {"id": "default-bedding", "name": "bedding", "displayName": "Bedding"},
+            {"id": "default-other", "name": "other", "displayName": "Other"}
+        ])
 
 
 @app.route('/categories', methods=['POST'])
@@ -1106,6 +1116,141 @@ def delete_category(category_id):
     # Safe to delete
     conn.execute('DELETE FROM categories WHERE id = ?', [category_id])
     return jsonify({"message": "Category deleted"})
+
+
+# Subcategories endpoints
+@app.route('/migrate-add-subcategories', methods=['POST'])
+@token_required
+def migrate_add_subcategories():
+    """Create subcategories table with default subcategories"""
+    conn = get_db()
+    errors = []
+
+    try:
+        conn.execute('''
+            CREATE TABLE IF NOT EXISTS subcategories (
+                id TEXT PRIMARY KEY,
+                name TEXT NOT NULL UNIQUE,
+                display_name TEXT NOT NULL,
+                category TEXT NOT NULL
+            )
+        ''')
+        # Insert default subcategories for clothing
+        default_subcategories = [
+            ('undershirt', 'Undershirt', 'clothing'),
+            ('shirt', 'Shirt', 'clothing'),
+            ('sweater', 'Sweater', 'clothing'),
+            ('jacket', 'Jacket', 'clothing'),
+            ('dress', 'Dress', 'clothing'),
+            ('pants', 'Pants', 'clothing'),
+            ('shorts', 'Shorts', 'clothing'),
+            ('skirt', 'Skirt', 'clothing'),
+            ('shoes', 'Shoes', 'clothing'),
+            ('socks', 'Socks', 'clothing'),
+            ('underwear', 'Underwear', 'clothing'),
+            ('accessories', 'Accessories', 'clothing'),
+            ('other', 'Other', 'clothing')
+        ]
+        for name, display_name, category in default_subcategories:
+            try:
+                conn.execute('INSERT INTO subcategories (id, name, display_name, category) VALUES (?, ?, ?, ?)',
+                           [str(uuid.uuid4()), name, display_name, category])
+            except:
+                pass  # Already exists
+    except Exception as e:
+        errors.append(f"subcategories table: {str(e)}")
+
+    if errors:
+        return jsonify({"message": "Migration completed with notes", "notes": errors})
+    return jsonify({"message": "Subcategories table created successfully"})
+
+
+@app.route('/subcategories', methods=['GET'])
+def get_subcategories():
+    """Get all available subcategories, optionally filtered by category"""
+    conn = get_db()
+    category_filter = request.args.get('category')
+    try:
+        if category_filter:
+            result = conn.execute('SELECT id, name, display_name, category FROM subcategories WHERE category = ? ORDER BY display_name ASC', [category_filter])
+        else:
+            result = conn.execute('SELECT id, name, display_name, category FROM subcategories ORDER BY display_name ASC')
+        subcategories = [{"id": row[0], "name": row[1], "displayName": row[2], "category": row[3]} for row in result.rows]
+        return jsonify(subcategories)
+    except Exception:
+        # Table doesn't exist yet - return default subcategories for frontend to work
+        defaults = [
+            {"id": "default-undershirt", "name": "undershirt", "displayName": "Undershirt", "category": "clothing"},
+            {"id": "default-shirt", "name": "shirt", "displayName": "Shirt", "category": "clothing"},
+            {"id": "default-sweater", "name": "sweater", "displayName": "Sweater", "category": "clothing"},
+            {"id": "default-jacket", "name": "jacket", "displayName": "Jacket", "category": "clothing"},
+            {"id": "default-dress", "name": "dress", "displayName": "Dress", "category": "clothing"},
+            {"id": "default-pants", "name": "pants", "displayName": "Pants", "category": "clothing"},
+            {"id": "default-shorts", "name": "shorts", "displayName": "Shorts", "category": "clothing"},
+            {"id": "default-skirt", "name": "skirt", "displayName": "Skirt", "category": "clothing"},
+            {"id": "default-shoes", "name": "shoes", "displayName": "Shoes", "category": "clothing"},
+            {"id": "default-socks", "name": "socks", "displayName": "Socks", "category": "clothing"},
+            {"id": "default-underwear", "name": "underwear", "displayName": "Underwear", "category": "clothing"},
+            {"id": "default-accessories", "name": "accessories", "displayName": "Accessories", "category": "clothing"},
+            {"id": "default-other", "name": "other", "displayName": "Other", "category": "clothing"}
+        ]
+        if category_filter:
+            return jsonify([d for d in defaults if d["category"] == category_filter])
+        return jsonify(defaults)
+
+
+@app.route('/subcategories', methods=['POST'])
+@token_required
+def add_subcategory():
+    """Add a new subcategory"""
+    data = request.json
+    name = data.get('name', '').strip()
+    category = data.get('category', 'clothing')
+
+    if not name:
+        return jsonify({"error": "Subcategory name is required"}), 400
+
+    # Create slug (lowercase, no spaces)
+    slug = name.lower().replace(' ', '-')
+    # Display name keeps original formatting
+    display_name = name
+
+    conn = get_db()
+
+    # Check if already exists
+    existing = conn.execute('SELECT id, name, display_name, category FROM subcategories WHERE LOWER(name) = LOWER(?) AND category = ?', [slug, category])
+    if existing.rows:
+        return jsonify({"id": existing.rows[0][0], "name": existing.rows[0][1], "displayName": existing.rows[0][2], "category": existing.rows[0][3], "existed": True})
+
+    subcategory_id = str(uuid.uuid4())
+    conn.execute('INSERT INTO subcategories (id, name, display_name, category) VALUES (?, ?, ?, ?)', [subcategory_id, slug, display_name, category])
+
+    return jsonify({"id": subcategory_id, "name": slug, "displayName": display_name, "category": category}), 201
+
+
+@app.route('/subcategories/<subcategory_id>', methods=['DELETE'])
+@admin_required
+def delete_subcategory(subcategory_id):
+    """Delete a subcategory if it's not in use by any items"""
+    conn = get_db()
+
+    # Get the subcategory name first
+    subcategory = conn.execute('SELECT name FROM subcategories WHERE id = ?', [subcategory_id])
+    if not subcategory.rows:
+        return jsonify({"error": "Subcategory not found"}), 404
+
+    subcategory_name = subcategory.rows[0][0]
+
+    # Check if any items use this subcategory
+    items = conn.execute('SELECT COUNT(*) FROM item WHERE subcategory = ?', [subcategory_name])
+    count = items.rows[0][0] if items.rows else 0
+
+    if count > 0:
+        return jsonify({"error": f"Cannot delete - subcategory is used by {count} item(s)"}), 400
+
+    # Safe to delete
+    conn.execute('DELETE FROM subcategories WHERE id = ?', [subcategory_id])
+    return jsonify({"message": "Subcategory deleted"})
 
 
 if __name__ == '__main__':

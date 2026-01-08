@@ -58,6 +58,14 @@ function Home({ list, setList, token, userRole, setShowLogin, handleLogout }) {
   const [newCategoryName, setNewCategoryName] = useState('')
   const [showManageCategories, setShowManageCategories] = useState(false)
 
+  // Subcategories state
+  const [availableSubcategories, setAvailableSubcategories] = useState([])
+  const [newSubcategoryName, setNewSubcategoryName] = useState('')
+  const [showManageSubcategories, setShowManageSubcategories] = useState(false)
+
+  // Filters UI state
+  const [showFilters, setShowFilters] = useState(false)
+
   // AI Assistant state
   const [isAiExpanded, setIsAiExpanded] = useState(false)
   const [aiDescription, setAiDescription] = useState('')
@@ -128,6 +136,22 @@ function Home({ list, setList, token, userRole, setShowLogin, handleLogout }) {
       }
     }
     fetchCategories()
+  }, [])
+
+  // Fetch available subcategories
+  useEffect(() => {
+    const fetchSubcategories = async () => {
+      try {
+        const response = await fetch(`${API_URL}/subcategories`)
+        if (response.ok) {
+          const data = await response.json()
+          setAvailableSubcategories(data)
+        }
+      } catch (err) {
+        console.error('Failed to fetch subcategories:', err)
+      }
+    }
+    fetchSubcategories()
   }, [])
 
   const handleKeyDown = (e, nextRef) => {
@@ -283,6 +307,56 @@ function Home({ list, setList, token, userRole, setShowLogin, handleLogout }) {
       }
     } catch (err) {
       console.error('Failed to delete category:', err)
+    }
+  }
+
+  // Subcategory management functions
+  const addNewSubcategory = async () => {
+    if (!newSubcategoryName.trim() || !token) return
+    try {
+      const response = await fetch(`${API_URL}/subcategories`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ name: newSubcategoryName, category: 'clothing' })
+      })
+      if (response.ok) {
+        const data = await response.json()
+        if (!data.existed) {
+          setAvailableSubcategories([...availableSubcategories, data].sort((a, b) => a.displayName.localeCompare(b.displayName)))
+        }
+        setNewSubcategoryName('')
+      }
+    } catch (err) {
+      console.error('Failed to add subcategory:', err)
+    }
+  }
+
+  const deleteSubcategoryFromDb = async (subcategoryId, subcategoryName) => {
+    if (!token) return
+    // Check if it's in use locally first
+    const inUseCount = list.filter(item => item.subcategory === subcategoryName).length
+    if (inUseCount > 0) {
+      alert(`Cannot delete "${subcategoryName}" - it's used by ${inUseCount} item(s)`)
+      return
+    }
+    try {
+      const response = await fetch(`${API_URL}/subcategories/${subcategoryId}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      })
+      if (response.ok) {
+        setAvailableSubcategories(availableSubcategories.filter(s => s.id !== subcategoryId))
+      } else {
+        const data = await response.json()
+        alert(data.error || 'Failed to delete subcategory')
+      }
+    } catch (err) {
+      console.error('Failed to delete subcategory:', err)
     }
   }
 
@@ -1070,20 +1144,87 @@ function Home({ list, setList, token, userRole, setShowLogin, handleLogout }) {
                 className={`w-full px-3 py-2 text-base border border-neutral-300 dark:border-neutral-600 rounded-lg bg-white dark:bg-neutral-900 text-neutral-800 dark:text-neutral-100 focus:outline-none focus:ring-2 focus:ring-green-500 ${shouldHighlight('subcategory') && !subcategory ? aiUnfilledClass : ''}`}
               >
                 <option value="">-- Select --</option>
-                <option value="undershirt">Undershirt</option>
-                <option value="shirt">Shirt</option>
-                <option value="sweater">Sweater</option>
-                <option value="jacket">Jacket</option>
-                <option value="dress">Dress</option>
-                <option value="pants">Pants</option>
-                <option value="shorts">Shorts</option>
-                <option value="skirt">Skirt</option>
-                <option value="shoes">Shoes</option>
-                <option value="socks">Socks</option>
-                <option value="underwear">Underwear</option>
-                <option value="accessories">Accessories</option>
-                <option value="other">Other</option>
+                {availableSubcategories
+                  .filter(sub => sub.category === 'clothing')
+                  .map(sub => (
+                    <option key={sub.id} value={sub.name}>{sub.displayName}</option>
+                  ))}
               </select>
+
+              {/* Manage subcategories toggle */}
+              <button
+                type="button"
+                onClick={() => setShowManageSubcategories(!showManageSubcategories)}
+                className="mt-2 text-xs text-green-600 dark:text-green-400 hover:underline"
+              >
+                {showManageSubcategories ? '− Hide manage subcategories' : '+ Manage subcategories'}
+              </button>
+
+              {/* Manage subcategories section */}
+              {showManageSubcategories && (
+                <div className="mt-2 p-3 bg-neutral-100 dark:bg-neutral-800 rounded-lg border border-neutral-200 dark:border-neutral-700">
+                  <p className="text-xs text-neutral-500 dark:text-neutral-400 mb-2">Add or remove clothing subcategories:</p>
+
+                  {/* Existing subcategories as chips */}
+                  <div className="flex flex-wrap gap-2 mb-3">
+                    {availableSubcategories
+                      .filter(sub => sub.category === 'clothing')
+                      .map(sub => {
+                        const inUseCount = list.filter(item => item.subcategory === sub.name).length
+                        return (
+                          <div key={sub.id} className="relative group">
+                            <span className={`inline-flex items-center gap-1 px-2 py-1 text-sm rounded-lg border ${
+                              subcategory === sub.name
+                                ? 'bg-green-100 dark:bg-green-900/30 border-green-300 dark:border-green-700 text-green-700 dark:text-green-300'
+                                : 'bg-white dark:bg-neutral-700 border-neutral-300 dark:border-neutral-600'
+                            }`}>
+                              {sub.displayName}
+                              <span className="text-xs text-neutral-400">({inUseCount})</span>
+                            </span>
+                            {/* Delete button - only show for unused subcategories */}
+                            {inUseCount === 0 && isAdmin && (
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  deleteSubcategoryFromDb(sub.id, sub.name)
+                                }}
+                                className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 text-white rounded-full text-xs leading-none opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center"
+                                title="Delete subcategory"
+                              >
+                                ×
+                              </button>
+                            )}
+                          </div>
+                        )
+                      })}
+                  </div>
+
+                  {/* Add new subcategory input */}
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      value={newSubcategoryName}
+                      onChange={(e) => setNewSubcategoryName(e.target.value)}
+                      placeholder="Add new subcategory..."
+                      className="flex-1 px-3 py-2 text-sm border border-neutral-300 dark:border-neutral-600 rounded-lg bg-white dark:bg-neutral-900"
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          e.preventDefault()
+                          addNewSubcategory()
+                        }
+                      }}
+                    />
+                    <button
+                      type="button"
+                      onClick={addNewSubcategory}
+                      className="px-4 py-2 text-sm bg-green-600 text-white rounded-lg hover:bg-green-700"
+                    >
+                      Add
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
           )}
 
@@ -1358,8 +1499,8 @@ function Home({ list, setList, token, userRole, setShowLogin, handleLogout }) {
         <h2 className="text-3xl font-light text-green-700 dark:text-green-500">My Items</h2>
       </div>
 
-      {/* Filters */}
-      <div className="flex flex-wrap gap-4 items-center mb-6">
+      {/* Sort, Search, and Filters Toggle */}
+      <div className="flex flex-wrap gap-4 items-center mb-4">
         <div className="flex items-center gap-2">
           <label className="text-sm">Sort by:</label>
           <select
@@ -1390,155 +1531,203 @@ function Home({ list, setList, token, userRole, setShowLogin, handleLogout }) {
           onChange={(e) => setSearchQuery(e.target.value)}
           className="px-3 py-2 border border-neutral-300 dark:border-neutral-600 rounded-lg bg-white dark:bg-neutral-800 text-neutral-800 dark:text-neutral-100 w-48"
         />
-        
-        <div className="flex flex-wrap gap-2">
-          {availableCategories.map(cat => {
-            const baseItems = getFilteredItems('category')
-            const count = baseItems.filter(item => item.category === cat.name).length
-            return (
-<button
-  key={cat.id}
-  onClick={() => {
-    if (selectedCategories.includes(cat.name)) {
-      setSelectedCategories(selectedCategories.filter(c => c !== cat.name))
-    } else {
-      setSelectedCategories([...selectedCategories, cat.name])
-    }
-  }}
-  className={`filter-button ${selectedCategories.includes(cat.name) ? 'active' : ''}`}
->
-  {cat.displayName} ({count})
-</button>
-            )
-          })}
-        </div>
+
+        {/* Filters toggle button */}
+        <button
+          type="button"
+          onClick={() => setShowFilters(!showFilters)}
+          className={`px-4 py-2 border rounded-lg transition-all flex items-center gap-2 ${
+            showFilters || selectedCategories.length > 0 || selectedSubcategories.length > 0 || selectedSources.length > 0 || selectedGifted !== null || selectedMaterials.length > 0
+              ? 'bg-green-100 dark:bg-green-900/30 border-green-300 dark:border-green-700 text-green-700 dark:text-green-300'
+              : 'bg-white dark:bg-neutral-800 border-neutral-300 dark:border-neutral-600 text-neutral-800 dark:text-neutral-100 hover:bg-neutral-100 dark:hover:bg-neutral-700'
+          }`}
+        >
+          <span>{showFilters ? '▼' : '▶'} Filters</span>
+          {(selectedCategories.length + selectedSubcategories.length + selectedSources.length + (selectedGifted !== null ? 1 : 0) + selectedMaterials.length) > 0 && (
+            <span className="bg-green-600 text-white text-xs px-1.5 py-0.5 rounded-full">
+              {selectedCategories.length + selectedSubcategories.length + selectedSources.length + (selectedGifted !== null ? 1 : 0) + selectedMaterials.length}
+            </span>
+          )}
+        </button>
+
+        {/* Clear all filters button - only show when filters are active */}
+        {(selectedCategories.length > 0 || selectedSubcategories.length > 0 || selectedSources.length > 0 || selectedGifted !== null || selectedMaterials.length > 0) && (
+          <button
+            type="button"
+            onClick={() => {
+              setSelectedCategories([])
+              setSelectedSubcategories([])
+              setSelectedSources([])
+              setSelectedGifted(null)
+              setSelectedMaterials([])
+            }}
+            className="px-3 py-2 text-sm text-red-600 dark:text-red-400 hover:underline"
+          >
+            Clear all
+          </button>
+        )}
       </div>
 
-      {/* Subcategory filters */}
-      {selectedCategories.includes('clothing') && (
-        <div className="flex flex-wrap gap-2 mb-6">
-          {/* Uncategorized filter */}
-          {(() => {
-            const baseItems = getFilteredItems('subcategory')
-            const uncategorizedCount = baseItems.filter(item => item.category === 'clothing' && (!item.subcategory || item.subcategory === '')).length
-            return uncategorizedCount > 0 && (
-              <button
-                onClick={() => {
-                  if (selectedSubcategories.includes('uncategorized')) {
-                    setSelectedSubcategories(selectedSubcategories.filter(s => s !== 'uncategorized'))
-                  } else {
-                    setSelectedSubcategories([...selectedSubcategories, 'uncategorized'])
-                  }
-                }}
-                className={`filter-button-sub ${selectedSubcategories.includes('uncategorized') ? 'active' : ''}`}
-              >
-                Uncategorized ({uncategorizedCount})
-              </button>
-            )
-          })()}
-          {['undershirt', 'shirt', 'sweater', 'jacket', 'dress', 'pants', 'shorts', 'skirt', 'shoes', 'socks', 'underwear', 'accessories', 'other'].map(sub => {
-            const baseItems = getFilteredItems('subcategory')
-            const count = baseItems.filter(item => item.category === 'clothing' && item.subcategory === sub).length
-            return (
-<button
-  key={sub}
-  onClick={() => {
-    if (selectedSubcategories.includes(sub)) {
-      setSelectedSubcategories(selectedSubcategories.filter(s => s !== sub))
-    } else {
-      setSelectedSubcategories([...selectedSubcategories, sub])
-    }
-  }}
-  className={`filter-button-sub ${selectedSubcategories.includes(sub) ? 'active' : ''}`}
->
-  {sub.charAt(0).toUpperCase() + sub.slice(1)} ({count})
-</button>
-            )
-          })}
-        </div>
-      )}
-
-      {/* Divider */}
-      <hr className="border-neutral-300 dark:border-neutral-600 mb-4" />
-
-      {/* Source filters (new/secondhand/handmade/unknown) */}
-      <div className="flex flex-wrap gap-2 mb-4">
-        {['new', 'secondhand', 'handmade', 'unknown'].map(source => {
-          const baseItems = getFilteredItems('source')
-          const count = baseItems.filter(item => item.secondhand === source).length
-          return (
-            <button
-              key={source}
-              onClick={() => {
-                if (selectedSources.includes(source)) {
-                  setSelectedSources(selectedSources.filter(s => s !== source))
-                } else {
-                  setSelectedSources([...selectedSources, source])
-                }
-              }}
-              className={`filter-button-sub ${selectedSources.includes(source) ? 'active' : ''}`}
-            >
-              {source.charAt(0).toUpperCase() + source.slice(1)} ({count})
-            </button>
-          )
-        })}
-      </div>
-
-      {/* Divider */}
-      <hr className="border-neutral-300 dark:border-neutral-600 mb-4" />
-
-      {/* Gifted filter */}
-      <div className="flex flex-wrap gap-2 mb-4">
-        {(() => {
-          const baseItems = getFilteredItems('gifted')
-          return (
-            <>
-              <button
-                onClick={() => setSelectedGifted(selectedGifted === true ? null : true)}
-                className={`filter-button-sub ${selectedGifted === true ? 'active' : ''}`}
-              >
-                Gifted ({baseItems.filter(item => item.gifted === 'true' || item.gifted === true).length})
-              </button>
-              <button
-                onClick={() => setSelectedGifted(selectedGifted === false ? null : false)}
-                className={`filter-button-sub ${selectedGifted === false ? 'active' : ''}`}
-              >
-                Not Gifted ({baseItems.filter(item => item.gifted !== 'true' && item.gifted !== true).length})
-              </button>
-            </>
-          )
-        })()}
-      </div>
-
-      {/* Materials filter - only show if clothing or bedding is selected */}
-      {availableMaterials.length > 0 && (selectedCategories.includes('clothing') || selectedCategories.includes('bedding')) && (
-        <>
-          <hr className="border-neutral-300 dark:border-neutral-600 mb-4" />
-          <div className="flex flex-wrap gap-2 mb-6">
-            {availableMaterials.map(mat => {
-              const baseItems = getFilteredItems('materials')
-              const count = baseItems.filter(item =>
-                item.materials && item.materials.some(m => m.material === mat.name)
-              ).length
-              if (count === 0) return null
-              return (
-                <button
-                  key={mat.id}
-                  onClick={() => {
-                    if (selectedMaterials.includes(mat.name)) {
-                      setSelectedMaterials(selectedMaterials.filter(m => m !== mat.name))
-                    } else {
-                      setSelectedMaterials([...selectedMaterials, mat.name])
-                    }
-                  }}
-                  className={`filter-button-sub ${selectedMaterials.includes(mat.name) ? 'active' : ''}`}
-                >
-                  {mat.name} ({count})
-                </button>
-              )
-            })}
+      {/* Collapsible Filters Section */}
+      {showFilters && (
+        <div className="mb-6 p-4 bg-neutral-50 dark:bg-neutral-800/50 rounded-lg border border-neutral-200 dark:border-neutral-700">
+          {/* Category filters */}
+          <div className="mb-4">
+            <label className="block text-xs font-medium text-neutral-500 dark:text-neutral-400 mb-2">Categories</label>
+            <div className="flex flex-wrap gap-2">
+              {availableCategories.map(cat => {
+                const baseItems = getFilteredItems('category')
+                const count = baseItems.filter(item => item.category === cat.name).length
+                return (
+                  <button
+                    key={cat.id}
+                    onClick={() => {
+                      if (selectedCategories.includes(cat.name)) {
+                        setSelectedCategories(selectedCategories.filter(c => c !== cat.name))
+                      } else {
+                        setSelectedCategories([...selectedCategories, cat.name])
+                      }
+                    }}
+                    className={`filter-button ${selectedCategories.includes(cat.name) ? 'active' : ''}`}
+                  >
+                    {cat.displayName} ({count})
+                  </button>
+                )
+              })}
+            </div>
           </div>
-        </>
+
+          {/* Subcategory filters - only show if clothing selected */}
+          {selectedCategories.includes('clothing') && (
+            <div className="mb-4">
+              <label className="block text-xs font-medium text-neutral-500 dark:text-neutral-400 mb-2">Clothing Type</label>
+              <div className="flex flex-wrap gap-2">
+                {(() => {
+                  const baseItems = getFilteredItems('subcategory')
+                  const uncategorizedCount = baseItems.filter(item => item.category === 'clothing' && (!item.subcategory || item.subcategory === '')).length
+                  return uncategorizedCount > 0 && (
+                    <button
+                      onClick={() => {
+                        if (selectedSubcategories.includes('uncategorized')) {
+                          setSelectedSubcategories(selectedSubcategories.filter(s => s !== 'uncategorized'))
+                        } else {
+                          setSelectedSubcategories([...selectedSubcategories, 'uncategorized'])
+                        }
+                      }}
+                      className={`filter-button-sub ${selectedSubcategories.includes('uncategorized') ? 'active' : ''}`}
+                    >
+                      Uncategorized ({uncategorizedCount})
+                    </button>
+                  )
+                })()}
+                {availableSubcategories
+                  .filter(sub => sub.category === 'clothing')
+                  .map(sub => {
+                    const baseItems = getFilteredItems('subcategory')
+                    const count = baseItems.filter(item => item.category === 'clothing' && item.subcategory === sub.name).length
+                    return (
+                      <button
+                        key={sub.id}
+                        onClick={() => {
+                          if (selectedSubcategories.includes(sub.name)) {
+                            setSelectedSubcategories(selectedSubcategories.filter(s => s !== sub.name))
+                          } else {
+                            setSelectedSubcategories([...selectedSubcategories, sub.name])
+                          }
+                        }}
+                        className={`filter-button-sub ${selectedSubcategories.includes(sub.name) ? 'active' : ''}`}
+                      >
+                        {sub.displayName} ({count})
+                      </button>
+                    )
+                  })}
+              </div>
+            </div>
+          )}
+
+          {/* Source filters */}
+          <div className="mb-4">
+            <label className="block text-xs font-medium text-neutral-500 dark:text-neutral-400 mb-2">Source</label>
+            <div className="flex flex-wrap gap-2">
+              {['new', 'secondhand', 'handmade', 'unknown'].map(source => {
+                const baseItems = getFilteredItems('source')
+                const count = baseItems.filter(item => item.secondhand === source).length
+                return (
+                  <button
+                    key={source}
+                    onClick={() => {
+                      if (selectedSources.includes(source)) {
+                        setSelectedSources(selectedSources.filter(s => s !== source))
+                      } else {
+                        setSelectedSources([...selectedSources, source])
+                      }
+                    }}
+                    className={`filter-button-sub ${selectedSources.includes(source) ? 'active' : ''}`}
+                  >
+                    {source.charAt(0).toUpperCase() + source.slice(1)} ({count})
+                  </button>
+                )
+              })}
+            </div>
+          </div>
+
+          {/* Gifted filter */}
+          <div className="mb-4">
+            <label className="block text-xs font-medium text-neutral-500 dark:text-neutral-400 mb-2">Gifted</label>
+            <div className="flex flex-wrap gap-2">
+              {(() => {
+                const baseItems = getFilteredItems('gifted')
+                return (
+                  <>
+                    <button
+                      onClick={() => setSelectedGifted(selectedGifted === true ? null : true)}
+                      className={`filter-button-sub ${selectedGifted === true ? 'active' : ''}`}
+                    >
+                      Gifted ({baseItems.filter(item => item.gifted === 'true' || item.gifted === true).length})
+                    </button>
+                    <button
+                      onClick={() => setSelectedGifted(selectedGifted === false ? null : false)}
+                      className={`filter-button-sub ${selectedGifted === false ? 'active' : ''}`}
+                    >
+                      Not Gifted ({baseItems.filter(item => item.gifted !== 'true' && item.gifted !== true).length})
+                    </button>
+                  </>
+                )
+              })()}
+            </div>
+          </div>
+
+          {/* Materials filter - only show if clothing or bedding is selected */}
+          {availableMaterials.length > 0 && (selectedCategories.includes('clothing') || selectedCategories.includes('bedding')) && (
+            <div>
+              <label className="block text-xs font-medium text-neutral-500 dark:text-neutral-400 mb-2">Materials</label>
+              <div className="flex flex-wrap gap-2">
+                {availableMaterials.map(mat => {
+                  const baseItems = getFilteredItems('materials')
+                  const count = baseItems.filter(item =>
+                    item.materials && item.materials.some(m => m.material === mat.name)
+                  ).length
+                  if (count === 0) return null
+                  return (
+                    <button
+                      key={mat.id}
+                      onClick={() => {
+                        if (selectedMaterials.includes(mat.name)) {
+                          setSelectedMaterials(selectedMaterials.filter(m => m !== mat.name))
+                        } else {
+                          setSelectedMaterials([...selectedMaterials, mat.name])
+                        }
+                      }}
+                      className={`filter-button-sub ${selectedMaterials.includes(mat.name) ? 'active' : ''}`}
+                    >
+                      {mat.name} ({count})
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
+          )}
+        </div>
       )}
 
       {/* Undo Delete button */}
