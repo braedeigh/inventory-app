@@ -101,19 +101,47 @@ def token_required(f):
         return f(*args, **kwargs)
     return decorated
 
+def admin_required(f):
+    """Decorator for endpoints that require admin role"""
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        token = request.headers.get('Authorization')
+        if not token:
+            return jsonify({"error": "Token missing"}), 401
+        try:
+            token = token.replace('Bearer ', '')
+            payload = jwt.decode(token, os.getenv('JWT_SECRET', 'dev-secret'), algorithms=['HS256'])
+            if payload.get('role') != 'admin':
+                return jsonify({"error": "Admin access required"}), 403
+        except:
+            return jsonify({"error": "Invalid token"}), 401
+        return f(*args, **kwargs)
+    return decorated
+
 @app.route('/login', methods=['POST'])
 def login():
     data = request.json
     username = data.get('username')
     password = data.get('password')
-    
+
+    # Check admin credentials
     if username == os.getenv('ADMIN_USERNAME') and password == os.getenv('ADMIN_PASSWORD'):
         token = jwt.encode({
             'user': username,
+            'role': 'admin',
             'exp': datetime.utcnow() + timedelta(hours=24)
         }, os.getenv('JWT_SECRET', 'dev-secret'), algorithm='HS256')
-        return jsonify({"token": token})
-    
+        return jsonify({"token": token, "role": "admin"})
+
+    # Check friend credentials
+    if username == os.getenv('FRIEND_USERNAME') and password == os.getenv('FRIEND_PASSWORD'):
+        token = jwt.encode({
+            'user': username,
+            'role': 'friend',
+            'exp': datetime.utcnow() + timedelta(hours=24)
+        }, os.getenv('JWT_SECRET', 'dev-secret'), algorithm='HS256')
+        return jsonify({"token": token, "role": "friend"})
+
     return jsonify({"error": "Invalid credentials"}), 401
 
 
@@ -208,7 +236,7 @@ def add_item():
 
 
 @app.route('/item/<item_id>', methods=['PUT'])
-@token_required
+@admin_required
 def update_item(item_id):
     import json as json_lib
     data = request.json
@@ -260,7 +288,7 @@ def update_item(item_id):
     return jsonify(row_to_dict(rows[0]))
 
 @app.route('/item/<item_id>', methods=['DELETE'])
-@token_required
+@admin_required
 def delete_item(item_id):
     conn = get_db()
     conn.execute('DELETE FROM item WHERE id=?', [item_id])
@@ -337,7 +365,7 @@ def upload_photos(item_id):
     return jsonify({"photos": uploaded_photos})
 
 @app.route('/item/<item_id>/photos/<photo_id>', methods=['DELETE'])
-@token_required
+@admin_required
 def delete_photo(item_id, photo_id):
     """Delete a single photo"""
     conn = get_db()
@@ -372,7 +400,7 @@ def delete_photo(item_id, photo_id):
     return jsonify({"message": "Photo deleted"})
 
 @app.route('/item/<item_id>/photos/reorder', methods=['PUT'])
-@token_required
+@admin_required
 def reorder_photos(item_id):
     """Reorder photos - expects {"photoIds": ["id1", "id2", ...]} in order"""
     conn = get_db()
@@ -915,7 +943,7 @@ Return ONLY a valid JSON object with these fields. Use null for fields you canno
 
 
 @app.route('/materials/<material_id>', methods=['DELETE'])
-@token_required
+@admin_required
 def delete_material(material_id):
     """Delete a material if it's not in use by any items"""
     conn = get_db()

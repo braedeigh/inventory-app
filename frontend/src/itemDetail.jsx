@@ -4,11 +4,12 @@ import PrivateText from './PrivateText.jsx'
 
 const API_URL = 'https://bradie-inventory-api.onrender.com'
 
-function ItemDetail({ list, setList, token }) {
+function ItemDetail({ list, setList, token, userRole }) {
   const { id } = useParams()
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
-  const startInEditMode = searchParams.get('edit') === 'true'
+  const isAdmin = userRole === 'admin'
+  const startInEditMode = searchParams.get('edit') === 'true' && isAdmin
   const [isEditing, setIsEditing] = useState(startInEditMode)
   const [confirmDelete, setConfirmDelete] = useState(false)
   const item = list.find(item => item.id === id)
@@ -450,7 +451,7 @@ function ItemDetail({ list, setList, token }) {
                 </button>
               </>
             ) : (
-              token && (
+              isAdmin && (
                 <>
                   <button
                     onClick={() => setIsEditing(true)}
@@ -493,8 +494,8 @@ function ItemDetail({ list, setList, token }) {
         <div>
           {/* Main photo display */}
           <div
-            className={`aspect-square rounded-xl overflow-hidden border-2 border-dashed border-neutral-300 dark:border-neutral-600 flex items-center justify-center bg-neutral-100 dark:bg-neutral-800 ${token && photos.length < 5 ? 'cursor-pointer hover:border-green-500' : ''}`}
-            onClick={token && photos.length < 5 ? () => document.getElementById('photo-input').click() : undefined}
+            className={`aspect-square rounded-xl overflow-hidden border-2 border-dashed border-neutral-300 dark:border-neutral-600 flex items-center justify-center bg-neutral-100 dark:bg-neutral-800 ${isAdmin && photos.length < 5 ? 'cursor-pointer hover:border-green-500' : ''}`}
+            onClick={isAdmin && photos.length < 5 ? () => document.getElementById('photo-input').click() : undefined}
           >
             {loadingPhotos ? (
               <p className="text-neutral-400">Loading photos...</p>
@@ -529,7 +530,7 @@ function ItemDetail({ list, setList, token }) {
               />
             ) : (
               <p className="text-neutral-400">
-                {uploading ? 'Uploading...' : (token ? 'Click to add photo' : 'No photo')}
+                {uploading ? 'Uploading...' : (isAdmin ? 'Click to add photo' : 'No photo')}
               </p>
             )}
           </div>
@@ -563,7 +564,7 @@ function ItemDetail({ list, setList, token }) {
           )}
 
           {/* Photo management buttons (when editing) */}
-          {token && isEditing && photos.length > 0 && (
+          {isAdmin && isEditing && photos.length > 0 && (
             <div className="mt-3 flex flex-wrap gap-2">
               {selectedPhotoIndex !== 0 && (
                 <button
@@ -602,7 +603,7 @@ function ItemDetail({ list, setList, token }) {
           )}
 
           {/* Add more photos button */}
-          {token && photos.length > 0 && photos.length < 5 && (
+          {isAdmin && photos.length > 0 && photos.length < 5 && (
             <button
               type="button"
               onClick={() => document.getElementById('photo-input').click()}
@@ -612,7 +613,7 @@ function ItemDetail({ list, setList, token }) {
             </button>
           )}
 
-          {token && (
+          {isAdmin && (
             <input
               type="file"
               id="photo-input"

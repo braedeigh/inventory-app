@@ -4,7 +4,8 @@ import PrivateText from './PrivateText.jsx'
 
 const API_URL = 'https://bradie-inventory-api.onrender.com'
 
-function Home({ list, setList, token, setShowLogin, handleLogout }) {
+function Home({ list, setList, token, userRole, setShowLogin, handleLogout }) {
+  const isAdmin = userRole === 'admin'
   const itemNameRef = useRef(null)
   const descriptionRef = useRef(null)
   const categoryRef = useRef(null)
@@ -1287,7 +1288,7 @@ function Home({ list, setList, token, setShowLogin, handleLogout }) {
       )}
 
       {/* Undo Delete button */}
-      {deletedHistory.length > 0 && token && (
+      {deletedHistory.length > 0 && isAdmin && (
         <div className="flex justify-end mb-4">
           <button
             onClick={handleUndo}
@@ -1307,7 +1308,7 @@ function Home({ list, setList, token, setShowLogin, handleLogout }) {
     <th className="p-3 text-left w-1/6">Item Name</th>
     <th className="p-3 text-left">Description</th>
     <th className="p-3 text-left w-1/6">Origin</th>
-    {token && <th className="p-3 text-left w-38">Actions</th>}
+    {isAdmin && <th className="p-3 text-left w-38">Actions</th>}
   </tr>
 </thead>
           <tbody>
@@ -1369,7 +1370,7 @@ function Home({ list, setList, token, setShowLogin, handleLogout }) {
                   )}
                 </td>
                 
-                {token && (
+                {isAdmin && (
                   <td className="p-3">
                     <div className="flex gap-2">
                       <button
@@ -1426,7 +1427,7 @@ function Home({ list, setList, token, setShowLogin, handleLogout }) {
               <strong className="text-neutral-500 dark:text-neutral-400">Origin:</strong> {item.origin}
             </div>
             
-            {token && (
+            {isAdmin && (
               <div className="mt-3" onClick={(e) => e.stopPropagation()}>
                 {confirmDelete === item.id ? (
                   <div className="p-3 bg-red-100 dark:bg-red-900/30 border border-red-500 rounded-lg">

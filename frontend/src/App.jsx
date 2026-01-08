@@ -13,6 +13,7 @@ function App() {
   const [list, setList] = useState([])
   const [communityList, setCommunityList] = useState([])
   const [token, setToken] = useState(localStorage.getItem('token'))
+  const [userRole, setUserRole] = useState(localStorage.getItem('userRole'))
   const [showLogin, setShowLogin] = useState(false)
 
   // Fetch your personal inventory
@@ -38,7 +39,9 @@ function App() {
     const data = await response.json()
     if (data.token) {
       localStorage.setItem('token', data.token)
+      localStorage.setItem('userRole', data.role || 'admin')
       setToken(data.token)
+      setUserRole(data.role || 'admin')
       setShowLogin(false)
       return true
     }
@@ -47,7 +50,9 @@ function App() {
 
   const handleLogout = () => {
     localStorage.removeItem('token')
+    localStorage.removeItem('userRole')
     setToken(null)
+    setUserRole(null)
   }
 
   return (
@@ -72,23 +77,25 @@ function App() {
         } />
         
         {/* Your personal inventory */}
-        <Route path="/inventory" element={<Home 
-          list={list} 
-          setList={setList} 
-          token={token} 
-          setShowLogin={setShowLogin} 
-          handleLogout={handleLogout} 
+        <Route path="/inventory" element={<Home
+          list={list}
+          setList={setList}
+          token={token}
+          userRole={userRole}
+          setShowLogin={setShowLogin}
+          handleLogout={handleLogout}
         />} />
 
         {/* Community Show & Tell */}
         <Route path="/community" element={<CommunityPage
           token={token}
+          userRole={userRole}
           setShowLogin={setShowLogin}
           handleLogout={handleLogout}
         />} />
 
         {/* Individual Item Details */}
-        <Route path="/item/:id" element={<ItemDetail list={list} setList={setList} token={token} />} />
+        <Route path="/item/:id" element={<ItemDetail list={list} setList={setList} token={token} userRole={userRole} />} />
       </Routes>
     </div>
   )
