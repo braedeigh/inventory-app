@@ -355,3 +355,49 @@ Action: Add "Eggs (1 dozen)" to shopping_list
 - Cost tracking (how much do you spend on food per week)
 - Sharing recipes with other users
 - Integration with grocery delivery APIs
+
+### Receipt Scanning
+
+**Flow:**
+1. Take photo of receipt after shopping
+2. LLM extracts line items: item name, quantity, price, store name, date
+3. Matches to existing consumable_types or suggests new ones
+4. Adds to current_stock with purchase date and price
+5. Marks matching items as purchased in shopping_list
+
+**Purchase history tracked:**
+- What you bought
+- When you bought it
+- Where you bought it
+- How much you paid
+
+**Over time this enables:**
+- "You usually buy eggs at HEB for $3.50 but they're $4.20 at Target"
+- "Your grocery spending is up 15% this month"
+- "You bought olive oil 3 weeks ago, you usually go through a bottle in 6 weeks"
+- Price history per item
+- Preferred store per item
+
+### Updated Data Model (for Receipt Scanning)
+
+**purchases** — Receipt-level data
+- id
+- store_name
+- purchase_date
+- receipt_photo_url
+- subtotal
+- tax
+- total
+- notes
+
+**purchase_items** — Line items from receipts
+- id
+- purchase_id
+- consumable_type_id (nullable if unmatched)
+- raw_text ("LG EGGS 12CT")
+- quantity
+- unit_price
+- total_price
+- matched (boolean — did it link to a consumable_type?)
+
+This links to current_stock — when you scan a receipt, it both logs the purchase AND updates your stock.
