@@ -923,9 +923,9 @@ function ItemDetail({ list, setList, token, userRole }) {
 
           {/* Gifted checkbox */}
           <div>
-            <label className="block text-sm font-medium text-neutral-500 dark:text-neutral-400 mb-1">Gifted?</label>
             {isEditing ? (
               <label className="inline-flex items-center gap-3 cursor-pointer select-none">
+                <span className="text-sm font-medium text-neutral-500 dark:text-neutral-400">Gifted?</span>
                 <div className="relative">
                   <input
                     type="checkbox"
@@ -950,7 +950,12 @@ function ItemDetail({ list, setList, token, userRole }) {
                 </span>
               </label>
             ) : (
-              <p>{item.gifted === 'true' || item.gifted === true ? '✓ Yes' : 'No'}</p>
+              <div className="flex items-center gap-3">
+                <span className="text-sm font-medium text-neutral-500 dark:text-neutral-400">Gifted?</span>
+                <span className={`text-sm ${(item.gifted === 'true' || item.gifted === true) ? 'text-green-700 dark:text-green-400' : 'text-neutral-600 dark:text-neutral-400'}`}>
+                  {(item.gifted === 'true' || item.gifted === true) ? 'Yes, this is a gift' : 'Not a gift'}
+                </span>
+              </div>
             )}
           </div>
 
