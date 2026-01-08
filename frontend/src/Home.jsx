@@ -218,7 +218,7 @@ function Home({ list, setList, token, userRole, setShowLogin, handleLogout }) {
           <select
             value={sortOrder}
             onChange={(e) => setSortOrder(e.target.value)}
-            className="w-auto px-3 py-2 border border-neutral-300 dark:border-neutral-600 rounded-lg bg-white dark:bg-neutral-800 text-neutral-800 dark:text-neutral-100"
+            className="grow-0 w-auto px-3 py-2 border border-neutral-300 dark:border-neutral-600 rounded-lg bg-white dark:bg-neutral-800 text-neutral-800 dark:text-neutral-100"
           >
             <option value="newest">Newest first</option>
             <option value="oldest">Oldest first</option>
@@ -246,7 +246,7 @@ function Home({ list, setList, token, userRole, setShowLogin, handleLogout }) {
               : 'bg-white dark:bg-neutral-800 border-neutral-300 dark:border-neutral-600 text-neutral-800 dark:text-neutral-100 hover:bg-neutral-100 dark:hover:bg-neutral-700'
           }`}
         >
-          <span>{showFilters ? '▼' : '▶'} Filters</span>
+          <span>Filters {showFilters ? '▼' : '▶'}</span>
           {activeFilterCount > 0 && (
             <span className="bg-green-600 text-white text-xs px-1.5 py-0.5 rounded-full">
               {activeFilterCount}
