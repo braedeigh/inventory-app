@@ -897,23 +897,36 @@ function ItemDetail({ list, setList, token, userRole }) {
             </div>
           )}
 
-          {/* Gifted toggle */}
+          {/* Gifted checkbox */}
           <div>
             <label className="block text-sm font-medium text-neutral-500 dark:text-neutral-400 mb-1">Gifted?</label>
             {isEditing ? (
-              <button
-                type="button"
-                onClick={() => setEditGifted(!editGifted)}
-                className={`px-3 py-1.5 text-sm rounded-lg transition-all flex items-center gap-1.5 ${
-                  editGifted
-                    ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 ring-1 ring-green-300 dark:ring-green-600'
-                    : 'bg-neutral-100 dark:bg-neutral-700 text-neutral-600 dark:text-neutral-400 hover:bg-neutral-200 dark:hover:bg-neutral-600'
-                }`}
-              >
-                {editGifted ? '✓ Gift' : 'Gift?'}
-              </button>
+              <label className="inline-flex items-center gap-3 cursor-pointer select-none">
+                <div className="relative">
+                  <input
+                    type="checkbox"
+                    checked={editGifted}
+                    onChange={(e) => setEditGifted(e.target.checked)}
+                    className="peer sr-only"
+                  />
+                  <div className={`w-6 h-6 rounded-md border-2 transition-all flex items-center justify-center ${
+                    editGifted
+                      ? 'bg-green-500 border-green-500 dark:bg-green-600 dark:border-green-600'
+                      : 'bg-white dark:bg-neutral-800 border-neutral-300 dark:border-neutral-600 hover:border-green-400 dark:hover:border-green-500'
+                  }`}>
+                    {editGifted && (
+                      <svg className="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                      </svg>
+                    )}
+                  </div>
+                </div>
+                <span className={`text-sm ${editGifted ? 'text-green-700 dark:text-green-400' : 'text-neutral-600 dark:text-neutral-400'}`}>
+                  {editGifted ? 'Yes, this is a gift' : 'Not a gift'}
+                </span>
+              </label>
             ) : (
-              <p>{item.gifted === 'true' || item.gifted === true ? '✓ Gift' : 'No'}</p>
+              <p>{item.gifted === 'true' || item.gifted === true ? '✓ Yes' : 'No'}</p>
             )}
           </div>
 
