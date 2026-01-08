@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useMemo } from 'react'
+import { useState, useRef, useEffect, useMemo, memo } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 
 // Category colors for borders
@@ -143,6 +143,76 @@ function CloudView({
     }
   }
 
+  // Memoized item card to prevent re-renders on pan
+  const ItemCard = memo(({ item, position, isMatching, isPrivate, shouldBlurPhoto, isPanning, onNavigate }) => (
+    <motion.div
+      className={`absolute cursor-pointer select-none ${isPanning ? 'pointer-events-none' : ''}`}
+      style={{
+        left: position.x - 40,
+        top: position.y - 50,
+      }}
+      initial={{ opacity: 0, scale: 0 }}
+      animate={{
+        opacity: isMatching ? 1 : 0.15,
+        scale: isMatching ? 1 : 0.6,
+        zIndex: isMatching ? 10 : 1
+      }}
+      exit={{ opacity: 0, scale: 0 }}
+      transition={{
+        opacity: { duration: 0.15 },
+        scale: { duration: 0.15 }
+      }}
+      onClick={(e) => {
+        if (!isPanning && !isPrivate) {
+          e.stopPropagation()
+          onNavigate(item.id)
+        }
+      }}
+      whileHover={!isPanning ? { scale: isMatching ? 1.1 : 0.7 } : {}}
+    >
+      <div
+        className={`w-20 h-24 rounded-lg overflow-hidden bg-white dark:bg-neutral-800 shadow-md hover:shadow-lg transition-shadow ${isPrivate ? 'opacity-50' : ''}`}
+        style={{
+          borderWidth: 3,
+          borderStyle: 'solid',
+          borderColor: CATEGORY_COLORS[item.category] || CATEGORY_COLORS.other
+        }}
+      >
+        <div className="w-full h-14 bg-neutral-200 dark:bg-neutral-700 overflow-hidden">
+          {item.mainPhoto ? (
+            <img
+              src={item.mainPhoto}
+              alt={item.itemName}
+              className={`w-full h-full object-cover ${shouldBlurPhoto ? 'blur-md' : ''}`}
+              draggable={false}
+              loading="lazy"
+            />
+          ) : (
+            <div className="w-full h-full flex items-center justify-center text-neutral-400 text-xs">
+              No img
+            </div>
+          )}
+        </div>
+        <div className={`p-1 text-[10px] leading-tight text-center truncate ${isPrivate ? 'blur-sm' : ''}`}>
+          {isPrivate ? 'Private' : item.itemName}
+        </div>
+      </div>
+    </motion.div>
+  ))
+
+  // Pre-compute item data to avoid recalculation during render
+  const itemsData = useMemo(() => {
+    return items.map((item, index) => {
+      const isFiltered = filteredIds.has(item.id)
+      const isMatching = filteredItems.length === items.length || isFiltered
+      const position = getItemPosition(item, clusterPositions, index, isFiltered && filteredItems.length < items.length)
+      const isPrivate = (item.private === 'true' || item.private === true) && !isAdmin
+      const shouldBlurPhoto = ((item.private === 'true' || item.private === true) ||
+                               (item.privatePhotos === 'true' || item.privatePhotos === true)) && !isAdmin
+      return { item, position, isMatching, isPrivate, shouldBlurPhoto }
+    })
+  }, [items, filteredIds, filteredItems.length, clusterPositions, isAdmin])
+
   return (
     <div
       ref={containerRef}
@@ -155,102 +225,50 @@ function CloudView({
       onTouchMove={handleTouchMove}
       onTouchEnd={handleMouseUp}
     >
-      {/* Background layer for panning */}
-      <div className="cloud-bg absolute inset-0" />
-
-      {/* Category labels */}
-      {categories.map(cat => {
-        const pos = clusterPositions[cat]
-        if (!pos) return null
-        const displayName = availableCategories.find(c => c.name === cat)?.displayName || cat
-        return (
-          <motion.div
-            key={`label-${cat}`}
-            className="absolute pointer-events-none text-xs font-medium uppercase tracking-wide opacity-30"
-            style={{
-              color: CATEGORY_COLORS[cat] || CATEGORY_COLORS.other
-            }}
-            animate={{
-              x: pos.x + pan.x - 30,
-              y: pos.y + pan.y - 60
-            }}
-            transition={{ type: 'spring', stiffness: 100, damping: 20 }}
-          >
-            {displayName}
-          </motion.div>
-        )
-      })}
-
-      {/* Item cards */}
-      <AnimatePresence>
-        {items.map((item, index) => {
-          const isFiltered = filteredIds.has(item.id)
-          const isMatching = filteredItems.length === items.length || isFiltered
-          const pos = getItemPosition(item, clusterPositions, index, isFiltered && filteredItems.length < items.length)
-
-          const isPrivate = (item.private === 'true' || item.private === true) && !isAdmin
-          const shouldBlurPhoto = ((item.private === 'true' || item.private === true) ||
-                                   (item.privatePhotos === 'true' || item.privatePhotos === true)) && !isAdmin
-
+      {/* Pannable container - moves all items at once */}
+      <div
+        className="absolute inset-0"
+        style={{
+          transform: `translate(${pan.x}px, ${pan.y}px)`,
+          willChange: 'transform'
+        }}
+      >
+        {/* Category labels */}
+        {categories.map(cat => {
+          const pos = clusterPositions[cat]
+          if (!pos) return null
+          const displayName = availableCategories.find(c => c.name === cat)?.displayName || cat
           return (
-            <motion.div
-              key={item.id}
-              className={`absolute cursor-pointer select-none ${isPanning ? 'pointer-events-none' : ''}`}
-              initial={{ opacity: 0, scale: 0 }}
-              animate={{
-                x: pos.x + pan.x - 40,
-                y: pos.y + pan.y - 50,
-                opacity: isMatching ? 1 : 0.15,
-                scale: isMatching ? 1 : 0.6,
-                zIndex: isMatching ? 10 : 1
+            <div
+              key={`label-${cat}`}
+              className="absolute pointer-events-none text-xs font-medium uppercase tracking-wide opacity-30"
+              style={{
+                left: pos.x - 30,
+                top: pos.y - 60,
+                color: CATEGORY_COLORS[cat] || CATEGORY_COLORS.other
               }}
-              exit={{ opacity: 0, scale: 0 }}
-              transition={{
-                type: 'spring',
-                stiffness: 150,
-                damping: 20,
-                opacity: { duration: 0.2 }
-              }}
-              onClick={(e) => {
-                if (!isPanning && !isPrivate) {
-                  e.stopPropagation()
-                  onNavigate(item.id)
-                }
-              }}
-              whileHover={!isPanning ? { scale: isMatching ? 1.1 : 0.7 } : {}}
             >
-              <div
-                className={`w-20 h-24 rounded-lg overflow-hidden bg-white dark:bg-neutral-800 shadow-md hover:shadow-lg transition-shadow ${isPrivate ? 'opacity-50' : ''}`}
-                style={{
-                  borderWidth: 3,
-                  borderStyle: 'solid',
-                  borderColor: CATEGORY_COLORS[item.category] || CATEGORY_COLORS.other
-                }}
-              >
-                {/* Thumbnail */}
-                <div className="w-full h-14 bg-neutral-200 dark:bg-neutral-700 overflow-hidden">
-                  {item.mainPhoto ? (
-                    <img
-                      src={item.mainPhoto}
-                      alt={item.itemName}
-                      className={`w-full h-full object-cover ${shouldBlurPhoto ? 'blur-md' : ''}`}
-                      draggable={false}
-                    />
-                  ) : (
-                    <div className="w-full h-full flex items-center justify-center text-neutral-400 text-xs">
-                      No img
-                    </div>
-                  )}
-                </div>
-                {/* Name */}
-                <div className={`p-1 text-[10px] leading-tight text-center truncate ${isPrivate ? 'blur-sm' : ''}`}>
-                  {isPrivate ? 'Private' : item.itemName}
-                </div>
-              </div>
-            </motion.div>
+              {displayName}
+            </div>
           )
         })}
-      </AnimatePresence>
+
+        {/* Item cards */}
+        <AnimatePresence>
+          {itemsData.map(({ item, position, isMatching, isPrivate, shouldBlurPhoto }) => (
+            <ItemCard
+              key={item.id}
+              item={item}
+              position={position}
+              isMatching={isMatching}
+              isPrivate={isPrivate}
+              shouldBlurPhoto={shouldBlurPhoto}
+              isPanning={isPanning}
+              onNavigate={onNavigate}
+            />
+          ))}
+        </AnimatePresence>
+      </div>
 
       {/* Instructions */}
       <div className="absolute bottom-3 left-3 text-xs text-neutral-400 pointer-events-none">
