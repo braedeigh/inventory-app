@@ -58,6 +58,9 @@ function Home({ list, setList, token, userRole, setShowLogin, handleLogout }) {
   const [newCategoryName, setNewCategoryName] = useState('')
   const [showManageCategories, setShowManageCategories] = useState(false)
 
+  // Filters UI state
+  const [showFilters, setShowFilters] = useState(false)
+
   // AI Assistant state
   const [isAiExpanded, setIsAiExpanded] = useState(false)
   const [aiDescription, setAiDescription] = useState('')
@@ -1358,8 +1361,8 @@ function Home({ list, setList, token, userRole, setShowLogin, handleLogout }) {
         <h2 className="text-3xl font-light text-green-700 dark:text-green-500">My Items</h2>
       </div>
 
-      {/* Filters */}
-      <div className="flex flex-wrap gap-4 items-center mb-6">
+      {/* Sort, Search, and Filters Toggle */}
+      <div className="flex flex-wrap gap-4 items-center mb-4">
         <div className="flex items-center gap-2">
           <label className="text-sm">Sort by:</label>
           <select
@@ -1390,155 +1393,201 @@ function Home({ list, setList, token, userRole, setShowLogin, handleLogout }) {
           onChange={(e) => setSearchQuery(e.target.value)}
           className="px-3 py-2 border border-neutral-300 dark:border-neutral-600 rounded-lg bg-white dark:bg-neutral-800 text-neutral-800 dark:text-neutral-100 w-48"
         />
-        
-        <div className="flex flex-wrap gap-2">
-          {availableCategories.map(cat => {
-            const baseItems = getFilteredItems('category')
-            const count = baseItems.filter(item => item.category === cat.name).length
-            return (
-<button
-  key={cat.id}
-  onClick={() => {
-    if (selectedCategories.includes(cat.name)) {
-      setSelectedCategories(selectedCategories.filter(c => c !== cat.name))
-    } else {
-      setSelectedCategories([...selectedCategories, cat.name])
-    }
-  }}
-  className={`filter-button ${selectedCategories.includes(cat.name) ? 'active' : ''}`}
->
-  {cat.displayName} ({count})
-</button>
-            )
-          })}
-        </div>
+
+        {/* Filters toggle button */}
+        <button
+          type="button"
+          onClick={() => setShowFilters(!showFilters)}
+          className={`px-4 py-2 border rounded-lg transition-all flex items-center gap-2 ${
+            showFilters || selectedCategories.length > 0 || selectedSubcategories.length > 0 || selectedSources.length > 0 || selectedGifted !== null || selectedMaterials.length > 0
+              ? 'bg-green-100 dark:bg-green-900/30 border-green-300 dark:border-green-700 text-green-700 dark:text-green-300'
+              : 'bg-white dark:bg-neutral-800 border-neutral-300 dark:border-neutral-600 text-neutral-800 dark:text-neutral-100 hover:bg-neutral-100 dark:hover:bg-neutral-700'
+          }`}
+        >
+          <span>{showFilters ? '▼' : '▶'} Filters</span>
+          {(selectedCategories.length + selectedSubcategories.length + selectedSources.length + (selectedGifted !== null ? 1 : 0) + selectedMaterials.length) > 0 && (
+            <span className="bg-green-600 text-white text-xs px-1.5 py-0.5 rounded-full">
+              {selectedCategories.length + selectedSubcategories.length + selectedSources.length + (selectedGifted !== null ? 1 : 0) + selectedMaterials.length}
+            </span>
+          )}
+        </button>
+
+        {/* Clear all filters button - only show when filters are active */}
+        {(selectedCategories.length > 0 || selectedSubcategories.length > 0 || selectedSources.length > 0 || selectedGifted !== null || selectedMaterials.length > 0) && (
+          <button
+            type="button"
+            onClick={() => {
+              setSelectedCategories([])
+              setSelectedSubcategories([])
+              setSelectedSources([])
+              setSelectedGifted(null)
+              setSelectedMaterials([])
+            }}
+            className="px-3 py-2 text-sm text-red-600 dark:text-red-400 hover:underline"
+          >
+            Clear all
+          </button>
+        )}
       </div>
 
-      {/* Subcategory filters */}
-      {selectedCategories.includes('clothing') && (
-        <div className="flex flex-wrap gap-2 mb-6">
-          {/* Uncategorized filter */}
-          {(() => {
-            const baseItems = getFilteredItems('subcategory')
-            const uncategorizedCount = baseItems.filter(item => item.category === 'clothing' && (!item.subcategory || item.subcategory === '')).length
-            return uncategorizedCount > 0 && (
-              <button
-                onClick={() => {
-                  if (selectedSubcategories.includes('uncategorized')) {
-                    setSelectedSubcategories(selectedSubcategories.filter(s => s !== 'uncategorized'))
-                  } else {
-                    setSelectedSubcategories([...selectedSubcategories, 'uncategorized'])
-                  }
-                }}
-                className={`filter-button-sub ${selectedSubcategories.includes('uncategorized') ? 'active' : ''}`}
-              >
-                Uncategorized ({uncategorizedCount})
-              </button>
-            )
-          })()}
-          {['undershirt', 'shirt', 'sweater', 'jacket', 'dress', 'pants', 'shorts', 'skirt', 'shoes', 'socks', 'underwear', 'accessories', 'other'].map(sub => {
-            const baseItems = getFilteredItems('subcategory')
-            const count = baseItems.filter(item => item.category === 'clothing' && item.subcategory === sub).length
-            return (
-<button
-  key={sub}
-  onClick={() => {
-    if (selectedSubcategories.includes(sub)) {
-      setSelectedSubcategories(selectedSubcategories.filter(s => s !== sub))
-    } else {
-      setSelectedSubcategories([...selectedSubcategories, sub])
-    }
-  }}
-  className={`filter-button-sub ${selectedSubcategories.includes(sub) ? 'active' : ''}`}
->
-  {sub.charAt(0).toUpperCase() + sub.slice(1)} ({count})
-</button>
-            )
-          })}
-        </div>
-      )}
-
-      {/* Divider */}
-      <hr className="border-neutral-300 dark:border-neutral-600 mb-4" />
-
-      {/* Source filters (new/secondhand/handmade/unknown) */}
-      <div className="flex flex-wrap gap-2 mb-4">
-        {['new', 'secondhand', 'handmade', 'unknown'].map(source => {
-          const baseItems = getFilteredItems('source')
-          const count = baseItems.filter(item => item.secondhand === source).length
-          return (
-            <button
-              key={source}
-              onClick={() => {
-                if (selectedSources.includes(source)) {
-                  setSelectedSources(selectedSources.filter(s => s !== source))
-                } else {
-                  setSelectedSources([...selectedSources, source])
-                }
-              }}
-              className={`filter-button-sub ${selectedSources.includes(source) ? 'active' : ''}`}
-            >
-              {source.charAt(0).toUpperCase() + source.slice(1)} ({count})
-            </button>
-          )
-        })}
-      </div>
-
-      {/* Divider */}
-      <hr className="border-neutral-300 dark:border-neutral-600 mb-4" />
-
-      {/* Gifted filter */}
-      <div className="flex flex-wrap gap-2 mb-4">
-        {(() => {
-          const baseItems = getFilteredItems('gifted')
-          return (
-            <>
-              <button
-                onClick={() => setSelectedGifted(selectedGifted === true ? null : true)}
-                className={`filter-button-sub ${selectedGifted === true ? 'active' : ''}`}
-              >
-                Gifted ({baseItems.filter(item => item.gifted === 'true' || item.gifted === true).length})
-              </button>
-              <button
-                onClick={() => setSelectedGifted(selectedGifted === false ? null : false)}
-                className={`filter-button-sub ${selectedGifted === false ? 'active' : ''}`}
-              >
-                Not Gifted ({baseItems.filter(item => item.gifted !== 'true' && item.gifted !== true).length})
-              </button>
-            </>
-          )
-        })()}
-      </div>
-
-      {/* Materials filter - only show if clothing or bedding is selected */}
-      {availableMaterials.length > 0 && (selectedCategories.includes('clothing') || selectedCategories.includes('bedding')) && (
-        <>
-          <hr className="border-neutral-300 dark:border-neutral-600 mb-4" />
-          <div className="flex flex-wrap gap-2 mb-6">
-            {availableMaterials.map(mat => {
-              const baseItems = getFilteredItems('materials')
-              const count = baseItems.filter(item =>
-                item.materials && item.materials.some(m => m.material === mat.name)
-              ).length
-              if (count === 0) return null
-              return (
-                <button
-                  key={mat.id}
-                  onClick={() => {
-                    if (selectedMaterials.includes(mat.name)) {
-                      setSelectedMaterials(selectedMaterials.filter(m => m !== mat.name))
-                    } else {
-                      setSelectedMaterials([...selectedMaterials, mat.name])
-                    }
-                  }}
-                  className={`filter-button-sub ${selectedMaterials.includes(mat.name) ? 'active' : ''}`}
-                >
-                  {mat.name} ({count})
-                </button>
-              )
-            })}
+      {/* Collapsible Filters Section */}
+      {showFilters && (
+        <div className="mb-6 p-4 bg-neutral-50 dark:bg-neutral-800/50 rounded-lg border border-neutral-200 dark:border-neutral-700">
+          {/* Category filters */}
+          <div className="mb-4">
+            <label className="block text-xs font-medium text-neutral-500 dark:text-neutral-400 mb-2">Categories</label>
+            <div className="flex flex-wrap gap-2">
+              {availableCategories.map(cat => {
+                const baseItems = getFilteredItems('category')
+                const count = baseItems.filter(item => item.category === cat.name).length
+                return (
+                  <button
+                    key={cat.id}
+                    onClick={() => {
+                      if (selectedCategories.includes(cat.name)) {
+                        setSelectedCategories(selectedCategories.filter(c => c !== cat.name))
+                      } else {
+                        setSelectedCategories([...selectedCategories, cat.name])
+                      }
+                    }}
+                    className={`filter-button ${selectedCategories.includes(cat.name) ? 'active' : ''}`}
+                  >
+                    {cat.displayName} ({count})
+                  </button>
+                )
+              })}
+            </div>
           </div>
-        </>
+
+          {/* Subcategory filters - only show if clothing selected */}
+          {selectedCategories.includes('clothing') && (
+            <div className="mb-4">
+              <label className="block text-xs font-medium text-neutral-500 dark:text-neutral-400 mb-2">Clothing Type</label>
+              <div className="flex flex-wrap gap-2">
+                {(() => {
+                  const baseItems = getFilteredItems('subcategory')
+                  const uncategorizedCount = baseItems.filter(item => item.category === 'clothing' && (!item.subcategory || item.subcategory === '')).length
+                  return uncategorizedCount > 0 && (
+                    <button
+                      onClick={() => {
+                        if (selectedSubcategories.includes('uncategorized')) {
+                          setSelectedSubcategories(selectedSubcategories.filter(s => s !== 'uncategorized'))
+                        } else {
+                          setSelectedSubcategories([...selectedSubcategories, 'uncategorized'])
+                        }
+                      }}
+                      className={`filter-button-sub ${selectedSubcategories.includes('uncategorized') ? 'active' : ''}`}
+                    >
+                      Uncategorized ({uncategorizedCount})
+                    </button>
+                  )
+                })()}
+                {['undershirt', 'shirt', 'sweater', 'jacket', 'dress', 'pants', 'shorts', 'skirt', 'shoes', 'socks', 'underwear', 'accessories', 'other'].map(sub => {
+                  const baseItems = getFilteredItems('subcategory')
+                  const count = baseItems.filter(item => item.category === 'clothing' && item.subcategory === sub).length
+                  return (
+                    <button
+                      key={sub}
+                      onClick={() => {
+                        if (selectedSubcategories.includes(sub)) {
+                          setSelectedSubcategories(selectedSubcategories.filter(s => s !== sub))
+                        } else {
+                          setSelectedSubcategories([...selectedSubcategories, sub])
+                        }
+                      }}
+                      className={`filter-button-sub ${selectedSubcategories.includes(sub) ? 'active' : ''}`}
+                    >
+                      {sub.charAt(0).toUpperCase() + sub.slice(1)} ({count})
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* Source filters */}
+          <div className="mb-4">
+            <label className="block text-xs font-medium text-neutral-500 dark:text-neutral-400 mb-2">Source</label>
+            <div className="flex flex-wrap gap-2">
+              {['new', 'secondhand', 'handmade', 'unknown'].map(source => {
+                const baseItems = getFilteredItems('source')
+                const count = baseItems.filter(item => item.secondhand === source).length
+                return (
+                  <button
+                    key={source}
+                    onClick={() => {
+                      if (selectedSources.includes(source)) {
+                        setSelectedSources(selectedSources.filter(s => s !== source))
+                      } else {
+                        setSelectedSources([...selectedSources, source])
+                      }
+                    }}
+                    className={`filter-button-sub ${selectedSources.includes(source) ? 'active' : ''}`}
+                  >
+                    {source.charAt(0).toUpperCase() + source.slice(1)} ({count})
+                  </button>
+                )
+              })}
+            </div>
+          </div>
+
+          {/* Gifted filter */}
+          <div className="mb-4">
+            <label className="block text-xs font-medium text-neutral-500 dark:text-neutral-400 mb-2">Gifted</label>
+            <div className="flex flex-wrap gap-2">
+              {(() => {
+                const baseItems = getFilteredItems('gifted')
+                return (
+                  <>
+                    <button
+                      onClick={() => setSelectedGifted(selectedGifted === true ? null : true)}
+                      className={`filter-button-sub ${selectedGifted === true ? 'active' : ''}`}
+                    >
+                      Gifted ({baseItems.filter(item => item.gifted === 'true' || item.gifted === true).length})
+                    </button>
+                    <button
+                      onClick={() => setSelectedGifted(selectedGifted === false ? null : false)}
+                      className={`filter-button-sub ${selectedGifted === false ? 'active' : ''}`}
+                    >
+                      Not Gifted ({baseItems.filter(item => item.gifted !== 'true' && item.gifted !== true).length})
+                    </button>
+                  </>
+                )
+              })()}
+            </div>
+          </div>
+
+          {/* Materials filter - only show if clothing or bedding is selected */}
+          {availableMaterials.length > 0 && (selectedCategories.includes('clothing') || selectedCategories.includes('bedding')) && (
+            <div>
+              <label className="block text-xs font-medium text-neutral-500 dark:text-neutral-400 mb-2">Materials</label>
+              <div className="flex flex-wrap gap-2">
+                {availableMaterials.map(mat => {
+                  const baseItems = getFilteredItems('materials')
+                  const count = baseItems.filter(item =>
+                    item.materials && item.materials.some(m => m.material === mat.name)
+                  ).length
+                  if (count === 0) return null
+                  return (
+                    <button
+                      key={mat.id}
+                      onClick={() => {
+                        if (selectedMaterials.includes(mat.name)) {
+                          setSelectedMaterials(selectedMaterials.filter(m => m !== mat.name))
+                        } else {
+                          setSelectedMaterials([...selectedMaterials, mat.name])
+                        }
+                      }}
+                      className={`filter-button-sub ${selectedMaterials.includes(mat.name) ? 'active' : ''}`}
+                    >
+                      {mat.name} ({count})
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
+          )}
+        </div>
       )}
 
       {/* Undo Delete button */}
