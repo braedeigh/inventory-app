@@ -275,6 +275,17 @@ tr:hover {
   width: 100%;
   padding: 8px;
   box-sizing: border-box;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  margin-top: 4px;
+  margin-bottom: 10px;
+}
+
+.login-modal input[type="text"]:focus,
+.login-modal input[type="password"]:focus {
+  outline: none;
+  border-color: #4CAF50;
+  box-shadow: 0 0 0 2px rgba(76, 175, 80, 0.2);
 }
 
 .login-modal button[type="submit"] {
