@@ -167,6 +167,42 @@ CONTENT
  Fill out wishlist with "why I want it" / "why I haven't bought it"
 
 
+FLOATING CARD CLOUD VIEW
+
+A 2D spatial view where items appear as floating cards loosely clustered by category.
+
+Default state:
+- All items displayed as small cards (thumbnail + name)
+- Cards loosely grouped by category — clothing drifts toward one area, jewelry another, etc.
+- Not a rigid grid, more organic clustering
+- Color-coded borders by category
+
+Filtering behavior:
+- When you select a filter, matching items float to center/become prominent
+- Non-matching items fade out, shrink, or drift to edges
+- Adding more filters (category → subcategory → material) tightens the cluster
+- Smooth animations as cards reorganize
+
+Interaction:
+- Click and drag to pan around the space
+- Click a card to open item details
+- Maybe scroll to zoom, or keep it flat single-plane with just panning
+
+Technical approach:
+- CSS transforms for positioning
+- Framer Motion for animations
+- Calculate positions based on category/subcategory groupings
+- No need for D3 or Three.js — keep it simple
+
+Cards display:
+- Thumbnail image
+- Item name
+- Category color indicator
+- Keep them small so many fit on screen
+
+This would be an alternate view mode, not replacing the list view. Toggle between "List" and "Cloud" views.
+
+
 LATER / MAYBE
 
  PWA (installable on phone)

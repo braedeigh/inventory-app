@@ -6,6 +6,9 @@ const API_URL = 'https://bradie-inventory-api.onrender.com'
 
 function Home({ list, setList, token, userRole, setShowLogin, handleLogout }) {
   const isAdmin = userRole === 'admin'
+
+  // Show all items - private ones will be blurred for non-admin users
+  const visibleList = list
   const itemNameRef = useRef(null)
   const descriptionRef = useRef(null)
   const categoryRef = useRef(null)
@@ -43,6 +46,9 @@ function Home({ list, setList, token, userRole, setShowLogin, handleLogout }) {
   const [secondhand, setSecondhand] = useState('')
   const [gifted, setGifted] = useState(false)
   const [privateItem, setPrivateItem] = useState(false)
+  const [privatePhotos, setPrivatePhotos] = useState(false)
+  const [privateDescription, setPrivateDescription] = useState(false)
+  const [privateOrigin, setPrivateOrigin] = useState(false)
   const [materials, setMaterials] = useState([]) // [{material: 'Cotton', percentage: 80}]
   const [availableMaterials, setAvailableMaterials] = useState([])
   const [newMaterialName, setNewMaterialName] = useState('')
@@ -55,6 +61,16 @@ function Home({ list, setList, token, userRole, setShowLogin, handleLogout }) {
   const [isExtracting, setIsExtracting] = useState(false)
   const [isListening, setIsListening] = useState(false)
   const [aiError, setAiError] = useState(null)
+  const [aiExtractedFields, setAiExtractedFields] = useState(null) // Track which fields AI filled
+
+  // Helper to check if a field should be highlighted (AI was used but didn't fill it)
+  const shouldHighlight = (fieldName) => {
+    if (!aiExtractedFields) return false
+    return !aiExtractedFields[fieldName]
+  }
+
+  // CSS class for AI-unfilled fields
+  const aiUnfilledClass = 'ring-2 ring-amber-400 bg-amber-50 dark:bg-amber-900/20'
 
   const [editForm, setEditForm] = useState({
     itemName: '',
@@ -305,6 +321,19 @@ function Home({ list, setList, token, userRole, setShowLogin, handleLogout }) {
         return
       }
 
+      // Track which fields were filled by AI
+      const filled = {
+        itemName: !!data.itemName,
+        description: !!data.description,
+        category: !!data.category,
+        subcategory: !!data.subcategory,
+        origin: !!data.origin,
+        secondhand: !!data.secondhand,
+        gifted: data.gifted === 'yes' || data.gifted === 'no',
+        materials: !!(data.materials && Array.isArray(data.materials) && data.materials.length > 0)
+      }
+      setAiExtractedFields(filled)
+
       // Populate form fields from extraction
       if (data.itemName) setItemName(data.itemName)
       if (data.description) setDescription(data.description)
@@ -364,6 +393,9 @@ function Home({ list, setList, token, userRole, setShowLogin, handleLogout }) {
     formData.append('secondhand', secondhand)
     formData.append('gifted', gifted ? 'true' : 'false')
     formData.append('private', privateItem ? 'true' : 'false')
+    formData.append('privatePhotos', privatePhotos ? 'true' : 'false')
+    formData.append('privateDescription', privateDescription ? 'true' : 'false')
+    formData.append('privateOrigin', privateOrigin ? 'true' : 'false')
     formData.append('mainPhotoIndex', mainPhotoIndex)
     if (materials.length > 0) {
       formData.append('materials', JSON.stringify(materials))
@@ -393,10 +425,14 @@ function Home({ list, setList, token, userRole, setShowLogin, handleLogout }) {
       setSecondhand('')
       setGifted(false)
       setPrivateItem(false)
+      setPrivatePhotos(false)
+      setPrivateDescription(false)
+      setPrivateOrigin(false)
       setMaterials([])
       setPhotoFiles([])
       setPhotoPreviews([])
       setMainPhotoIndex(0)
+      setAiExtractedFields(null) // Clear AI highlighting
     } else {
       console.error("Failed to add item.", await response.text())
     }
@@ -514,7 +550,7 @@ function Home({ list, setList, token, userRole, setShowLogin, handleLogout }) {
 
   // Helper to filter items, optionally excluding a specific filter type
   const getFilteredItems = (excludeFilter = null) => {
-    return list.filter(item => {
+    return visibleList.filter(item => {
       if (searchQuery) {
         const query = searchQuery.toLowerCase()
         const matchesSearch =
@@ -561,7 +597,7 @@ function Home({ list, setList, token, userRole, setShowLogin, handleLogout }) {
     })
   }
 
-  const filteredAndSortedList = list
+  const filteredAndSortedList = visibleList
     .filter(item => {
       if (searchQuery) {
         const query = searchQuery.toLowerCase()
@@ -776,8 +812,8 @@ function Home({ list, setList, token, userRole, setShowLogin, handleLogout }) {
           </div>
 
           <div className="mb-4">
-            <label className="block text-sm font-medium mb-1">Item Name:</label>
-            <input 
+            <label className="block text-sm font-medium mb-1">Item Name: {shouldHighlight('itemName') && <span className="text-amber-600 text-xs ml-1">(not filled by AI)</span>}</label>
+            <input
               type="text"
               ref={itemNameRef}
               value={itemName}
@@ -785,22 +821,22 @@ function Home({ list, setList, token, userRole, setShowLogin, handleLogout }) {
                 setItemName(e.target.value)
                 setErrors({...errors, itemName: false})
               }}
-              className={`w-full px-3 py-2 text-base border rounded-lg bg-white dark:bg-neutral-900 text-neutral-800 dark:text-neutral-100 focus:outline-none focus:ring-2 focus:ring-green-500 ${errors.itemName ? 'border-red-500' : 'border-neutral-300 dark:border-neutral-600'}`}
+              className={`w-full px-3 py-2 text-base border rounded-lg bg-white dark:bg-neutral-900 text-neutral-800 dark:text-neutral-100 focus:outline-none focus:ring-2 focus:ring-green-500 ${errors.itemName ? 'border-red-500' : 'border-neutral-300 dark:border-neutral-600'} ${shouldHighlight('itemName') && !itemName ? aiUnfilledClass : ''}`}
               onKeyDown={(e) => handleKeyDown(e, descriptionRef)}
             />
             {errors.itemName && <span className="text-red-500 text-xs">Required</span>}
           </div>
 
           <div className="mb-4">
-            <label className="block text-sm font-medium mb-1">Description:</label>
-            <textarea 
+            <label className="block text-sm font-medium mb-1">Description: {shouldHighlight('description') && <span className="text-amber-600 text-xs ml-1">(not filled by AI)</span>}</label>
+            <textarea
               ref={descriptionRef}
               value={description}
               onChange={(e) => {
                 setDescription(e.target.value)
                 setErrors({...errors, description: false})
               }}
-              className={`w-full px-3 py-2 text-base border rounded-lg bg-white dark:bg-neutral-900 text-neutral-800 dark:text-neutral-100 focus:outline-none focus:ring-2 focus:ring-green-500 min-h-[100px] ${errors.description ? 'border-red-500' : 'border-neutral-300 dark:border-neutral-600'}`}
+              className={`w-full px-3 py-2 text-base border rounded-lg bg-white dark:bg-neutral-900 text-neutral-800 dark:text-neutral-100 focus:outline-none focus:ring-2 focus:ring-green-500 min-h-[100px] ${errors.description ? 'border-red-500' : 'border-neutral-300 dark:border-neutral-600'} ${shouldHighlight('description') && !description ? aiUnfilledClass : ''}`}
               onKeyDown={(e) => {
                 if (e.key === 'Enter' && !e.shiftKey) {
                   e.preventDefault()
@@ -813,8 +849,8 @@ function Home({ list, setList, token, userRole, setShowLogin, handleLogout }) {
           </div>
 
           <div className="mb-4">
-            <label className="block text-sm font-medium mb-1">Origin:</label>
-            <input 
+            <label className="block text-sm font-medium mb-1">Origin: {shouldHighlight('origin') && <span className="text-amber-600 text-xs ml-1">(not filled by AI)</span>}</label>
+            <input
               type="text"
               ref={originRef}
               value={origin}
@@ -822,22 +858,22 @@ function Home({ list, setList, token, userRole, setShowLogin, handleLogout }) {
                 setOrigin(e.target.value)
                 setErrors({...errors, origin: false})
               }}
-              className={`w-full px-3 py-2 text-base border rounded-lg bg-white dark:bg-neutral-900 text-neutral-800 dark:text-neutral-100 focus:outline-none focus:ring-2 focus:ring-green-500 ${errors.origin ? 'border-red-500' : 'border-neutral-300 dark:border-neutral-600'}`}
+              className={`w-full px-3 py-2 text-base border rounded-lg bg-white dark:bg-neutral-900 text-neutral-800 dark:text-neutral-100 focus:outline-none focus:ring-2 focus:ring-green-500 ${errors.origin ? 'border-red-500' : 'border-neutral-300 dark:border-neutral-600'} ${shouldHighlight('origin') && !origin ? aiUnfilledClass : ''}`}
               onKeyDown={(e) => handleKeyDown(e, categoryRef)}
             />
             {errors.origin && <span className="text-red-500 text-xs">Required</span>}
           </div>
 
           <div className="mb-4">
-            <label className="block text-sm font-medium mb-1">Category:</label>
-            <select 
+            <label className="block text-sm font-medium mb-1">Category: {shouldHighlight('category') && <span className="text-amber-600 text-xs ml-1">(not filled by AI)</span>}</label>
+            <select
               ref={categoryRef}
               value={category}
               onChange={(e) => {
                 setCategory(e.target.value)
                 setErrors({...errors, category: false})
               }}
-              className={`w-full px-3 py-2 text-base border rounded-lg bg-white dark:bg-neutral-900 text-neutral-800 dark:text-neutral-100 focus:outline-none focus:ring-2 focus:ring-green-500 ${errors.category ? 'border-red-500' : 'border-neutral-300 dark:border-neutral-600'}`}
+              className={`w-full px-3 py-2 text-base border rounded-lg bg-white dark:bg-neutral-900 text-neutral-800 dark:text-neutral-100 focus:outline-none focus:ring-2 focus:ring-green-500 ${errors.category ? 'border-red-500' : 'border-neutral-300 dark:border-neutral-600'} ${shouldHighlight('category') && !category ? aiUnfilledClass : ''}`}
             >
               <option value="">-- Select --</option>
               <option value="clothing">Clothing</option>
@@ -851,11 +887,11 @@ function Home({ list, setList, token, userRole, setShowLogin, handleLogout }) {
 
           {category === 'clothing' && (
             <div className="mb-4">
-              <label className="block text-sm font-medium mb-1">Subcategory:</label>
+              <label className="block text-sm font-medium mb-1">Subcategory: {shouldHighlight('subcategory') && <span className="text-amber-600 text-xs ml-1">(not filled by AI)</span>}</label>
               <select
                 value={subcategory}
                 onChange={(e) => setSubcategory(e.target.value)}
-                className="w-full px-3 py-2 text-base border border-neutral-300 dark:border-neutral-600 rounded-lg bg-white dark:bg-neutral-900 text-neutral-800 dark:text-neutral-100 focus:outline-none focus:ring-2 focus:ring-green-500"
+                className={`w-full px-3 py-2 text-base border border-neutral-300 dark:border-neutral-600 rounded-lg bg-white dark:bg-neutral-900 text-neutral-800 dark:text-neutral-100 focus:outline-none focus:ring-2 focus:ring-green-500 ${shouldHighlight('subcategory') && !subcategory ? aiUnfilledClass : ''}`}
               >
                 <option value="">-- Select --</option>
                 <option value="undershirt">Undershirt</option>
@@ -876,11 +912,11 @@ function Home({ list, setList, token, userRole, setShowLogin, handleLogout }) {
           )}
 
           <div className="mb-4">
-            <label className="block text-sm font-medium mb-1">New or Secondhand:</label>
+            <label className="block text-sm font-medium mb-1">New or Secondhand: {shouldHighlight('secondhand') && <span className="text-amber-600 text-xs ml-1">(not filled by AI)</span>}</label>
             <select
               value={secondhand}
               onChange={(e) => setSecondhand(e.target.value)}
-              className="w-full px-3 py-2 text-base border border-neutral-300 dark:border-neutral-600 rounded-lg bg-white dark:bg-neutral-900 text-neutral-800 dark:text-neutral-100 focus:outline-none focus:ring-2 focus:ring-green-500"
+              className={`w-full px-3 py-2 text-base border border-neutral-300 dark:border-neutral-600 rounded-lg bg-white dark:bg-neutral-900 text-neutral-800 dark:text-neutral-100 focus:outline-none focus:ring-2 focus:ring-green-500 ${shouldHighlight('secondhand') && !secondhand ? aiUnfilledClass : ''}`}
             >
               <option value="">-- Select --</option>
               <option value="new">New</option>
@@ -892,8 +928,8 @@ function Home({ list, setList, token, userRole, setShowLogin, handleLogout }) {
 
           {/* Materials section - only for clothing and bedding */}
           {(category === 'clothing' || category === 'bedding') && (
-            <div className="mb-4">
-              <label className="block text-sm font-medium mb-2">Materials:</label>
+            <div className={`mb-4 ${shouldHighlight('materials') && materials.length === 0 ? 'p-3 rounded-lg ' + aiUnfilledClass : ''}`}>
+              <label className="block text-sm font-medium mb-2">Materials: {shouldHighlight('materials') && <span className="text-amber-600 text-xs ml-1">(not filled by AI)</span>}</label>
 
               {/* Available materials as buttons */}
               <div className="flex flex-wrap gap-2 mb-3">
@@ -998,15 +1034,63 @@ function Home({ list, setList, token, userRole, setShowLogin, handleLogout }) {
               />
               <span className="text-sm font-medium">Gifted?</span>
             </label>
-            <label className="flex items-center gap-2 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={privateItem}
-                onChange={(e) => setPrivateItem(e.target.checked)}
-                className="w-5 h-5 rounded border-neutral-300 dark:border-neutral-600 text-green-600 focus:ring-green-500"
-              />
-              <span className="text-sm font-medium">Private?</span>
-            </label>
+          </div>
+
+          {/* Privacy Controls */}
+          <div className="mb-4 p-3 border border-neutral-300 dark:border-neutral-600 rounded-lg bg-neutral-50 dark:bg-neutral-800/50">
+            <button
+              type="button"
+              onClick={() => setPrivateItem(!privateItem)}
+              className={`w-full flex items-center justify-between p-2 rounded-lg transition-colors ${
+                privateItem
+                  ? 'bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300'
+                  : 'bg-neutral-100 dark:bg-neutral-700 text-neutral-600 dark:text-neutral-400'
+              }`}
+            >
+              <span className="font-medium">Private Item?</span>
+              <span className={`text-xs px-2 py-1 rounded ${privateItem ? 'bg-purple-200 dark:bg-purple-800' : 'bg-neutral-200 dark:bg-neutral-600'}`}>
+                {privateItem ? 'Hidden from public' : 'Visible'}
+              </span>
+            </button>
+
+            <div className="mt-3 pt-3 border-t border-neutral-200 dark:border-neutral-700">
+              <p className="text-xs text-neutral-500 dark:text-neutral-400 mb-2">Or hide specific fields:</p>
+              <div className="flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  onClick={() => setPrivatePhotos(!privatePhotos)}
+                  className={`px-3 py-1.5 text-sm rounded-full transition-colors ${
+                    privatePhotos
+                      ? 'bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 ring-1 ring-purple-300 dark:ring-purple-700'
+                      : 'bg-neutral-100 dark:bg-neutral-700 text-neutral-600 dark:text-neutral-400 hover:bg-neutral-200 dark:hover:bg-neutral-600'
+                  }`}
+                >
+                  Photos {privatePhotos && '🔒'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setPrivateDescription(!privateDescription)}
+                  className={`px-3 py-1.5 text-sm rounded-full transition-colors ${
+                    privateDescription
+                      ? 'bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 ring-1 ring-purple-300 dark:ring-purple-700'
+                      : 'bg-neutral-100 dark:bg-neutral-700 text-neutral-600 dark:text-neutral-400 hover:bg-neutral-200 dark:hover:bg-neutral-600'
+                  }`}
+                >
+                  Description {privateDescription && '🔒'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setPrivateOrigin(!privateOrigin)}
+                  className={`px-3 py-1.5 text-sm rounded-full transition-colors ${
+                    privateOrigin
+                      ? 'bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 ring-1 ring-purple-300 dark:ring-purple-700'
+                      : 'bg-neutral-100 dark:bg-neutral-700 text-neutral-600 dark:text-neutral-400 hover:bg-neutral-200 dark:hover:bg-neutral-600'
+                  }`}
+                >
+                  Origin {privateOrigin && '🔒'}
+                </button>
+              </div>
+            </div>
           </div>
 
 <div className="mb-4">
@@ -1313,22 +1397,26 @@ function Home({ list, setList, token, userRole, setShowLogin, handleLogout }) {
 </thead>
           <tbody>
             {filteredAndSortedList.map((item, index) => {
-              const isPrivate = (item.private === 'true' || item.private === true) && !token
+              const isPrivateItem = item.private === 'true' || item.private === true
+              const shouldBlur = isPrivateItem && !isAdmin
+              const shouldBlurPhotos = ((item.private === 'true' || item.private === true) || (item.privatePhotos === 'true' || item.privatePhotos === true)) && !isAdmin
+              const shouldBlurDescription = ((item.private === 'true' || item.private === true) || (item.privateDescription === 'true' || item.privateDescription === true)) && !isAdmin
+              const shouldBlurOrigin = ((item.private === 'true' || item.private === true) || (item.privateOrigin === 'true' || item.privateOrigin === true)) && !isAdmin
               return (
               <tr
                 key={index}
                 onClick={() => {
-                  if (editingIndex !== index) {
+                  if (editingIndex !== index && !shouldBlur) {
                     navigateToItem(item.id)
                   }
                 }}
-                className="border-b border-neutral-200 dark:border-neutral-700 hover:bg-neutral-100 dark:hover:bg-neutral-800 cursor-pointer"
+                className={`border-b border-neutral-200 dark:border-neutral-700 ${shouldBlur ? 'opacity-60' : 'hover:bg-neutral-100 dark:hover:bg-neutral-800 cursor-pointer'}`}
               >
                 <td className="p-3 w-16" onClick={(e) => e.stopPropagation()}>
                   {item.mainPhoto ? (
-                    <img src={item.mainPhoto} alt={item.itemName} className={`w-12 h-12 object-cover rounded ${isPrivate ? 'blur-md' : ''}`} />
+                    <img src={item.mainPhoto} alt={item.itemName} className={`w-12 h-12 object-cover rounded ${shouldBlurPhotos ? 'blur-md' : ''}`} />
                   ) : (
-                    <div className="w-12 h-12 bg-neutral-200 dark:bg-neutral-700 rounded flex items-center justify-center text-neutral-400">+</div>
+                    <div className={`w-12 h-12 bg-neutral-200 dark:bg-neutral-700 rounded flex items-center justify-center text-neutral-400 ${shouldBlurPhotos ? 'blur-sm' : ''}`}>+</div>
                   )}
                 </td>
 
@@ -1340,7 +1428,9 @@ function Home({ list, setList, token, userRole, setShowLogin, handleLogout }) {
                       className="px-2 py-1 border rounded bg-white dark:bg-neutral-900"
                     />
                   ) : (
-                    <span className={`block truncate ${isPrivate ? 'blur-sm' : ''}`}>{item.itemName}</span>
+                    <span className={`block truncate ${shouldBlur ? 'blur-sm' : ''}`}>
+                      {shouldBlur ? 'Private Item' : item.itemName}
+                    </span>
                   )}
                 </td>
 
@@ -1352,8 +1442,8 @@ function Home({ list, setList, token, userRole, setShowLogin, handleLogout }) {
                       className="px-2 py-1 border rounded bg-white dark:bg-neutral-900 w-full"
                     />
                   ) : (
-                    <span className={`block truncate ${isPrivate ? 'blur-sm' : ''}`}>
-                      <PrivateText text={item.description} isAuthenticated={!!token} />
+                    <span className={`block truncate ${shouldBlurDescription ? 'blur-sm' : ''}`}>
+                      {shouldBlurDescription ? '••••••••••••••••' : <PrivateText text={item.description} isAuthenticated={!!token} isAdmin={isAdmin} />}
                     </span>
                   )}
                 </td>
@@ -1366,7 +1456,9 @@ function Home({ list, setList, token, userRole, setShowLogin, handleLogout }) {
                       className="px-2 py-1 border rounded bg-white dark:bg-neutral-900"
                     />
                   ) : (
-                    <span className={`block truncate ${isPrivate ? 'blur-sm' : ''}`}>{item.origin}</span>
+                    <span className={`block truncate ${shouldBlurOrigin ? 'blur-sm' : ''}`}>
+                      {shouldBlurOrigin ? '••••••' : item.origin}
+                    </span>
                   )}
                 </td>
                 
@@ -1404,27 +1496,31 @@ function Home({ list, setList, token, userRole, setShowLogin, handleLogout }) {
       {/* Mobile Card View */}
       <div className="md:hidden space-y-4">
         {filteredAndSortedList.map((item, index) => {
-          const isPrivate = (item.private === 'true' || item.private === true) && !token
+          const isPrivateItem = item.private === 'true' || item.private === true
+          const shouldBlur = isPrivateItem && !isAdmin
+          const shouldBlurPhotos = ((item.private === 'true' || item.private === true) || (item.privatePhotos === 'true' || item.privatePhotos === true)) && !isAdmin
+          const shouldBlurDescription = ((item.private === 'true' || item.private === true) || (item.privateDescription === 'true' || item.privateDescription === true)) && !isAdmin
+          const shouldBlurOrigin = ((item.private === 'true' || item.private === true) || (item.privateOrigin === 'true' || item.privateOrigin === true)) && !isAdmin
           return (
           <div
             key={index}
-            className="bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl p-4 cursor-pointer"
-            onClick={() => navigateToItem(item.id)}
+            className={`bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl p-4 ${shouldBlur ? 'opacity-60' : 'cursor-pointer'}`}
+            onClick={() => !shouldBlur && navigateToItem(item.id)}
           >
             {item.mainPhoto && (
-              <img src={item.mainPhoto} alt={item.itemName} className={`w-full max-w-[200px] h-auto rounded-lg mb-3 ${isPrivate ? 'blur-lg' : ''}`} />
+              <img src={item.mainPhoto} alt={item.itemName} className={`w-full max-w-[200px] h-auto rounded-lg mb-3 ${shouldBlurPhotos ? 'blur-lg' : ''}`} />
             )}
-            <div className={`mb-2 ${isPrivate ? 'blur-sm' : ''}`}>
-              <strong className="text-neutral-500 dark:text-neutral-400">Name:</strong> {item.itemName}
+            <div className={`mb-2 ${shouldBlur ? 'blur-sm' : ''}`}>
+              <strong className="text-neutral-500 dark:text-neutral-400">Name:</strong> {shouldBlur ? 'Private Item' : item.itemName}
             </div>
-            <div className={`mb-2 ${isPrivate ? 'blur-sm' : ''}`}>
-              <strong className="text-neutral-500 dark:text-neutral-400">Description:</strong> <PrivateText text={item.description} isAuthenticated={!!token} />
+            <div className={`mb-2 ${shouldBlurDescription ? 'blur-sm' : ''}`}>
+              <strong className="text-neutral-500 dark:text-neutral-400">Description:</strong> {shouldBlurDescription ? '••••••••••••••••' : <PrivateText text={item.description} isAuthenticated={!!token} isAdmin={isAdmin} />}
             </div>
-            <div className={`mb-2 ${isPrivate ? 'blur-sm' : ''}`}>
-              <strong className="text-neutral-500 dark:text-neutral-400">Category:</strong> {item.category}
+            <div className={`mb-2 ${shouldBlur ? 'blur-sm' : ''}`}>
+              <strong className="text-neutral-500 dark:text-neutral-400">Category:</strong> {shouldBlur ? '••••••' : item.category}
             </div>
-            <div className={`mb-2 ${isPrivate ? 'blur-sm' : ''}`}>
-              <strong className="text-neutral-500 dark:text-neutral-400">Origin:</strong> {item.origin}
+            <div className={`mb-2 ${shouldBlurOrigin ? 'blur-sm' : ''}`}>
+              <strong className="text-neutral-500 dark:text-neutral-400">Origin:</strong> {shouldBlurOrigin ? '••••••' : item.origin}
             </div>
             
             {isAdmin && (

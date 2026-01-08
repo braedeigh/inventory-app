@@ -69,7 +69,10 @@ def row_to_dict(row):
         "lastEdited": row[9] if len(row) > 9 else None,
         "gifted": row[10] if len(row) > 10 else None,
         "private": row[11] if len(row) > 11 else None,
-        "materials": materials
+        "materials": materials,
+        "privatePhotos": row[13] if len(row) > 13 else None,
+        "privateDescription": row[14] if len(row) > 14 else None,
+        "privateOrigin": row[15] if len(row) > 15 else None
     }
 
 def get_item_photos(conn, item_id):
@@ -163,6 +166,9 @@ def add_item():
     gifted = request.form.get('gifted')
     private = request.form.get('private')
     materials = request.form.get('materials')  # JSON string
+    private_photos = request.form.get('privatePhotos')
+    private_description = request.form.get('privateDescription')
+    private_origin = request.form.get('privateOrigin')
     main_photo_index = int(request.form.get('mainPhotoIndex', 0))
 
     conn = get_db()
@@ -214,8 +220,8 @@ def add_item():
 
     # Save item to database
     conn.execute(
-        'INSERT INTO item (id, item_name, description, category, origin, main_photo, created_at, subcategory, secondhand, gifted, private, materials) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
-        [item_id, item_name, description, category, origin, main_photo_url, created_at, subcategory, secondhand, gifted, private, materials]
+        'INSERT INTO item (id, item_name, description, category, origin, main_photo, created_at, subcategory, secondhand, gifted, private, materials, private_photos, private_description, private_origin) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+        [item_id, item_name, description, category, origin, main_photo_url, created_at, subcategory, secondhand, gifted, private, materials, private_photos, private_description, private_origin]
     )
 
     # Save photos to item_photos table
@@ -227,7 +233,7 @@ def add_item():
         ''', [photo_id, item_id, photo['url'], photo['position'], created_at])
 
     # Return the created item with photos
-    result = conn.execute('SELECT id, item_name, description, category, origin, main_photo, created_at, subcategory, secondhand, last_edited, gifted, private, materials FROM item WHERE id=?', [item_id])
+    result = conn.execute('SELECT id, item_name, description, category, origin, main_photo, created_at, subcategory, secondhand, last_edited, gifted, private, materials, private_photos, private_description, private_origin FROM item WHERE id=?', [item_id])
     row = result.rows[0]
     item = row_to_dict(row)
     item['photos'] = get_item_photos(conn, item_id)
@@ -243,7 +249,7 @@ def update_item(item_id):
     conn = get_db()
 
     # Get current item to check if anything changed
-    current = conn.execute('SELECT item_name, description, category, origin, subcategory, secondhand, gifted, private, last_edited, materials FROM item WHERE id=?', [item_id])
+    current = conn.execute('SELECT item_name, description, category, origin, subcategory, secondhand, gifted, private, last_edited, materials, private_photos, private_description, private_origin FROM item WHERE id=?', [item_id])
     current_row = current.rows[0] if current.rows else None
 
     if not current_row:
@@ -253,7 +259,7 @@ def update_item(item_id):
     new_materials = data.get('materials')
     materials_json = json_lib.dumps(new_materials) if new_materials else None
 
-    # Check if anything actually changed (compare first 8 fields + materials)
+    # Check if anything actually changed
     new_values = (
         data.get('itemName'),
         data.get('description'),
@@ -263,9 +269,12 @@ def update_item(item_id):
         data.get('secondhand'),
         data.get('gifted'),
         data.get('private'),
-        materials_json
+        materials_json,
+        data.get('privatePhotos'),
+        data.get('privateDescription'),
+        data.get('privateOrigin')
     )
-    current_values = tuple(current_row[:8]) + (current_row[9],)  # first 8 + materials
+    current_values = tuple(current_row[:8]) + (current_row[9], current_row[10], current_row[11], current_row[12])
     current_last_edited = current_row[8]
 
     # Only update last_edited if data actually changed
@@ -276,12 +285,12 @@ def update_item(item_id):
 
     # Always run the UPDATE to ensure data is saved
     conn.execute('''
-        UPDATE item SET item_name=?, description=?, category=?, origin=?, subcategory=?, secondhand=?, gifted=?, private=?, last_edited=?, materials=?
+        UPDATE item SET item_name=?, description=?, category=?, origin=?, subcategory=?, secondhand=?, gifted=?, private=?, last_edited=?, materials=?, private_photos=?, private_description=?, private_origin=?
         WHERE id=?
     ''', [data.get('itemName'), data.get('description'), data.get('category'),
-           data.get('origin'), data.get('subcategory'), data.get('secondhand'), data.get('gifted'), data.get('private'), last_edited, materials_json, item_id])
+           data.get('origin'), data.get('subcategory'), data.get('secondhand'), data.get('gifted'), data.get('private'), last_edited, materials_json, data.get('privatePhotos'), data.get('privateDescription'), data.get('privateOrigin'), item_id])
 
-    result = conn.execute('SELECT id, item_name, description, category, origin, main_photo, created_at, subcategory, secondhand, last_edited, gifted, private, materials FROM item WHERE id=?', [item_id])
+    result = conn.execute('SELECT id, item_name, description, category, origin, main_photo, created_at, subcategory, secondhand, last_edited, gifted, private, materials, private_photos, private_description, private_origin FROM item WHERE id=?', [item_id])
     rows = result.rows
     if not rows:
         return jsonify({"error": "Item not found"}), 404
@@ -496,7 +505,7 @@ def migrate_remove_new_purchase():
 @app.route('/', methods=['GET'])
 def list_return():
     conn = get_db()
-    result = conn.execute('SELECT id, item_name, description, category, origin, main_photo, created_at, subcategory, secondhand, last_edited, gifted, private, materials FROM item')
+    result = conn.execute('SELECT id, item_name, description, category, origin, main_photo, created_at, subcategory, secondhand, last_edited, gifted, private, materials, private_photos, private_description, private_origin FROM item')
     items = [row_to_dict(row) for row in result.rows]
     return jsonify(items)
 
@@ -606,7 +615,7 @@ def delete_community_item(item_id):
 @app.route('/random', methods=['GET'])
 def get_random_item():
     conn = get_db()
-    result = conn.execute('SELECT id, item_name, description, category, origin, main_photo, created_at, subcategory, secondhand, last_edited, gifted, private, materials FROM item ORDER BY RANDOM() LIMIT 1')
+    result = conn.execute('SELECT id, item_name, description, category, origin, main_photo, created_at, subcategory, secondhand, last_edited, gifted, private, materials, private_photos, private_description, private_origin FROM item ORDER BY RANDOM() LIMIT 1')
     if result.rows:
         return jsonify(row_to_dict(result.rows[0]))
     return jsonify(None)
@@ -785,6 +794,32 @@ def migrate_add_private():
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
+@app.route('/migrate-add-granular-privacy', methods=['POST'])
+@token_required
+def migrate_add_granular_privacy():
+    """Add granular privacy columns for photos, description, origin"""
+    conn = get_db()
+    errors = []
+
+    try:
+        conn.execute('ALTER TABLE item ADD COLUMN private_photos TEXT')
+    except Exception as e:
+        errors.append(f"private_photos: {str(e)}")
+
+    try:
+        conn.execute('ALTER TABLE item ADD COLUMN private_description TEXT')
+    except Exception as e:
+        errors.append(f"private_description: {str(e)}")
+
+    try:
+        conn.execute('ALTER TABLE item ADD COLUMN private_origin TEXT')
+    except Exception as e:
+        errors.append(f"private_origin: {str(e)}")
+
+    if errors:
+        return jsonify({"message": "Migration completed with notes", "notes": errors})
+    return jsonify({"message": "Granular privacy columns added successfully"})
+
 @app.route('/migrate-add-materials', methods=['POST'])
 @token_required
 def migrate_add_materials():
@@ -886,16 +921,16 @@ def extract_item():
         system_prompt = """You are a helpful assistant that extracts structured data from item descriptions for a personal inventory catalog.
 
 Extract the following fields from the user's description:
-- itemName: A concise name for the item
-- description: A brief description (1-2 sentences)
-- category: One of: clothing, electronics, books, furniture, kitchen, toys, tools, sports, decor, bedding, other
-- subcategory: For clothing only - one of: tops, bottoms, dresses, outerwear, shoes, accessories, underwear, swimwear, activewear, other
-- origin: Where the item was purchased/obtained (store name, website, or location)
+- itemName: A concise name for the item (e.g., "Blue Cotton T-Shirt", "Grandmother's Quilt")
+- description: Preserve the user's words almost verbatim. Keep the personal stories, memories, tangents, opinions, and context exactly as spoken. Only remove information that's redundant because it's captured in other fields (like store name or material percentages if stated plainly). Do NOT smooth, formalize, or rewrite. Fragmented sentences are fine. Stream of consciousness is fine. The goal is to sound like the person, not like a product description.
+- category: One of: clothing, jewelry, sentimental, bedding, other
+- subcategory: For clothing only - one of: undershirt, shirt, sweater, jacket, dress, pants, shorts, skirt, shoes, socks, underwear, accessories, other
+- origin: Where the item was purchased/obtained (store name, website, "gift from mom", etc.)
 - materials: Array of {material: string, percentage: number} for clothing/bedding items. Use these known materials when applicable: """ + ', '.join(available_materials) + """
-- secondhand: "new" or "used" based on context
+- secondhand: "new", "secondhand", "handmade", or "unknown"
 - gifted: "yes" if it was a gift, "no" otherwise
 
-Return ONLY a valid JSON object with these fields. Use null for fields you cannot determine. For materials, only include if it's clothing or bedding and materials are mentioned."""
+Return ONLY a valid JSON object with these fields. Use null for fields you cannot determine."""
 
         # Build messages with optional image
         content = []
