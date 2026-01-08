@@ -4,7 +4,8 @@ import PrivateText from './PrivateText.jsx'
 
 const API_URL = 'https://bradie-inventory-api.onrender.com'
 
-function Home({ list, setList, token, setShowLogin, handleLogout }) {
+function Home({ list, setList, token, userRole, setShowLogin, handleLogout }) {
+  const isAdmin = userRole === 'admin'
   const itemNameRef = useRef(null)
   const descriptionRef = useRef(null)
   const categoryRef = useRef(null)
@@ -45,6 +46,15 @@ function Home({ list, setList, token, setShowLogin, handleLogout }) {
   const [materials, setMaterials] = useState([]) // [{material: 'Cotton', percentage: 80}]
   const [availableMaterials, setAvailableMaterials] = useState([])
   const [newMaterialName, setNewMaterialName] = useState('')
+
+  // AI Assistant state
+  const [isAiExpanded, setIsAiExpanded] = useState(false)
+  const [aiDescription, setAiDescription] = useState('')
+  const [aiPhoto, setAiPhoto] = useState(null)
+  const [aiPhotoPreview, setAiPhotoPreview] = useState(null)
+  const [isExtracting, setIsExtracting] = useState(false)
+  const [isListening, setIsListening] = useState(false)
+  const [aiError, setAiError] = useState(null)
 
   const [editForm, setEditForm] = useState({
     itemName: '',
@@ -187,6 +197,143 @@ function Home({ list, setList, token, setShowLogin, handleLogout }) {
     } catch (err) {
       console.error('Failed to delete material:', err)
     }
+  }
+
+  // AI Assistant functions
+  const handleAiPhotoSelect = (e) => {
+    const file = e.target.files[0]
+    if (file) {
+      setAiPhoto(file)
+      setAiPhotoPreview(URL.createObjectURL(file))
+    }
+  }
+
+  const removeAiPhoto = () => {
+    if (aiPhotoPreview) URL.revokeObjectURL(aiPhotoPreview)
+    setAiPhoto(null)
+    setAiPhotoPreview(null)
+  }
+
+  const startVoiceInput = () => {
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition
+    if (!SpeechRecognition) {
+      setAiError('Speech recognition not supported in this browser')
+      return
+    }
+
+    const recognition = new SpeechRecognition()
+    recognition.continuous = true
+    recognition.interimResults = true
+    recognition.lang = 'en-US'
+
+    recognition.onstart = () => setIsListening(true)
+    recognition.onend = () => setIsListening(false)
+    recognition.onerror = (e) => {
+      setIsListening(false)
+      if (e.error !== 'no-speech') {
+        setAiError(`Speech error: ${e.error}`)
+      }
+    }
+
+    recognition.onresult = (event) => {
+      let finalTranscript = ''
+      for (let i = event.resultIndex; i < event.results.length; i++) {
+        const transcript = event.results[i][0].transcript
+        if (event.results[i].isFinal) {
+          finalTranscript += transcript
+        }
+      }
+      if (finalTranscript) {
+        setAiDescription(prev => prev + (prev ? ' ' : '') + finalTranscript)
+      }
+    }
+
+    recognition.start()
+
+    // Store recognition instance to stop it later
+    window.currentRecognition = recognition
+  }
+
+  const stopVoiceInput = () => {
+    if (window.currentRecognition) {
+      window.currentRecognition.stop()
+      window.currentRecognition = null
+    }
+    setIsListening(false)
+  }
+
+  const handleExtract = async () => {
+    if (!aiDescription && !aiPhoto) {
+      setAiError('Please provide a description or photo')
+      return
+    }
+
+    setIsExtracting(true)
+    setAiError(null)
+
+    try {
+      const body = { description: aiDescription }
+
+      // If there's a photo, convert to base64
+      if (aiPhoto) {
+        const base64 = await new Promise((resolve) => {
+          const reader = new FileReader()
+          reader.onloadend = () => {
+            const base64Data = reader.result.split(',')[1]
+            resolve(base64Data)
+          }
+          reader.readAsDataURL(aiPhoto)
+        })
+        body.image = base64
+        body.imageMediaType = aiPhoto.type || 'image/jpeg'
+      }
+
+      const response = await fetch(`${API_URL}/extract-item`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify(body)
+      })
+
+      const data = await response.json()
+
+      if (!response.ok) {
+        setAiError(data.error || 'Extraction failed')
+        setIsExtracting(false)
+        return
+      }
+
+      // Populate form fields from extraction
+      if (data.itemName) setItemName(data.itemName)
+      if (data.description) setDescription(data.description)
+      if (data.category) setCategory(data.category)
+      if (data.subcategory) setSubcategory(data.subcategory)
+      if (data.origin) setOrigin(data.origin)
+      if (data.secondhand) setSecondhand(data.secondhand)
+      if (data.gifted === 'yes') setGifted(true)
+      if (data.materials && Array.isArray(data.materials)) {
+        setMaterials(data.materials)
+      }
+
+      // Transfer AI photo to main photos section
+      if (aiPhoto && photoFiles.length < 5) {
+        setPhotoFiles(prev => [...prev, aiPhoto].slice(0, 5))
+        setPhotoPreviews(prev => [...prev, aiPhotoPreview].slice(0, 5))
+      }
+
+      // Clear AI section and collapse
+      setAiDescription('')
+      setAiPhoto(null)
+      setAiPhotoPreview(null)
+      setIsAiExpanded(false)
+
+    } catch (err) {
+      setAiError(`Error: ${err.message}`)
+    }
+
+    setIsExtracting(false)
   }
 
   const handleAddItem = async () => {
@@ -364,7 +511,56 @@ function Home({ list, setList, token, setShowLogin, handleLogout }) {
     sessionStorage.setItem('inventoryScrollPosition', window.scrollY.toString())
     navigate(`/item/${itemId}${editMode ? '?edit=true' : ''}`)
   }
-  
+
+  // Helper to filter items, optionally excluding a specific filter type
+  const getFilteredItems = (excludeFilter = null) => {
+    return list.filter(item => {
+      if (searchQuery) {
+        const query = searchQuery.toLowerCase()
+        const matchesSearch =
+          item.itemName.toLowerCase().includes(query) ||
+          item.description?.toLowerCase().includes(query) ||
+          item.origin?.toLowerCase().includes(query) ||
+          item.category?.toLowerCase().includes(query) ||
+          item.subcategory?.toLowerCase().includes(query)
+        if (!matchesSearch) return false
+      }
+
+      // Category filter
+      if (excludeFilter !== 'category' && selectedCategories.length > 0 && !selectedCategories.includes(item.category)) return false
+
+      // Subcategory filter (for clothing)
+      if (excludeFilter !== 'subcategory' && item.category === 'clothing' && selectedSubcategories.length > 0) {
+        const isUncategorized = !item.subcategory || item.subcategory === ''
+        if (selectedSubcategories.includes('uncategorized') && isUncategorized) {
+          // passes
+        } else if (!selectedSubcategories.includes(item.subcategory)) {
+          return false
+        }
+      }
+
+      // Source filter
+      if (excludeFilter !== 'source' && selectedSources.length > 0 && !selectedSources.includes(item.secondhand)) return false
+
+      // Gifted filter
+      if (excludeFilter !== 'gifted' && selectedGifted !== null) {
+        const isGifted = item.gifted === 'true' || item.gifted === true
+        if (selectedGifted && !isGifted) return false
+        if (!selectedGifted && isGifted) return false
+      }
+
+      // Materials filter
+      if (excludeFilter !== 'materials' && selectedMaterials.length > 0) {
+        if (!item.materials || item.materials.length === 0) return false
+        const itemMaterialNames = item.materials.map(m => m.material)
+        const hasAnySelectedMaterial = selectedMaterials.some(mat => itemMaterialNames.includes(mat))
+        if (!hasAnySelectedMaterial) return false
+      }
+
+      return true
+    })
+  }
+
   const filteredAndSortedList = list
     .filter(item => {
       if (searchQuery) {
@@ -467,8 +663,117 @@ function Home({ list, setList, token, setShowLogin, handleLogout }) {
 )}
 
       {/* Add Item Form */}
-      {token && ( 
+      {token && (
 <form className="w-full md:w-3/4 mx-auto mb-10 p-4 md:p-6 bg-white dark:bg-neutral-800 rounded-xl border border-neutral-200 dark:border-neutral-700">
+
+          {/* AI Assistant Section */}
+          <div className="mb-6 border border-neutral-300 dark:border-neutral-600 rounded-lg overflow-hidden">
+            <button
+              type="button"
+              onClick={() => setIsAiExpanded(!isAiExpanded)}
+              className="w-full px-4 py-3 flex items-center justify-between bg-neutral-100 dark:bg-neutral-700 hover:bg-neutral-200 dark:hover:bg-neutral-600 transition-colors"
+            >
+              <span className="font-medium text-sm">AI Assistant</span>
+              <span className="text-lg">{isAiExpanded ? '−' : '+'}</span>
+            </button>
+
+            {isAiExpanded && (
+              <div className="p-4 space-y-4">
+                <p className="text-xs text-neutral-500 dark:text-neutral-400">
+                  Describe your item using voice or text, optionally add a photo, and let AI fill in the form.
+                </p>
+
+                {/* Description textarea with voice input */}
+                <div>
+                  <label className="block text-sm font-medium mb-1">Description:</label>
+                  <div className="relative">
+                    <textarea
+                      value={aiDescription}
+                      onChange={(e) => setAiDescription(e.target.value)}
+                      placeholder="Describe the item... (e.g., 'Blue cotton t-shirt from Target, bought new last week, size medium')"
+                      className="w-full px-3 py-2 pr-12 text-base border border-neutral-300 dark:border-neutral-600 rounded-lg bg-white dark:bg-neutral-900 text-neutral-800 dark:text-neutral-100 focus:outline-none focus:ring-2 focus:ring-green-500 min-h-[100px]"
+                    />
+                    <button
+                      type="button"
+                      onClick={isListening ? stopVoiceInput : startVoiceInput}
+                      className={`absolute bottom-2 right-2 p-2 rounded-lg transition-colors ${
+                        isListening
+                          ? 'bg-red-500 text-white animate-pulse'
+                          : 'bg-neutral-200 dark:bg-neutral-700 hover:bg-neutral-300 dark:hover:bg-neutral-600'
+                      }`}
+                      title={isListening ? 'Stop recording' : 'Start voice input'}
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/>
+                        <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
+                        <line x1="12" x2="12" y1="19" y2="22"/>
+                      </svg>
+                    </button>
+                  </div>
+                  {isListening && (
+                    <p className="mt-1 text-xs text-red-500">Recording... click mic to stop</p>
+                  )}
+                </div>
+
+                {/* Photo upload toggle */}
+                <div>
+                  {!aiPhotoPreview ? (
+                    <label className="inline-flex items-center gap-2 text-sm text-green-600 dark:text-green-400 hover:underline cursor-pointer">
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={handleAiPhotoSelect}
+                        className="hidden"
+                      />
+                      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <rect width="18" height="18" x="3" y="3" rx="2" ry="2"/>
+                        <circle cx="9" cy="9" r="2"/>
+                        <path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/>
+                      </svg>
+                      Add photo for AI context (optional, costs more)
+                    </label>
+                  ) : (
+                    <div className="flex items-start gap-3">
+                      <div className="relative">
+                        <img
+                          src={aiPhotoPreview}
+                          alt="AI context"
+                          className="w-24 h-24 object-cover rounded-lg"
+                        />
+                        <button
+                          type="button"
+                          onClick={removeAiPhoto}
+                          className="absolute -top-2 -right-2 w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center text-sm hover:bg-red-600"
+                        >
+                          ×
+                        </button>
+                      </div>
+                      <p className="text-xs text-neutral-500 dark:text-neutral-400">
+                        Photo will be used for AI analysis and added to item photos after extraction.
+                      </p>
+                    </div>
+                  )}
+                </div>
+
+                {/* Error display */}
+                {aiError && (
+                  <p className="text-sm text-red-500 bg-red-100 dark:bg-red-900/30 px-3 py-2 rounded">
+                    {aiError}
+                  </p>
+                )}
+
+                {/* Extract button */}
+                <button
+                  type="button"
+                  onClick={handleExtract}
+                  disabled={isExtracting || (!aiDescription && !aiPhoto)}
+                  className="w-full py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {isExtracting ? 'Extracting...' : 'Extract & Fill Form'}
+                </button>
+              </div>
+            )}
+          </div>
 
           <div className="mb-4">
             <label className="block text-sm font-medium mb-1">Item Name:</label>
@@ -655,7 +960,7 @@ function Home({ list, setList, token, setShowLogin, handleLogout }) {
 
               {/* Selected materials with percentage inputs */}
               {materials.length > 0 && (
-                <div className="space-y-2 p-3 bg-neutral-100 dark:bg-neutral-800 rounded-lg">
+                <div className="w-fit space-y-2 p-3 bg-neutral-100 dark:bg-neutral-800 rounded-lg">
                   <p className="text-xs text-neutral-500 mb-2">Click percentage to edit (optional):</p>
                   {materials.map(mat => (
                     <div key={mat.material} className="flex items-center gap-2">
@@ -834,7 +1139,8 @@ function Home({ list, setList, token, setShowLogin, handleLogout }) {
         
         <div className="flex flex-wrap gap-2">
           {['clothing', 'jewelry', 'sentimental', 'bedding', 'other'].map(cat => {
-            const count = list.filter(item => item.category === cat).length
+            const baseItems = getFilteredItems('category')
+            const count = baseItems.filter(item => item.category === cat).length
             return (
 <button
   key={cat}
@@ -859,7 +1165,8 @@ function Home({ list, setList, token, setShowLogin, handleLogout }) {
         <div className="flex flex-wrap gap-2 mb-6">
           {/* Uncategorized filter */}
           {(() => {
-            const uncategorizedCount = list.filter(item => item.category === 'clothing' && (!item.subcategory || item.subcategory === '')).length
+            const baseItems = getFilteredItems('subcategory')
+            const uncategorizedCount = baseItems.filter(item => item.category === 'clothing' && (!item.subcategory || item.subcategory === '')).length
             return uncategorizedCount > 0 && (
               <button
                 onClick={() => {
@@ -876,7 +1183,8 @@ function Home({ list, setList, token, setShowLogin, handleLogout }) {
             )
           })()}
           {['undershirt', 'shirt', 'sweater', 'jacket', 'dress', 'pants', 'shorts', 'skirt', 'shoes', 'socks', 'underwear', 'accessories', 'other'].map(sub => {
-            const count = list.filter(item => item.category === 'clothing' && item.subcategory === sub).length
+            const baseItems = getFilteredItems('subcategory')
+            const count = baseItems.filter(item => item.category === 'clothing' && item.subcategory === sub).length
             return (
 <button
   key={sub}
@@ -902,7 +1210,8 @@ function Home({ list, setList, token, setShowLogin, handleLogout }) {
       {/* Source filters (new/secondhand/handmade/unknown) */}
       <div className="flex flex-wrap gap-2 mb-4">
         {['new', 'secondhand', 'handmade', 'unknown'].map(source => {
-          const count = list.filter(item => item.secondhand === source).length
+          const baseItems = getFilteredItems('source')
+          const count = baseItems.filter(item => item.secondhand === source).length
           return (
             <button
               key={source}
@@ -926,27 +1235,35 @@ function Home({ list, setList, token, setShowLogin, handleLogout }) {
 
       {/* Gifted filter */}
       <div className="flex flex-wrap gap-2 mb-4">
-        <button
-          onClick={() => setSelectedGifted(selectedGifted === true ? null : true)}
-          className={`filter-button-sub ${selectedGifted === true ? 'active' : ''}`}
-        >
-          Gifted ({list.filter(item => item.gifted === 'true' || item.gifted === true).length})
-        </button>
-        <button
-          onClick={() => setSelectedGifted(selectedGifted === false ? null : false)}
-          className={`filter-button-sub ${selectedGifted === false ? 'active' : ''}`}
-        >
-          Not Gifted ({list.filter(item => item.gifted !== 'true' && item.gifted !== true).length})
-        </button>
+        {(() => {
+          const baseItems = getFilteredItems('gifted')
+          return (
+            <>
+              <button
+                onClick={() => setSelectedGifted(selectedGifted === true ? null : true)}
+                className={`filter-button-sub ${selectedGifted === true ? 'active' : ''}`}
+              >
+                Gifted ({baseItems.filter(item => item.gifted === 'true' || item.gifted === true).length})
+              </button>
+              <button
+                onClick={() => setSelectedGifted(selectedGifted === false ? null : false)}
+                className={`filter-button-sub ${selectedGifted === false ? 'active' : ''}`}
+              >
+                Not Gifted ({baseItems.filter(item => item.gifted !== 'true' && item.gifted !== true).length})
+              </button>
+            </>
+          )
+        })()}
       </div>
 
-      {/* Materials filter - only show if we have items with materials */}
-      {availableMaterials.length > 0 && (
+      {/* Materials filter - only show if clothing or bedding is selected */}
+      {availableMaterials.length > 0 && (selectedCategories.includes('clothing') || selectedCategories.includes('bedding')) && (
         <>
           <hr className="border-neutral-300 dark:border-neutral-600 mb-4" />
           <div className="flex flex-wrap gap-2 mb-6">
             {availableMaterials.map(mat => {
-              const count = list.filter(item =>
+              const baseItems = getFilteredItems('materials')
+              const count = baseItems.filter(item =>
                 item.materials && item.materials.some(m => m.material === mat.name)
               ).length
               if (count === 0) return null
@@ -971,7 +1288,7 @@ function Home({ list, setList, token, setShowLogin, handleLogout }) {
       )}
 
       {/* Undo Delete button */}
-      {deletedHistory.length > 0 && token && (
+      {deletedHistory.length > 0 && isAdmin && (
         <div className="flex justify-end mb-4">
           <button
             onClick={handleUndo}
@@ -991,7 +1308,7 @@ function Home({ list, setList, token, setShowLogin, handleLogout }) {
     <th className="p-3 text-left w-1/6">Item Name</th>
     <th className="p-3 text-left">Description</th>
     <th className="p-3 text-left w-1/6">Origin</th>
-    {token && <th className="p-3 text-left w-38">Actions</th>}
+    {isAdmin && <th className="p-3 text-left w-38">Actions</th>}
   </tr>
 </thead>
           <tbody>
@@ -1053,7 +1370,7 @@ function Home({ list, setList, token, setShowLogin, handleLogout }) {
                   )}
                 </td>
                 
-                {token && (
+                {isAdmin && (
                   <td className="p-3">
                     <div className="flex gap-2">
                       <button
@@ -1110,7 +1427,7 @@ function Home({ list, setList, token, setShowLogin, handleLogout }) {
               <strong className="text-neutral-500 dark:text-neutral-400">Origin:</strong> {item.origin}
             </div>
             
-            {token && (
+            {isAdmin && (
               <div className="mt-3" onClick={(e) => e.stopPropagation()}>
                 {confirmDelete === item.id ? (
                   <div className="p-3 bg-red-100 dark:bg-red-900/30 border border-red-500 rounded-lg">

@@ -101,19 +101,47 @@ def token_required(f):
         return f(*args, **kwargs)
     return decorated
 
+def admin_required(f):
+    """Decorator for endpoints that require admin role"""
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        token = request.headers.get('Authorization')
+        if not token:
+            return jsonify({"error": "Token missing"}), 401
+        try:
+            token = token.replace('Bearer ', '')
+            payload = jwt.decode(token, os.getenv('JWT_SECRET', 'dev-secret'), algorithms=['HS256'])
+            if payload.get('role') != 'admin':
+                return jsonify({"error": "Admin access required"}), 403
+        except:
+            return jsonify({"error": "Invalid token"}), 401
+        return f(*args, **kwargs)
+    return decorated
+
 @app.route('/login', methods=['POST'])
 def login():
     data = request.json
     username = data.get('username')
     password = data.get('password')
-    
+
+    # Check admin credentials
     if username == os.getenv('ADMIN_USERNAME') and password == os.getenv('ADMIN_PASSWORD'):
         token = jwt.encode({
             'user': username,
+            'role': 'admin',
             'exp': datetime.utcnow() + timedelta(hours=24)
         }, os.getenv('JWT_SECRET', 'dev-secret'), algorithm='HS256')
-        return jsonify({"token": token})
-    
+        return jsonify({"token": token, "role": "admin"})
+
+    # Check friend credentials
+    if username == os.getenv('FRIEND_USERNAME') and password == os.getenv('FRIEND_PASSWORD'):
+        token = jwt.encode({
+            'user': username,
+            'role': 'friend',
+            'exp': datetime.utcnow() + timedelta(hours=24)
+        }, os.getenv('JWT_SECRET', 'dev-secret'), algorithm='HS256')
+        return jsonify({"token": token, "role": "friend"})
+
     return jsonify({"error": "Invalid credentials"}), 401
 
 
@@ -208,7 +236,7 @@ def add_item():
 
 
 @app.route('/item/<item_id>', methods=['PUT'])
-@token_required
+@admin_required
 def update_item(item_id):
     import json as json_lib
     data = request.json
@@ -260,7 +288,7 @@ def update_item(item_id):
     return jsonify(row_to_dict(rows[0]))
 
 @app.route('/item/<item_id>', methods=['DELETE'])
-@token_required
+@admin_required
 def delete_item(item_id):
     conn = get_db()
     conn.execute('DELETE FROM item WHERE id=?', [item_id])
@@ -337,7 +365,7 @@ def upload_photos(item_id):
     return jsonify({"photos": uploaded_photos})
 
 @app.route('/item/<item_id>/photos/<photo_id>', methods=['DELETE'])
-@token_required
+@admin_required
 def delete_photo(item_id, photo_id):
     """Delete a single photo"""
     conn = get_db()
@@ -372,7 +400,7 @@ def delete_photo(item_id, photo_id):
     return jsonify({"message": "Photo deleted"})
 
 @app.route('/item/<item_id>/photos/reorder', methods=['PUT'])
-@token_required
+@admin_required
 def reorder_photos(item_id):
     """Reorder photos - expects {"photoIds": ["id1", "id2", ...]} in order"""
     conn = get_db()
@@ -826,8 +854,96 @@ def add_material():
 
     return jsonify({"id": material_id, "name": formatted_name}), 201
 
-@app.route('/materials/<material_id>', methods=['DELETE'])
+@app.route('/extract-item', methods=['POST'])
 @token_required
+def extract_item():
+    """Use Anthropic Claude to extract item fields from natural language description"""
+    import json as json_lib
+
+    # Check if API key is configured
+    anthropic_key = os.getenv('ANTHROPIC_API_KEY')
+    if not anthropic_key:
+        return jsonify({"error": "ANTHROPIC_API_KEY not configured"}), 503
+
+    data = request.json
+    description = data.get('description', '')
+    image_base64 = data.get('image')  # Optional base64 image
+    image_media_type = data.get('imageMediaType', 'image/jpeg')  # e.g., image/jpeg, image/png
+
+    if not description and not image_base64:
+        return jsonify({"error": "Description or image required"}), 400
+
+    try:
+        import anthropic
+        client = anthropic.Anthropic(api_key=anthropic_key)
+
+        # Get available materials for context
+        conn = get_db()
+        materials_result = conn.execute('SELECT name FROM materials ORDER BY name ASC')
+        available_materials = [row[0] for row in materials_result.rows]
+
+        # Build the extraction prompt
+        system_prompt = """You are a helpful assistant that extracts structured data from item descriptions for a personal inventory catalog.
+
+Extract the following fields from the user's description:
+- itemName: A concise name for the item
+- description: A brief description (1-2 sentences)
+- category: One of: clothing, electronics, books, furniture, kitchen, toys, tools, sports, decor, bedding, other
+- subcategory: For clothing only - one of: tops, bottoms, dresses, outerwear, shoes, accessories, underwear, swimwear, activewear, other
+- origin: Where the item was purchased/obtained (store name, website, or location)
+- materials: Array of {material: string, percentage: number} for clothing/bedding items. Use these known materials when applicable: """ + ', '.join(available_materials) + """
+- secondhand: "new" or "used" based on context
+- gifted: "yes" if it was a gift, "no" otherwise
+
+Return ONLY a valid JSON object with these fields. Use null for fields you cannot determine. For materials, only include if it's clothing or bedding and materials are mentioned."""
+
+        # Build messages with optional image
+        content = []
+        if image_base64:
+            content.append({
+                "type": "image",
+                "source": {
+                    "type": "base64",
+                    "media_type": image_media_type,
+                    "data": image_base64
+                }
+            })
+        if description:
+            content.append({
+                "type": "text",
+                "text": f"Extract inventory item data from this description:\n\n{description}"
+            })
+
+        message = client.messages.create(
+            model="claude-sonnet-4-20250514",
+            max_tokens=1024,
+            system=system_prompt,
+            messages=[
+                {"role": "user", "content": content}
+            ]
+        )
+
+        # Parse the response
+        response_text = message.content[0].text
+
+        # Try to extract JSON from the response (handle markdown code blocks)
+        if "```json" in response_text:
+            response_text = response_text.split("```json")[1].split("```")[0]
+        elif "```" in response_text:
+            response_text = response_text.split("```")[1].split("```")[0]
+
+        extracted_data = json_lib.loads(response_text.strip())
+
+        return jsonify(extracted_data)
+
+    except json_lib.JSONDecodeError as e:
+        return jsonify({"error": f"Failed to parse extraction result: {str(e)}"}), 500
+    except Exception as e:
+        return jsonify({"error": f"Extraction failed: {str(e)}"}), 500
+
+
+@app.route('/materials/<material_id>', methods=['DELETE'])
+@admin_required
 def delete_material(material_id):
     """Delete a material if it's not in use by any items"""
     conn = get_db()

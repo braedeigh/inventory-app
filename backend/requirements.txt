@@ -5,3 +5,4 @@ cloudinary
 libsql-client
 gunicorn
 pyjwt
+anthropic
