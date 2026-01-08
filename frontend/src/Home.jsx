@@ -6,6 +6,9 @@ const API_URL = 'https://bradie-inventory-api.onrender.com'
 
 function Home({ list, setList, token, userRole, setShowLogin, handleLogout }) {
   const isAdmin = userRole === 'admin'
+
+  // Filter out private items for non-admin users
+  const visibleList = isAdmin ? list : list.filter(item => item.private !== 'true' && item.private !== true)
   const itemNameRef = useRef(null)
   const descriptionRef = useRef(null)
   const categoryRef = useRef(null)
@@ -514,7 +517,7 @@ function Home({ list, setList, token, userRole, setShowLogin, handleLogout }) {
 
   // Helper to filter items, optionally excluding a specific filter type
   const getFilteredItems = (excludeFilter = null) => {
-    return list.filter(item => {
+    return visibleList.filter(item => {
       if (searchQuery) {
         const query = searchQuery.toLowerCase()
         const matchesSearch =
@@ -561,7 +564,7 @@ function Home({ list, setList, token, userRole, setShowLogin, handleLogout }) {
     })
   }
 
-  const filteredAndSortedList = list
+  const filteredAndSortedList = visibleList
     .filter(item => {
       if (searchQuery) {
         const query = searchQuery.toLowerCase()

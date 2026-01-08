@@ -79,7 +79,23 @@ function ItemDetail({ list, setList, token, userRole }) {
     return (
       <div className="min-h-screen px-4 py-10 text-neutral-800 dark:text-neutral-100">
         <p>Item not found</p>
-        <button 
+        <button
+          onClick={() => navigate('/inventory')}
+          className="mt-4 px-4 py-2 bg-neutral-200 dark:bg-neutral-700 rounded-lg"
+        >
+          ← Back to Inventory
+        </button>
+      </div>
+    )
+  }
+
+  // Hide private items from non-admin users
+  const isPrivateItem = item.private === 'true' || item.private === true
+  if (isPrivateItem && !isAdmin) {
+    return (
+      <div className="min-h-screen px-4 py-10 text-neutral-800 dark:text-neutral-100">
+        <p>This item is private</p>
+        <button
           onClick={() => navigate('/inventory')}
           className="mt-4 px-4 py-2 bg-neutral-200 dark:bg-neutral-700 rounded-lg"
         >
