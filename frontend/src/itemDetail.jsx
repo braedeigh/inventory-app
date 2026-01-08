@@ -36,6 +36,7 @@ function ItemDetail({ list, setList, token, userRole }) {
   const [editMaterials, setEditMaterials] = useState(item?.materials || [])
   const [availableMaterials, setAvailableMaterials] = useState([])
   const [newMaterialName, setNewMaterialName] = useState('')
+  const [availableCategories, setAvailableCategories] = useState([])
 
   // Fetch photos for this item
   useEffect(() => {
@@ -76,6 +77,22 @@ function ItemDetail({ list, setList, token, userRole }) {
       }
     }
     fetchMaterials()
+  }, [])
+
+  // Fetch available categories
+  useEffect(() => {
+    const fetchCategories = async () => {
+      try {
+        const response = await fetch(`${API_URL}/categories`)
+        if (response.ok) {
+          const data = await response.json()
+          setAvailableCategories(data)
+        }
+      } catch (err) {
+        console.error('Failed to fetch categories:', err)
+      }
+    }
+    fetchCategories()
   }, [])
 
   if (!item) {
@@ -728,14 +745,12 @@ function ItemDetail({ list, setList, token, userRole }) {
                 onChange={(e) => setEditCategory(e.target.value)}
                 className="w-full px-3 py-2 border border-neutral-300 dark:border-neutral-600 rounded-lg bg-white dark:bg-neutral-900"
               >
-                <option value="clothing">Clothing</option>
-                <option value="jewelry">Jewelry</option>
-                <option value="sentimental">Sentimental</option>
-                <option value="bedding">Bedding</option>
-                <option value="other">Other</option>
+                {availableCategories.map(cat => (
+                  <option key={cat.id} value={cat.name}>{cat.displayName}</option>
+                ))}
               </select>
             ) : (
-              <p className="capitalize">{item.category}</p>
+              <p className="capitalize">{availableCategories.find(c => c.name === item.category)?.displayName || item.category}</p>
             )}
           </div>
 

@@ -1007,5 +1007,106 @@ def delete_material(material_id):
     conn.execute('DELETE FROM materials WHERE id = ?', [material_id])
     return jsonify({"message": "Material deleted"})
 
+
+# Categories endpoints
+@app.route('/migrate-add-categories', methods=['POST'])
+@token_required
+def migrate_add_categories():
+    """Create categories table with default categories"""
+    conn = get_db()
+    errors = []
+
+    try:
+        conn.execute('''
+            CREATE TABLE IF NOT EXISTS categories (
+                id TEXT PRIMARY KEY,
+                name TEXT NOT NULL UNIQUE,
+                display_name TEXT NOT NULL
+            )
+        ''')
+        # Insert default categories
+        default_categories = [
+            ('clothing', 'Clothing'),
+            ('jewelry', 'Jewelry'),
+            ('sentimental', 'Sentimental'),
+            ('bedding', 'Bedding'),
+            ('other', 'Other')
+        ]
+        for name, display_name in default_categories:
+            try:
+                conn.execute('INSERT INTO categories (id, name, display_name) VALUES (?, ?, ?)',
+                           [str(uuid.uuid4()), name, display_name])
+            except:
+                pass  # Already exists
+    except Exception as e:
+        errors.append(f"categories table: {str(e)}")
+
+    if errors:
+        return jsonify({"message": "Migration completed with notes", "notes": errors})
+    return jsonify({"message": "Categories table created successfully"})
+
+
+@app.route('/categories', methods=['GET'])
+def get_categories():
+    """Get all available categories"""
+    conn = get_db()
+    result = conn.execute('SELECT id, name, display_name FROM categories ORDER BY display_name ASC')
+    categories = [{"id": row[0], "name": row[1], "displayName": row[2]} for row in result.rows]
+    return jsonify(categories)
+
+
+@app.route('/categories', methods=['POST'])
+@token_required
+def add_category():
+    """Add a new category"""
+    data = request.json
+    name = data.get('name', '').strip()
+
+    if not name:
+        return jsonify({"error": "Category name is required"}), 400
+
+    # Create slug (lowercase, no spaces)
+    slug = name.lower().replace(' ', '-')
+    # Display name keeps original formatting
+    display_name = name
+
+    conn = get_db()
+
+    # Check if already exists
+    existing = conn.execute('SELECT id, name, display_name FROM categories WHERE LOWER(name) = LOWER(?)', [slug])
+    if existing.rows:
+        return jsonify({"id": existing.rows[0][0], "name": existing.rows[0][1], "displayName": existing.rows[0][2], "existed": True})
+
+    category_id = str(uuid.uuid4())
+    conn.execute('INSERT INTO categories (id, name, display_name) VALUES (?, ?, ?)', [category_id, slug, display_name])
+
+    return jsonify({"id": category_id, "name": slug, "displayName": display_name}), 201
+
+
+@app.route('/categories/<category_id>', methods=['DELETE'])
+@admin_required
+def delete_category(category_id):
+    """Delete a category if it's not in use by any items"""
+    conn = get_db()
+
+    # Get the category name first
+    category = conn.execute('SELECT name FROM categories WHERE id = ?', [category_id])
+    if not category.rows:
+        return jsonify({"error": "Category not found"}), 404
+
+    category_name = category.rows[0][0]
+
+    # Check if any items use this category
+    items = conn.execute('SELECT COUNT(*) FROM item WHERE category = ?', [category_name])
+    count = items.rows[0][0] if items.rows else 0
+
+    if count > 0:
+        return jsonify({"error": f"Cannot delete - category is used by {count} item(s)"}), 400
+
+    # Safe to delete
+    conn.execute('DELETE FROM categories WHERE id = ?', [category_id])
+    return jsonify({"message": "Category deleted"})
+
+
 if __name__ == '__main__':
     app.run(debug=True, port=5000)
