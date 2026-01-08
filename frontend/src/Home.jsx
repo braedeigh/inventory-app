@@ -211,31 +211,31 @@ function Home({ list, setList, token, userRole, setShowLogin, handleLogout }) {
         <h2 className="text-3xl font-light text-green-700 dark:text-green-500">My Items</h2>
       </div>
 
-      {/* Sort, Search, and Filters Toggle */}
-      <div className="flex flex-wrap gap-4 items-center mb-4">
-        {/* Sort controls - only in list view */}
-        {viewMode === 'list' && (
-          <div className="flex items-center gap-2">
-            <label className="text-sm">Sort by:</label>
-            <select
-              value={sortOrder}
-              onChange={(e) => setSortOrder(e.target.value)}
-              className="px-3 py-2 border border-neutral-300 dark:border-neutral-600 rounded-lg bg-white dark:bg-neutral-800 text-neutral-800 dark:text-neutral-100"
-            >
-              <option value="newest">Newest first</option>
-              <option value="oldest">Oldest first</option>
-              <option value="alphabetical">A-Z</option>
-            </select>
-            <button
-              type="button"
-              onClick={() => setSortOrder('random')}
-              className="px-3 py-2 border border-neutral-300 dark:border-neutral-600 rounded-lg bg-white dark:bg-neutral-800 text-neutral-800 dark:text-neutral-100 hover:bg-neutral-100 dark:hover:bg-neutral-700 transition-all"
-            >
-              Randomize
-            </button>
-          </div>
-        )}
+      {/* Sort controls - only in list view, on its own line */}
+      {viewMode === 'list' && (
+        <div className="flex items-center gap-2 mb-4">
+          <label className="text-sm">Sort by:</label>
+          <select
+            value={sortOrder}
+            onChange={(e) => setSortOrder(e.target.value)}
+            className="px-3 py-2 border border-neutral-300 dark:border-neutral-600 rounded-lg bg-white dark:bg-neutral-800 text-neutral-800 dark:text-neutral-100"
+          >
+            <option value="newest">Newest first</option>
+            <option value="oldest">Oldest first</option>
+            <option value="alphabetical">A-Z</option>
+          </select>
+          <button
+            type="button"
+            onClick={() => setSortOrder('random')}
+            className="px-3 py-2 border border-neutral-300 dark:border-neutral-600 rounded-lg bg-white dark:bg-neutral-800 text-neutral-800 dark:text-neutral-100 hover:bg-neutral-100 dark:hover:bg-neutral-700 transition-all"
+          >
+            Randomize
+          </button>
+        </div>
+      )}
 
+      {/* Filters, Search, and View Toggle */}
+      <div className="flex flex-wrap gap-4 items-center mb-4">
         {/* Filters toggle button */}
         <button
           type="button"
