@@ -502,30 +502,12 @@ function ItemDetail({ list, setList, token, userRole }) {
             type="text"
             value={editName}
             onChange={(e) => setEditName(e.target.value)}
-            className="w-full text-3xl md:text-4xl font-light font-serif mb-4 px-3 py-2 border border-neutral-300 dark:border-neutral-600 rounded-lg bg-white dark:bg-neutral-900"
+            className="w-full text-3xl md:text-4xl font-light font-serif mb-6 px-3 py-2 border border-neutral-300 dark:border-neutral-600 rounded-lg bg-white dark:bg-neutral-900"
           />
         ) : (
           <h1 className={`text-3xl md:text-4xl font-light font-serif mb-6 ${isPrivateItem ? 'blur-md' : ''}`}>{item.itemName}</h1>
         )
       })()}
-
-      {/* Private Item Toggle - shown when editing, right below title */}
-      {isEditing && (
-        <button
-          type="button"
-          onClick={() => setEditPrivate(!editPrivate)}
-          className={`mb-6 flex items-center gap-2 px-4 py-2 rounded-lg border transition-colors ${
-            editPrivate
-              ? 'bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 border-purple-300 dark:border-purple-700'
-              : 'bg-neutral-50 dark:bg-neutral-800/50 text-neutral-600 dark:text-neutral-400 border-neutral-300 dark:border-neutral-600'
-          }`}
-        >
-          <span className="font-medium">Private Item?</span>
-          <span className={`text-xs px-2 py-1 rounded ${editPrivate ? 'bg-purple-200 dark:bg-purple-800' : 'bg-neutral-200 dark:bg-neutral-600'}`}>
-            {editPrivate ? 'Hidden' : 'Visible'}
-          </span>
-        </button>
-      )}
 
       {/* Main content grid */}
       <div className="grid md:grid-cols-2 gap-8">
@@ -679,7 +661,25 @@ function ItemDetail({ list, setList, token, userRole }) {
 
         {/* Details section */}
         <div className="space-y-4">
-          
+
+          {/* Private Item Toggle - at top of details when editing */}
+          {isEditing && (
+            <button
+              type="button"
+              onClick={() => setEditPrivate(!editPrivate)}
+              className={`w-full flex items-center justify-between p-3 rounded-lg border transition-colors ${
+                editPrivate
+                  ? 'bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 border-purple-300 dark:border-purple-700'
+                  : 'bg-neutral-50 dark:bg-neutral-800/50 text-neutral-600 dark:text-neutral-400 border-neutral-300 dark:border-neutral-600'
+              }`}
+            >
+              <span className="font-medium">Private Item?</span>
+              <span className={`text-xs px-2 py-1 rounded ${editPrivate ? 'bg-purple-200 dark:bg-purple-800' : 'bg-neutral-200 dark:bg-neutral-600'}`}>
+                {editPrivate ? 'Hidden' : 'Visible'}
+              </span>
+            </button>
+          )}
+
           {/* Description */}
           <div>
             <div className="flex items-center justify-between mb-1">
