@@ -53,6 +53,11 @@ function Home({ list, setList, token, userRole, setShowLogin, handleLogout }) {
   const [availableMaterials, setAvailableMaterials] = useState([])
   const [newMaterialName, setNewMaterialName] = useState('')
 
+  // Categories state
+  const [availableCategories, setAvailableCategories] = useState([])
+  const [newCategoryName, setNewCategoryName] = useState('')
+  const [showManageCategories, setShowManageCategories] = useState(false)
+
   // AI Assistant state
   const [isAiExpanded, setIsAiExpanded] = useState(false)
   const [aiDescription, setAiDescription] = useState('')
@@ -107,6 +112,22 @@ function Home({ list, setList, token, userRole, setShowLogin, handleLogout }) {
       }
     }
     fetchMaterials()
+  }, [])
+
+  // Fetch available categories
+  useEffect(() => {
+    const fetchCategories = async () => {
+      try {
+        const response = await fetch(`${API_URL}/categories`)
+        if (response.ok) {
+          const data = await response.json()
+          setAvailableCategories(data)
+        }
+      } catch (err) {
+        console.error('Failed to fetch categories:', err)
+      }
+    }
+    fetchCategories()
   }, [])
 
   const handleKeyDown = (e, nextRef) => {
@@ -212,6 +233,56 @@ function Home({ list, setList, token, userRole, setShowLogin, handleLogout }) {
       }
     } catch (err) {
       console.error('Failed to delete material:', err)
+    }
+  }
+
+  // Category management functions
+  const addNewCategory = async () => {
+    if (!newCategoryName.trim() || !token) return
+    try {
+      const response = await fetch(`${API_URL}/categories`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ name: newCategoryName })
+      })
+      if (response.ok) {
+        const data = await response.json()
+        if (!data.existed) {
+          setAvailableCategories([...availableCategories, data].sort((a, b) => a.displayName.localeCompare(b.displayName)))
+        }
+        setNewCategoryName('')
+      }
+    } catch (err) {
+      console.error('Failed to add category:', err)
+    }
+  }
+
+  const deleteCategoryFromDb = async (categoryId, categoryName) => {
+    if (!token) return
+    // Check if it's in use locally first
+    const inUseCount = list.filter(item => item.category === categoryName).length
+    if (inUseCount > 0) {
+      alert(`Cannot delete "${categoryName}" - it's used by ${inUseCount} item(s)`)
+      return
+    }
+    try {
+      const response = await fetch(`${API_URL}/categories/${categoryId}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      })
+      if (response.ok) {
+        setAvailableCategories(availableCategories.filter(c => c.id !== categoryId))
+      } else {
+        const data = await response.json()
+        alert(data.error || 'Failed to delete category')
+      }
+    } catch (err) {
+      console.error('Failed to delete category:', err)
     }
   }
 
@@ -334,15 +405,15 @@ function Home({ list, setList, token, userRole, setShowLogin, handleLogout }) {
       }
       setAiExtractedFields(filled)
 
-      // Populate form fields from extraction
-      if (data.itemName) setItemName(data.itemName)
-      if (data.description) setDescription(data.description)
-      if (data.category) setCategory(data.category)
-      if (data.subcategory) setSubcategory(data.subcategory)
-      if (data.origin) setOrigin(data.origin)
-      if (data.secondhand) setSecondhand(data.secondhand)
-      if (data.gifted === 'yes') setGifted(true)
-      if (data.materials && Array.isArray(data.materials)) {
+      // Populate form fields from extraction - only fill empty fields
+      if (data.itemName && !itemName) setItemName(data.itemName)
+      if (data.description && !description) setDescription(data.description)
+      if (data.category && !category) setCategory(data.category)
+      if (data.subcategory && !subcategory) setSubcategory(data.subcategory)
+      if (data.origin && !origin) setOrigin(data.origin)
+      if (data.secondhand && !secondhand) setSecondhand(data.secondhand)
+      if (data.gifted === 'yes' && !gifted) setGifted(true)
+      if (data.materials && Array.isArray(data.materials) && data.materials.length > 0 && materials.length === 0) {
         setMaterials(data.materials)
       }
 
@@ -828,7 +899,24 @@ function Home({ list, setList, token, userRole, setShowLogin, handleLogout }) {
           </div>
 
           <div className="mb-4">
-            <label className="block text-sm font-medium mb-1">Description: {shouldHighlight('description') && <span className="text-amber-600 text-xs ml-1">(not filled by AI)</span>}</label>
+            <div className="flex items-center justify-between mb-1">
+              <label className="text-sm font-medium">Description: {shouldHighlight('description') && <span className="text-amber-600 text-xs ml-1">(not filled by AI)</span>}</label>
+              <button
+                type="button"
+                onClick={() => !privateItem && setPrivateDescription(!privateDescription)}
+                disabled={privateItem}
+                className={`px-2 py-0.5 text-xs rounded-full transition-colors flex items-center gap-1 ${
+                  privateItem
+                    ? 'bg-purple-50 dark:bg-purple-900/20 text-purple-400 dark:text-purple-500 cursor-not-allowed opacity-60'
+                    : privateDescription
+                      ? 'bg-purple-100 dark:bg-purple-900/40 text-purple-700 dark:text-purple-300 ring-1 ring-purple-300 dark:ring-purple-600'
+                      : 'bg-neutral-100 dark:bg-neutral-700 text-neutral-500 dark:text-neutral-400 hover:bg-neutral-200 dark:hover:bg-neutral-600'
+                }`}
+                title={privateItem ? 'Entire item is private' : privateDescription ? 'Description is private' : 'Make description private'}
+              >
+                {privateItem || privateDescription ? '🔒 Private' : '🔓 Public'}
+              </button>
+            </div>
             <textarea
               ref={descriptionRef}
               value={description}
@@ -849,7 +937,24 @@ function Home({ list, setList, token, userRole, setShowLogin, handleLogout }) {
           </div>
 
           <div className="mb-4">
-            <label className="block text-sm font-medium mb-1">Origin: {shouldHighlight('origin') && <span className="text-amber-600 text-xs ml-1">(not filled by AI)</span>}</label>
+            <div className="flex items-center justify-between mb-1">
+              <label className="text-sm font-medium">Origin: {shouldHighlight('origin') && <span className="text-amber-600 text-xs ml-1">(not filled by AI)</span>}</label>
+              <button
+                type="button"
+                onClick={() => !privateItem && setPrivateOrigin(!privateOrigin)}
+                disabled={privateItem}
+                className={`px-2 py-0.5 text-xs rounded-full transition-colors flex items-center gap-1 ${
+                  privateItem
+                    ? 'bg-purple-50 dark:bg-purple-900/20 text-purple-400 dark:text-purple-500 cursor-not-allowed opacity-60'
+                    : privateOrigin
+                      ? 'bg-purple-100 dark:bg-purple-900/40 text-purple-700 dark:text-purple-300 ring-1 ring-purple-300 dark:ring-purple-600'
+                      : 'bg-neutral-100 dark:bg-neutral-700 text-neutral-500 dark:text-neutral-400 hover:bg-neutral-200 dark:hover:bg-neutral-600'
+                }`}
+                title={privateItem ? 'Entire item is private' : privateOrigin ? 'Origin is private' : 'Make origin private'}
+              >
+                {privateItem || privateOrigin ? '🔒 Private' : '🔓 Public'}
+              </button>
+            </div>
             <input
               type="text"
               ref={originRef}
@@ -876,13 +981,84 @@ function Home({ list, setList, token, userRole, setShowLogin, handleLogout }) {
               className={`w-full px-3 py-2 text-base border rounded-lg bg-white dark:bg-neutral-900 text-neutral-800 dark:text-neutral-100 focus:outline-none focus:ring-2 focus:ring-green-500 ${errors.category ? 'border-red-500' : 'border-neutral-300 dark:border-neutral-600'} ${shouldHighlight('category') && !category ? aiUnfilledClass : ''}`}
             >
               <option value="">-- Select --</option>
-              <option value="clothing">Clothing</option>
-              <option value="jewelry">Jewelry</option>
-              <option value="sentimental">Sentimental</option>
-              <option value="bedding">Bedding</option>
-              <option value="other">Other</option>
+              {availableCategories.map(cat => (
+                <option key={cat.id} value={cat.name}>{cat.displayName}</option>
+              ))}
             </select>
             {errors.category && <span className="text-red-500 text-xs">Required</span>}
+
+            {/* Manage categories toggle */}
+            <button
+              type="button"
+              onClick={() => setShowManageCategories(!showManageCategories)}
+              className="mt-2 text-xs text-green-600 dark:text-green-400 hover:underline"
+            >
+              {showManageCategories ? '− Hide manage categories' : '+ Manage categories'}
+            </button>
+
+            {/* Manage categories section */}
+            {showManageCategories && (
+              <div className="mt-2 p-3 bg-neutral-100 dark:bg-neutral-800 rounded-lg border border-neutral-200 dark:border-neutral-700">
+                <p className="text-xs text-neutral-500 dark:text-neutral-400 mb-2">Add or remove categories:</p>
+
+                {/* Existing categories as chips */}
+                <div className="flex flex-wrap gap-2 mb-3">
+                  {availableCategories.map(cat => {
+                    const inUseCount = list.filter(item => item.category === cat.name).length
+                    return (
+                      <div key={cat.id} className="relative group">
+                        <span className={`inline-flex items-center gap-1 px-2 py-1 text-sm rounded-lg border ${
+                          category === cat.name
+                            ? 'bg-green-100 dark:bg-green-900/30 border-green-300 dark:border-green-700 text-green-700 dark:text-green-300'
+                            : 'bg-white dark:bg-neutral-700 border-neutral-300 dark:border-neutral-600'
+                        }`}>
+                          {cat.displayName}
+                          <span className="text-xs text-neutral-400">({inUseCount})</span>
+                        </span>
+                        {/* Delete button - only show for unused categories */}
+                        {inUseCount === 0 && isAdmin && (
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              deleteCategoryFromDb(cat.id, cat.name)
+                            }}
+                            className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 text-white rounded-full text-xs leading-none opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center"
+                            title="Delete category"
+                          >
+                            ×
+                          </button>
+                        )}
+                      </div>
+                    )
+                  })}
+                </div>
+
+                {/* Add new category input */}
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={newCategoryName}
+                    onChange={(e) => setNewCategoryName(e.target.value)}
+                    placeholder="Add new category..."
+                    className="flex-1 px-3 py-2 text-sm border border-neutral-300 dark:border-neutral-600 rounded-lg bg-white dark:bg-neutral-900"
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault()
+                        addNewCategory()
+                      }
+                    }}
+                  />
+                  <button
+                    type="button"
+                    onClick={addNewCategory}
+                    className="px-4 py-2 text-sm bg-green-600 text-white rounded-lg hover:bg-green-700"
+                  >
+                    Add
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
 
           {category === 'clothing' && (
@@ -1024,77 +1200,53 @@ function Home({ list, setList, token, userRole, setShowLogin, handleLogout }) {
             </div>
           )}
 
-          <div className="mb-4 flex gap-6">
-            <label className="flex items-center gap-2 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={gifted}
-                onChange={(e) => setGifted(e.target.checked)}
-                className="w-5 h-5 rounded border-neutral-300 dark:border-neutral-600 text-green-600 focus:ring-green-500"
-              />
-              <span className="text-sm font-medium">Gifted?</span>
+          <div className="mb-4">
+            <label className="block text-sm font-medium mb-1">Gifted?</label>
+            <label className="inline-flex items-center gap-3 cursor-pointer select-none">
+              <div className="relative">
+                <input
+                  type="checkbox"
+                  checked={gifted}
+                  onChange={(e) => setGifted(e.target.checked)}
+                  className="peer sr-only"
+                />
+                <div className={`w-6 h-6 rounded-md border-2 transition-all flex items-center justify-center ${
+                  gifted
+                    ? 'bg-green-500 border-green-500 dark:bg-green-600 dark:border-green-600'
+                    : 'bg-white dark:bg-neutral-800 border-neutral-300 dark:border-neutral-600 hover:border-green-400 dark:hover:border-green-500'
+                }`}>
+                  {gifted && (
+                    <svg className="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                    </svg>
+                  )}
+                </div>
+              </div>
+              <span className={`text-sm ${gifted ? 'text-green-700 dark:text-green-400' : 'text-neutral-600 dark:text-neutral-400'}`}>
+                {gifted ? 'Yes, this is a gift' : 'Not a gift'}
+              </span>
             </label>
           </div>
 
-          {/* Privacy Controls */}
-          <div className="mb-4 p-3 border border-neutral-300 dark:border-neutral-600 rounded-lg bg-neutral-50 dark:bg-neutral-800/50">
-            <button
-              type="button"
-              onClick={() => setPrivateItem(!privateItem)}
-              className={`w-full flex items-center justify-between p-2 rounded-lg transition-colors ${
-                privateItem
-                  ? 'bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300'
-                  : 'bg-neutral-100 dark:bg-neutral-700 text-neutral-600 dark:text-neutral-400'
-              }`}
-            >
-              <span className="font-medium">Private Item?</span>
-              <span className={`text-xs px-2 py-1 rounded ${privateItem ? 'bg-purple-200 dark:bg-purple-800' : 'bg-neutral-200 dark:bg-neutral-600'}`}>
-                {privateItem ? 'Hidden from public' : 'Visible'}
-              </span>
-            </button>
-
-            <div className="mt-3 pt-3 border-t border-neutral-200 dark:border-neutral-700">
-              <p className="text-xs text-neutral-500 dark:text-neutral-400 mb-2">Or hide specific fields:</p>
-              <div className="flex flex-wrap gap-2">
-                <button
-                  type="button"
-                  onClick={() => setPrivatePhotos(!privatePhotos)}
-                  className={`px-3 py-1.5 text-sm rounded-full transition-colors ${
-                    privatePhotos
-                      ? 'bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 ring-1 ring-purple-300 dark:ring-purple-700'
-                      : 'bg-neutral-100 dark:bg-neutral-700 text-neutral-600 dark:text-neutral-400 hover:bg-neutral-200 dark:hover:bg-neutral-600'
-                  }`}
-                >
-                  Photos {privatePhotos && '🔒'}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setPrivateDescription(!privateDescription)}
-                  className={`px-3 py-1.5 text-sm rounded-full transition-colors ${
-                    privateDescription
-                      ? 'bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 ring-1 ring-purple-300 dark:ring-purple-700'
-                      : 'bg-neutral-100 dark:bg-neutral-700 text-neutral-600 dark:text-neutral-400 hover:bg-neutral-200 dark:hover:bg-neutral-600'
-                  }`}
-                >
-                  Description {privateDescription && '🔒'}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setPrivateOrigin(!privateOrigin)}
-                  className={`px-3 py-1.5 text-sm rounded-full transition-colors ${
-                    privateOrigin
-                      ? 'bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 ring-1 ring-purple-300 dark:ring-purple-700'
-                      : 'bg-neutral-100 dark:bg-neutral-700 text-neutral-600 dark:text-neutral-400 hover:bg-neutral-200 dark:hover:bg-neutral-600'
-                  }`}
-                >
-                  Origin {privateOrigin && '🔒'}
-                </button>
-              </div>
-            </div>
-          </div>
-
 <div className="mb-4">
-  <label className="block text-sm font-medium mb-1">Photos (up to 5):</label>
+  <div className="flex items-center justify-between mb-1">
+    <label className="text-sm font-medium">Photos (up to 5):</label>
+    <button
+      type="button"
+      onClick={() => !privateItem && setPrivatePhotos(!privatePhotos)}
+      disabled={privateItem}
+      className={`px-2 py-0.5 text-xs rounded-full transition-colors flex items-center gap-1 ${
+        privateItem
+          ? 'bg-purple-50 dark:bg-purple-900/20 text-purple-400 dark:text-purple-500 cursor-not-allowed opacity-60'
+          : privatePhotos
+            ? 'bg-purple-100 dark:bg-purple-900/40 text-purple-700 dark:text-purple-300 ring-1 ring-purple-300 dark:ring-purple-600'
+            : 'bg-neutral-100 dark:bg-neutral-700 text-neutral-500 dark:text-neutral-400 hover:bg-neutral-200 dark:hover:bg-neutral-600'
+      }`}
+      title={privateItem ? 'Entire item is private' : privatePhotos ? 'Photos are private' : 'Make photos private'}
+    >
+      {privateItem || privatePhotos ? '🔒 Private' : '🔓 Public'}
+    </button>
+  </div>
 
   {/* Hidden file input */}
   <input
@@ -1171,8 +1323,26 @@ function Home({ list, setList, token, userRole, setShowLogin, handleLogout }) {
   )}
 </div>
 
-          <button 
-            type="button" 
+          {/* Privacy Controls - Private Item toggle */}
+          <div className="mb-4">
+            <button
+              type="button"
+              onClick={() => setPrivateItem(!privateItem)}
+              className={`w-full flex items-center justify-between p-3 rounded-lg border transition-colors ${
+                privateItem
+                  ? 'bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 border-purple-300 dark:border-purple-700'
+                  : 'bg-neutral-50 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-400 border-neutral-300 dark:border-neutral-600'
+              }`}
+            >
+              <span className="font-medium">Private Item?</span>
+              <span className={`text-xs px-2 py-1 rounded ${privateItem ? 'bg-purple-200 dark:bg-purple-800' : 'bg-neutral-200 dark:bg-neutral-600'}`}>
+                {privateItem ? 'Hidden from public' : 'Visible'}
+              </span>
+            </button>
+          </div>
+
+          <button
+            type="button"
             ref={submitRef}
             onClick={handleAddItem}
             disabled={isUploading}
@@ -1222,22 +1392,22 @@ function Home({ list, setList, token, userRole, setShowLogin, handleLogout }) {
         />
         
         <div className="flex flex-wrap gap-2">
-          {['clothing', 'jewelry', 'sentimental', 'bedding', 'other'].map(cat => {
+          {availableCategories.map(cat => {
             const baseItems = getFilteredItems('category')
-            const count = baseItems.filter(item => item.category === cat).length
+            const count = baseItems.filter(item => item.category === cat.name).length
             return (
 <button
-  key={cat}
+  key={cat.id}
   onClick={() => {
-    if (selectedCategories.includes(cat)) {
-      setSelectedCategories(selectedCategories.filter(c => c !== cat))
+    if (selectedCategories.includes(cat.name)) {
+      setSelectedCategories(selectedCategories.filter(c => c !== cat.name))
     } else {
-      setSelectedCategories([...selectedCategories, cat])
+      setSelectedCategories([...selectedCategories, cat.name])
     }
   }}
-  className={`filter-button ${selectedCategories.includes(cat) ? 'active' : ''}`}
+  className={`filter-button ${selectedCategories.includes(cat.name) ? 'active' : ''}`}
 >
-  {cat.charAt(0).toUpperCase() + cat.slice(1)} ({count})
+  {cat.displayName} ({count})
 </button>
             )
           })}

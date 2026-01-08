@@ -213,3 +213,191 @@ LATER / MAYBE
  Let visitors compare their own stuff (anonymous submission)
 
 
+---
+
+## Consumables & Meal Tracking System
+
+A pantry management system that tracks what you have, what you eat, and what you need to buy. Connected to the inventory app through shared auth, database, and UI components.
+
+### Core Concept
+
+You say what you ate. The system subtracts ingredients from your stock. Over time it learns your patterns and auto-generates shopping lists before you run out.
+
+### Data Model
+
+**consumable_types** — The vocabulary of things you buy
+- id
+- name ("Eggs", "Milk", "Rice")
+- category ("dairy", "protein", "grain", "produce", "pantry", etc.)
+- unit ("count", "oz", "lbs", "gallons", "tbsp")
+- photo (optional)
+- default_quantity (how many you typically buy at once)
+- default_store (where you usually get it)
+
+**current_stock** — What you have right now
+- id
+- consumable_type_id
+- quantity
+- purchased_date
+- expiration_date (optional)
+
+**recipes** — Meals you make
+- id
+- name ("Scrambled eggs with toast")
+- instructions (optional)
+- photo (optional)
+- prep_time (optional)
+- tags (breakfast, quick, vegetarian, etc.)
+
+**recipe_ingredients** — What goes into each recipe
+- id
+- recipe_id
+- consumable_type_id
+- quantity
+- unit
+- optional (boolean — can you skip this ingredient?)
+
+**meal_log** — What you actually ate
+- id
+- recipe_id (nullable — could be a known recipe or freeform)
+- name (freeform if not a recipe — "ate out", "snacked on chips")
+- logged_at
+- servings (default 1 — did you make double?)
+- notes
+
+**consumption_log** — Direct stock changes not tied to meals
+- id
+- consumable_type_id
+- quantity_used
+- logged_at
+- reason ("expired", "spilled", "gave away", or auto-generated from meal)
+
+**shopping_list** — What you need to buy
+- id
+- consumable_type_id
+- quantity_needed
+- auto_generated (boolean — system added vs manual)
+- reason ("low stock", "for recipe: Lasagna", "manual add")
+- added_at
+- purchased (boolean)
+- purchased_at
+
+### User Flows
+
+**Logging a meal (primary interaction):**
+1. You say or type: "I made scrambled eggs with toast"
+2. LLM matches to existing recipe OR creates new recipe and asks about ingredients
+3. System subtracts ingredients from current_stock
+4. Logs the meal with timestamp
+5. If any ingredient went to zero or below threshold, adds to shopping_list
+
+**Adding stock (after shopping):**
+1. You say: "I bought eggs, milk, bread, and butter"
+2. LLM parses, matches to consumable_types
+3. Adds to current_stock with today's date
+4. Marks items as purchased in shopping_list
+
+**Checking what you need:**
+1. Open /shopping
+2. See auto-generated list based on:
+   - Items below threshold (you have 2 eggs, you use 9/week)
+   - Items expiring soon
+   - Ingredients needed for planned meals
+3. Can add manual items
+4. Check off as you shop
+
+**Creating a recipe:**
+1. You say: "My pasta recipe is 8oz pasta, half jar of sauce, garlic, parmesan"
+2. LLM parses ingredients, matches or creates consumable_types
+3. Recipe saved for future logging
+
+### Auto-Shopping Logic
+
+System calculates weekly usage per consumable from meal_log over past 30 days:
+- You logged scrambled eggs 8 times (24 eggs)
+- You logged baking cookies twice (4 eggs)
+- Total: 28 eggs / 4 weeks = 7 eggs/week
+
+Current stock: 3 eggs
+Projected days until out: 3 days
+Threshold: 7 days supply
+Action: Add "Eggs (1 dozen)" to shopping_list
+
+### LLM Integration Points
+
+1. **Meal logging** — Parse "I made X" into recipe match or creation
+2. **Stock updates** — Parse "I bought X, Y, Z" into stock additions
+3. **Recipe creation** — Parse ingredient lists into structured data
+4. **Smart suggestions** — "You haven't eaten vegetables in 3 days" or "You have spinach expiring tomorrow, here are recipes"
+
+### UI Pages
+
+- `/pantry` — Current stock overview, organized by category, shows low/expiring items prominently
+- `/log` — Quick meal logging, voice/text input, recent meals for quick re-log
+- `/recipes` — Your recipe collection, can browse and log from here
+- `/shopping` — Auto-generated + manual list, checkboxes, organized by store section
+- `/consumables` — Manage the vocabulary of things you buy (like materials for inventory)
+
+### Connection to Inventory App
+
+- Shared authentication (same login)
+- Shared database (Turso)
+- Shared UI components (navigation, cards, filters)
+- Shared LLM extraction infrastructure
+- Landing page links to both Inventory and Pantry
+
+### Future Enhancements
+
+- Barcode scanning to add stock
+- Receipt photo scanning to bulk-add purchases
+- Meal planning calendar ("What should I make this week based on what I have?")
+- Nutrition tracking (calories, macros per recipe)
+- Cost tracking (how much do you spend on food per week)
+- Sharing recipes with other users
+- Integration with grocery delivery APIs
+
+### Receipt Scanning
+
+**Flow:**
+1. Take photo of receipt after shopping
+2. LLM extracts line items: item name, quantity, price, store name, date
+3. Matches to existing consumable_types or suggests new ones
+4. Adds to current_stock with purchase date and price
+5. Marks matching items as purchased in shopping_list
+
+**Purchase history tracked:**
+- What you bought
+- When you bought it
+- Where you bought it
+- How much you paid
+
+**Over time this enables:**
+- "You usually buy eggs at HEB for $3.50 but they're $4.20 at Target"
+- "Your grocery spending is up 15% this month"
+- "You bought olive oil 3 weeks ago, you usually go through a bottle in 6 weeks"
+- Price history per item
+- Preferred store per item
+
+### Updated Data Model (for Receipt Scanning)
+
+**purchases** — Receipt-level data
+- id
+- store_name
+- purchase_date
+- receipt_photo_url
+- subtotal
+- tax
+- total
+- notes
+
+**purchase_items** — Line items from receipts
+- id
+- purchase_id
+- consumable_type_id (nullable if unmatched)
+- raw_text ("LG EGGS 12CT")
+- quantity
+- unit_price
+- total_price
+- matched (boolean — did it link to a consumable_type?)
+
+This links to current_stock — when you scan a receipt, it both logs the purchase AND updates your stock.
