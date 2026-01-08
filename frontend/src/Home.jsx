@@ -218,7 +218,7 @@ function Home({ list, setList, token, userRole, setShowLogin, handleLogout }) {
           <select
             value={sortOrder}
             onChange={(e) => setSortOrder(e.target.value)}
-            className="px-3 py-2 border border-neutral-300 dark:border-neutral-600 rounded-lg bg-white dark:bg-neutral-800 text-neutral-800 dark:text-neutral-100"
+            className="flex-none w-auto px-3 py-2 border border-neutral-300 dark:border-neutral-600 rounded-lg bg-white dark:bg-neutral-800 text-neutral-800 dark:text-neutral-100"
           >
             <option value="newest">Newest first</option>
             <option value="oldest">Oldest first</option>
@@ -235,7 +235,7 @@ function Home({ list, setList, token, userRole, setShowLogin, handleLogout }) {
       )}
 
       {/* Filters, Search, and View Toggle */}
-      <div className="flex flex-wrap gap-4 items-center mb-4">
+      <div className="flex gap-4 items-center mb-4">
         {/* Filters toggle button */}
         <button
           type="button"
@@ -265,17 +265,17 @@ function Home({ list, setList, token, userRole, setShowLogin, handleLogout }) {
           </button>
         )}
 
-        {/* Search - fills space between filters and view toggle */}
+        {/* Search */}
         <input
           type="text"
           placeholder="Search items..."
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
-          className="flex-1 min-w-[120px] px-3 py-2 border border-neutral-300 dark:border-neutral-600 rounded-lg bg-white dark:bg-neutral-800 text-neutral-800 dark:text-neutral-100"
+          className="flex-none w-48 px-3 py-2 border border-neutral-300 dark:border-neutral-600 rounded-lg bg-white dark:bg-neutral-800 text-neutral-800 dark:text-neutral-100"
         />
 
         {/* View toggle */}
-        <div className="flex items-center gap-1">
+        <div className="flex items-center gap-1 ml-auto">
           <button
             type="button"
             onClick={() => setViewMode('list')}
