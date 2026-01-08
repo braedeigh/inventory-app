@@ -58,6 +58,11 @@ function Home({ list, setList, token, userRole, setShowLogin, handleLogout }) {
   const [newCategoryName, setNewCategoryName] = useState('')
   const [showManageCategories, setShowManageCategories] = useState(false)
 
+  // Subcategories state
+  const [availableSubcategories, setAvailableSubcategories] = useState([])
+  const [newSubcategoryName, setNewSubcategoryName] = useState('')
+  const [showManageSubcategories, setShowManageSubcategories] = useState(false)
+
   // Filters UI state
   const [showFilters, setShowFilters] = useState(false)
 
@@ -131,6 +136,22 @@ function Home({ list, setList, token, userRole, setShowLogin, handleLogout }) {
       }
     }
     fetchCategories()
+  }, [])
+
+  // Fetch available subcategories
+  useEffect(() => {
+    const fetchSubcategories = async () => {
+      try {
+        const response = await fetch(`${API_URL}/subcategories`)
+        if (response.ok) {
+          const data = await response.json()
+          setAvailableSubcategories(data)
+        }
+      } catch (err) {
+        console.error('Failed to fetch subcategories:', err)
+      }
+    }
+    fetchSubcategories()
   }, [])
 
   const handleKeyDown = (e, nextRef) => {
@@ -286,6 +307,56 @@ function Home({ list, setList, token, userRole, setShowLogin, handleLogout }) {
       }
     } catch (err) {
       console.error('Failed to delete category:', err)
+    }
+  }
+
+  // Subcategory management functions
+  const addNewSubcategory = async () => {
+    if (!newSubcategoryName.trim() || !token) return
+    try {
+      const response = await fetch(`${API_URL}/subcategories`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ name: newSubcategoryName, category: 'clothing' })
+      })
+      if (response.ok) {
+        const data = await response.json()
+        if (!data.existed) {
+          setAvailableSubcategories([...availableSubcategories, data].sort((a, b) => a.displayName.localeCompare(b.displayName)))
+        }
+        setNewSubcategoryName('')
+      }
+    } catch (err) {
+      console.error('Failed to add subcategory:', err)
+    }
+  }
+
+  const deleteSubcategoryFromDb = async (subcategoryId, subcategoryName) => {
+    if (!token) return
+    // Check if it's in use locally first
+    const inUseCount = list.filter(item => item.subcategory === subcategoryName).length
+    if (inUseCount > 0) {
+      alert(`Cannot delete "${subcategoryName}" - it's used by ${inUseCount} item(s)`)
+      return
+    }
+    try {
+      const response = await fetch(`${API_URL}/subcategories/${subcategoryId}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      })
+      if (response.ok) {
+        setAvailableSubcategories(availableSubcategories.filter(s => s.id !== subcategoryId))
+      } else {
+        const data = await response.json()
+        alert(data.error || 'Failed to delete subcategory')
+      }
+    } catch (err) {
+      console.error('Failed to delete subcategory:', err)
     }
   }
 
@@ -1073,20 +1144,87 @@ function Home({ list, setList, token, userRole, setShowLogin, handleLogout }) {
                 className={`w-full px-3 py-2 text-base border border-neutral-300 dark:border-neutral-600 rounded-lg bg-white dark:bg-neutral-900 text-neutral-800 dark:text-neutral-100 focus:outline-none focus:ring-2 focus:ring-green-500 ${shouldHighlight('subcategory') && !subcategory ? aiUnfilledClass : ''}`}
               >
                 <option value="">-- Select --</option>
-                <option value="undershirt">Undershirt</option>
-                <option value="shirt">Shirt</option>
-                <option value="sweater">Sweater</option>
-                <option value="jacket">Jacket</option>
-                <option value="dress">Dress</option>
-                <option value="pants">Pants</option>
-                <option value="shorts">Shorts</option>
-                <option value="skirt">Skirt</option>
-                <option value="shoes">Shoes</option>
-                <option value="socks">Socks</option>
-                <option value="underwear">Underwear</option>
-                <option value="accessories">Accessories</option>
-                <option value="other">Other</option>
+                {availableSubcategories
+                  .filter(sub => sub.category === 'clothing')
+                  .map(sub => (
+                    <option key={sub.id} value={sub.name}>{sub.displayName}</option>
+                  ))}
               </select>
+
+              {/* Manage subcategories toggle */}
+              <button
+                type="button"
+                onClick={() => setShowManageSubcategories(!showManageSubcategories)}
+                className="mt-2 text-xs text-green-600 dark:text-green-400 hover:underline"
+              >
+                {showManageSubcategories ? '− Hide manage subcategories' : '+ Manage subcategories'}
+              </button>
+
+              {/* Manage subcategories section */}
+              {showManageSubcategories && (
+                <div className="mt-2 p-3 bg-neutral-100 dark:bg-neutral-800 rounded-lg border border-neutral-200 dark:border-neutral-700">
+                  <p className="text-xs text-neutral-500 dark:text-neutral-400 mb-2">Add or remove clothing subcategories:</p>
+
+                  {/* Existing subcategories as chips */}
+                  <div className="flex flex-wrap gap-2 mb-3">
+                    {availableSubcategories
+                      .filter(sub => sub.category === 'clothing')
+                      .map(sub => {
+                        const inUseCount = list.filter(item => item.subcategory === sub.name).length
+                        return (
+                          <div key={sub.id} className="relative group">
+                            <span className={`inline-flex items-center gap-1 px-2 py-1 text-sm rounded-lg border ${
+                              subcategory === sub.name
+                                ? 'bg-green-100 dark:bg-green-900/30 border-green-300 dark:border-green-700 text-green-700 dark:text-green-300'
+                                : 'bg-white dark:bg-neutral-700 border-neutral-300 dark:border-neutral-600'
+                            }`}>
+                              {sub.displayName}
+                              <span className="text-xs text-neutral-400">({inUseCount})</span>
+                            </span>
+                            {/* Delete button - only show for unused subcategories */}
+                            {inUseCount === 0 && isAdmin && (
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  deleteSubcategoryFromDb(sub.id, sub.name)
+                                }}
+                                className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 text-white rounded-full text-xs leading-none opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center"
+                                title="Delete subcategory"
+                              >
+                                ×
+                              </button>
+                            )}
+                          </div>
+                        )
+                      })}
+                  </div>
+
+                  {/* Add new subcategory input */}
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      value={newSubcategoryName}
+                      onChange={(e) => setNewSubcategoryName(e.target.value)}
+                      placeholder="Add new subcategory..."
+                      className="flex-1 px-3 py-2 text-sm border border-neutral-300 dark:border-neutral-600 rounded-lg bg-white dark:bg-neutral-900"
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          e.preventDefault()
+                          addNewSubcategory()
+                        }
+                      }}
+                    />
+                    <button
+                      type="button"
+                      onClick={addNewSubcategory}
+                      className="px-4 py-2 text-sm bg-green-600 text-white rounded-lg hover:bg-green-700"
+                    >
+                      Add
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
           )}
 
@@ -1482,25 +1620,27 @@ function Home({ list, setList, token, userRole, setShowLogin, handleLogout }) {
                     </button>
                   )
                 })()}
-                {['undershirt', 'shirt', 'sweater', 'jacket', 'dress', 'pants', 'shorts', 'skirt', 'shoes', 'socks', 'underwear', 'accessories', 'other'].map(sub => {
-                  const baseItems = getFilteredItems('subcategory')
-                  const count = baseItems.filter(item => item.category === 'clothing' && item.subcategory === sub).length
-                  return (
-                    <button
-                      key={sub}
-                      onClick={() => {
-                        if (selectedSubcategories.includes(sub)) {
-                          setSelectedSubcategories(selectedSubcategories.filter(s => s !== sub))
-                        } else {
-                          setSelectedSubcategories([...selectedSubcategories, sub])
-                        }
-                      }}
-                      className={`filter-button-sub ${selectedSubcategories.includes(sub) ? 'active' : ''}`}
-                    >
-                      {sub.charAt(0).toUpperCase() + sub.slice(1)} ({count})
-                    </button>
-                  )
-                })}
+                {availableSubcategories
+                  .filter(sub => sub.category === 'clothing')
+                  .map(sub => {
+                    const baseItems = getFilteredItems('subcategory')
+                    const count = baseItems.filter(item => item.category === 'clothing' && item.subcategory === sub.name).length
+                    return (
+                      <button
+                        key={sub.id}
+                        onClick={() => {
+                          if (selectedSubcategories.includes(sub.name)) {
+                            setSelectedSubcategories(selectedSubcategories.filter(s => s !== sub.name))
+                          } else {
+                            setSelectedSubcategories([...selectedSubcategories, sub.name])
+                          }
+                        }}
+                        className={`filter-button-sub ${selectedSubcategories.includes(sub.name) ? 'active' : ''}`}
+                      >
+                        {sub.displayName} ({count})
+                      </button>
+                    )
+                  })}
               </div>
             </div>
           )}

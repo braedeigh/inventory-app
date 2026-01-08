@@ -37,6 +37,7 @@ function ItemDetail({ list, setList, token, userRole }) {
   const [availableMaterials, setAvailableMaterials] = useState([])
   const [newMaterialName, setNewMaterialName] = useState('')
   const [availableCategories, setAvailableCategories] = useState([])
+  const [availableSubcategories, setAvailableSubcategories] = useState([])
 
   // Fetch photos for this item
   useEffect(() => {
@@ -93,6 +94,22 @@ function ItemDetail({ list, setList, token, userRole }) {
       }
     }
     fetchCategories()
+  }, [])
+
+  // Fetch available subcategories
+  useEffect(() => {
+    const fetchSubcategories = async () => {
+      try {
+        const response = await fetch(`${API_URL}/subcategories`)
+        if (response.ok) {
+          const data = await response.json()
+          setAvailableSubcategories(data)
+        }
+      } catch (err) {
+        console.error('Failed to fetch subcategories:', err)
+      }
+    }
+    fetchSubcategories()
   }, [])
 
   if (!item) {
@@ -765,19 +782,11 @@ function ItemDetail({ list, setList, token, userRole }) {
                   className="w-full px-3 py-2 border border-neutral-300 dark:border-neutral-600 rounded-lg bg-white dark:bg-neutral-900"
                 >
                   <option value="">-- Select --</option>
-                  <option value="undershirt">Undershirt</option>
-                  <option value="shirt">Shirt</option>
-                  <option value="sweater">Sweater</option>
-                  <option value="jacket">Jacket</option>
-                  <option value="dress">Dress</option>
-                  <option value="pants">Pants</option>
-                  <option value="shorts">Shorts</option>
-                  <option value="skirt">Skirt</option>
-                  <option value="shoes">Shoes</option>
-                  <option value="socks">Socks</option>
-                  <option value="underwear">Underwear</option>
-                  <option value="accessories">Accessories</option>
-                  <option value="other">Other</option>
+                  {availableSubcategories
+                    .filter(sub => sub.category === 'clothing')
+                    .map(sub => (
+                      <option key={sub.id} value={sub.name}>{sub.displayName}</option>
+                    ))}
                 </select>
               ) : (
                 <p className="capitalize">{item.subcategory}</p>
