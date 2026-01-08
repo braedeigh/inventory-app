@@ -46,6 +46,9 @@ function Home({ list, setList, token, userRole, setShowLogin, handleLogout }) {
   const [secondhand, setSecondhand] = useState('')
   const [gifted, setGifted] = useState(false)
   const [privateItem, setPrivateItem] = useState(false)
+  const [privatePhotos, setPrivatePhotos] = useState(false)
+  const [privateDescription, setPrivateDescription] = useState(false)
+  const [privateOrigin, setPrivateOrigin] = useState(false)
   const [materials, setMaterials] = useState([]) // [{material: 'Cotton', percentage: 80}]
   const [availableMaterials, setAvailableMaterials] = useState([])
   const [newMaterialName, setNewMaterialName] = useState('')
@@ -390,6 +393,9 @@ function Home({ list, setList, token, userRole, setShowLogin, handleLogout }) {
     formData.append('secondhand', secondhand)
     formData.append('gifted', gifted ? 'true' : 'false')
     formData.append('private', privateItem ? 'true' : 'false')
+    formData.append('privatePhotos', privatePhotos ? 'true' : 'false')
+    formData.append('privateDescription', privateDescription ? 'true' : 'false')
+    formData.append('privateOrigin', privateOrigin ? 'true' : 'false')
     formData.append('mainPhotoIndex', mainPhotoIndex)
     if (materials.length > 0) {
       formData.append('materials', JSON.stringify(materials))
@@ -419,6 +425,9 @@ function Home({ list, setList, token, userRole, setShowLogin, handleLogout }) {
       setSecondhand('')
       setGifted(false)
       setPrivateItem(false)
+      setPrivatePhotos(false)
+      setPrivateDescription(false)
+      setPrivateOrigin(false)
       setMaterials([])
       setPhotoFiles([])
       setPhotoPreviews([])
@@ -1025,15 +1034,63 @@ function Home({ list, setList, token, userRole, setShowLogin, handleLogout }) {
               />
               <span className="text-sm font-medium">Gifted?</span>
             </label>
-            <label className="flex items-center gap-2 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={privateItem}
-                onChange={(e) => setPrivateItem(e.target.checked)}
-                className="w-5 h-5 rounded border-neutral-300 dark:border-neutral-600 text-green-600 focus:ring-green-500"
-              />
-              <span className="text-sm font-medium">Private?</span>
-            </label>
+          </div>
+
+          {/* Privacy Controls */}
+          <div className="mb-4 p-3 border border-neutral-300 dark:border-neutral-600 rounded-lg bg-neutral-50 dark:bg-neutral-800/50">
+            <button
+              type="button"
+              onClick={() => setPrivateItem(!privateItem)}
+              className={`w-full flex items-center justify-between p-2 rounded-lg transition-colors ${
+                privateItem
+                  ? 'bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300'
+                  : 'bg-neutral-100 dark:bg-neutral-700 text-neutral-600 dark:text-neutral-400'
+              }`}
+            >
+              <span className="font-medium">Private Item?</span>
+              <span className={`text-xs px-2 py-1 rounded ${privateItem ? 'bg-purple-200 dark:bg-purple-800' : 'bg-neutral-200 dark:bg-neutral-600'}`}>
+                {privateItem ? 'Hidden from public' : 'Visible'}
+              </span>
+            </button>
+
+            <div className="mt-3 pt-3 border-t border-neutral-200 dark:border-neutral-700">
+              <p className="text-xs text-neutral-500 dark:text-neutral-400 mb-2">Or hide specific fields:</p>
+              <div className="flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  onClick={() => setPrivatePhotos(!privatePhotos)}
+                  className={`px-3 py-1.5 text-sm rounded-full transition-colors ${
+                    privatePhotos
+                      ? 'bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 ring-1 ring-purple-300 dark:ring-purple-700'
+                      : 'bg-neutral-100 dark:bg-neutral-700 text-neutral-600 dark:text-neutral-400 hover:bg-neutral-200 dark:hover:bg-neutral-600'
+                  }`}
+                >
+                  Photos {privatePhotos && '🔒'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setPrivateDescription(!privateDescription)}
+                  className={`px-3 py-1.5 text-sm rounded-full transition-colors ${
+                    privateDescription
+                      ? 'bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 ring-1 ring-purple-300 dark:ring-purple-700'
+                      : 'bg-neutral-100 dark:bg-neutral-700 text-neutral-600 dark:text-neutral-400 hover:bg-neutral-200 dark:hover:bg-neutral-600'
+                  }`}
+                >
+                  Description {privateDescription && '🔒'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setPrivateOrigin(!privateOrigin)}
+                  className={`px-3 py-1.5 text-sm rounded-full transition-colors ${
+                    privateOrigin
+                      ? 'bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 ring-1 ring-purple-300 dark:ring-purple-700'
+                      : 'bg-neutral-100 dark:bg-neutral-700 text-neutral-600 dark:text-neutral-400 hover:bg-neutral-200 dark:hover:bg-neutral-600'
+                  }`}
+                >
+                  Origin {privateOrigin && '🔒'}
+                </button>
+              </div>
+            </div>
           </div>
 
 <div className="mb-4">
@@ -1342,6 +1399,9 @@ function Home({ list, setList, token, userRole, setShowLogin, handleLogout }) {
             {filteredAndSortedList.map((item, index) => {
               const isPrivateItem = item.private === 'true' || item.private === true
               const shouldBlur = isPrivateItem && !isAdmin
+              const shouldBlurPhotos = ((item.private === 'true' || item.private === true) || (item.privatePhotos === 'true' || item.privatePhotos === true)) && !isAdmin
+              const shouldBlurDescription = ((item.private === 'true' || item.private === true) || (item.privateDescription === 'true' || item.privateDescription === true)) && !isAdmin
+              const shouldBlurOrigin = ((item.private === 'true' || item.private === true) || (item.privateOrigin === 'true' || item.privateOrigin === true)) && !isAdmin
               return (
               <tr
                 key={index}
@@ -1354,9 +1414,9 @@ function Home({ list, setList, token, userRole, setShowLogin, handleLogout }) {
               >
                 <td className="p-3 w-16" onClick={(e) => e.stopPropagation()}>
                   {item.mainPhoto ? (
-                    <img src={item.mainPhoto} alt={item.itemName} className={`w-12 h-12 object-cover rounded ${shouldBlur ? 'blur-md' : ''}`} />
+                    <img src={item.mainPhoto} alt={item.itemName} className={`w-12 h-12 object-cover rounded ${shouldBlurPhotos ? 'blur-md' : ''}`} />
                   ) : (
-                    <div className={`w-12 h-12 bg-neutral-200 dark:bg-neutral-700 rounded flex items-center justify-center text-neutral-400 ${shouldBlur ? 'blur-sm' : ''}`}>+</div>
+                    <div className={`w-12 h-12 bg-neutral-200 dark:bg-neutral-700 rounded flex items-center justify-center text-neutral-400 ${shouldBlurPhotos ? 'blur-sm' : ''}`}>+</div>
                   )}
                 </td>
 
@@ -1382,8 +1442,8 @@ function Home({ list, setList, token, userRole, setShowLogin, handleLogout }) {
                       className="px-2 py-1 border rounded bg-white dark:bg-neutral-900 w-full"
                     />
                   ) : (
-                    <span className={`block truncate ${shouldBlur ? 'blur-sm' : ''}`}>
-                      {shouldBlur ? '••••••••••••••••' : <PrivateText text={item.description} isAuthenticated={!!token} isAdmin={isAdmin} />}
+                    <span className={`block truncate ${shouldBlurDescription ? 'blur-sm' : ''}`}>
+                      {shouldBlurDescription ? '••••••••••••••••' : <PrivateText text={item.description} isAuthenticated={!!token} isAdmin={isAdmin} />}
                     </span>
                   )}
                 </td>
@@ -1396,8 +1456,8 @@ function Home({ list, setList, token, userRole, setShowLogin, handleLogout }) {
                       className="px-2 py-1 border rounded bg-white dark:bg-neutral-900"
                     />
                   ) : (
-                    <span className={`block truncate ${shouldBlur ? 'blur-sm' : ''}`}>
-                      {shouldBlur ? '••••••' : item.origin}
+                    <span className={`block truncate ${shouldBlurOrigin ? 'blur-sm' : ''}`}>
+                      {shouldBlurOrigin ? '••••••' : item.origin}
                     </span>
                   )}
                 </td>
@@ -1438,6 +1498,9 @@ function Home({ list, setList, token, userRole, setShowLogin, handleLogout }) {
         {filteredAndSortedList.map((item, index) => {
           const isPrivateItem = item.private === 'true' || item.private === true
           const shouldBlur = isPrivateItem && !isAdmin
+          const shouldBlurPhotos = ((item.private === 'true' || item.private === true) || (item.privatePhotos === 'true' || item.privatePhotos === true)) && !isAdmin
+          const shouldBlurDescription = ((item.private === 'true' || item.private === true) || (item.privateDescription === 'true' || item.privateDescription === true)) && !isAdmin
+          const shouldBlurOrigin = ((item.private === 'true' || item.private === true) || (item.privateOrigin === 'true' || item.privateOrigin === true)) && !isAdmin
           return (
           <div
             key={index}
@@ -1445,19 +1508,19 @@ function Home({ list, setList, token, userRole, setShowLogin, handleLogout }) {
             onClick={() => !shouldBlur && navigateToItem(item.id)}
           >
             {item.mainPhoto && (
-              <img src={item.mainPhoto} alt={item.itemName} className={`w-full max-w-[200px] h-auto rounded-lg mb-3 ${shouldBlur ? 'blur-lg' : ''}`} />
+              <img src={item.mainPhoto} alt={item.itemName} className={`w-full max-w-[200px] h-auto rounded-lg mb-3 ${shouldBlurPhotos ? 'blur-lg' : ''}`} />
             )}
             <div className={`mb-2 ${shouldBlur ? 'blur-sm' : ''}`}>
               <strong className="text-neutral-500 dark:text-neutral-400">Name:</strong> {shouldBlur ? 'Private Item' : item.itemName}
             </div>
-            <div className={`mb-2 ${shouldBlur ? 'blur-sm' : ''}`}>
-              <strong className="text-neutral-500 dark:text-neutral-400">Description:</strong> {shouldBlur ? '••••••••••••••••' : <PrivateText text={item.description} isAuthenticated={!!token} isAdmin={isAdmin} />}
+            <div className={`mb-2 ${shouldBlurDescription ? 'blur-sm' : ''}`}>
+              <strong className="text-neutral-500 dark:text-neutral-400">Description:</strong> {shouldBlurDescription ? '••••••••••••••••' : <PrivateText text={item.description} isAuthenticated={!!token} isAdmin={isAdmin} />}
             </div>
             <div className={`mb-2 ${shouldBlur ? 'blur-sm' : ''}`}>
               <strong className="text-neutral-500 dark:text-neutral-400">Category:</strong> {shouldBlur ? '••••••' : item.category}
             </div>
-            <div className={`mb-2 ${shouldBlur ? 'blur-sm' : ''}`}>
-              <strong className="text-neutral-500 dark:text-neutral-400">Origin:</strong> {shouldBlur ? '••••••' : item.origin}
+            <div className={`mb-2 ${shouldBlurOrigin ? 'blur-sm' : ''}`}>
+              <strong className="text-neutral-500 dark:text-neutral-400">Origin:</strong> {shouldBlurOrigin ? '••••••' : item.origin}
             </div>
             
             {isAdmin && (

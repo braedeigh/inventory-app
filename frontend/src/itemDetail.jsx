@@ -30,6 +30,9 @@ function ItemDetail({ list, setList, token, userRole }) {
   const [editSecondhand, setEditSecondhand] = useState(item?.secondhand || '')
   const [editGifted, setEditGifted] = useState(item?.gifted === 'true' || item?.gifted === true)
   const [editPrivate, setEditPrivate] = useState(item?.private === 'true' || item?.private === true)
+  const [editPrivatePhotos, setEditPrivatePhotos] = useState(item?.privatePhotos === 'true' || item?.privatePhotos === true)
+  const [editPrivateDescription, setEditPrivateDescription] = useState(item?.privateDescription === 'true' || item?.privateDescription === true)
+  const [editPrivateOrigin, setEditPrivateOrigin] = useState(item?.privateOrigin === 'true' || item?.privateOrigin === true)
   const [editMaterials, setEditMaterials] = useState(item?.materials || [])
   const [availableMaterials, setAvailableMaterials] = useState([])
   const [newMaterialName, setNewMaterialName] = useState('')
@@ -377,6 +380,9 @@ function ItemDetail({ list, setList, token, userRole }) {
         secondhand: editSecondhand,
         gifted: editGifted ? 'true' : 'false',
         private: editPrivate ? 'true' : 'false',
+        privatePhotos: editPrivatePhotos ? 'true' : 'false',
+        privateDescription: editPrivateDescription ? 'true' : 'false',
+        privateOrigin: editPrivateOrigin ? 'true' : 'false',
         materials: editMaterials.length > 0 ? editMaterials : null,
       })
     })
@@ -520,7 +526,7 @@ function ItemDetail({ list, setList, token, userRole }) {
                 <img
                   src={photos[selectedPhotoIndex]?.url || item.mainPhoto}
                   alt={item.itemName}
-                  className={`w-full h-full object-contain ${(item.private === 'true' || item.private === true) && !token ? 'blur-xl' : ''}`}
+                  className={`w-full h-full object-contain ${((item.private === 'true' || item.private === true) || (item.privatePhotos === 'true' || item.privatePhotos === true)) && !isAdmin ? 'blur-xl' : ''}`}
                 />
                 {/* Photo timestamp overlay */}
                 {photos[selectedPhotoIndex]?.createdAt && (
@@ -542,7 +548,7 @@ function ItemDetail({ list, setList, token, userRole }) {
               <img
                 src={item.mainPhoto}
                 alt={item.itemName}
-                className={`w-full h-full object-contain ${(item.private === 'true' || item.private === true) && !token ? 'blur-xl' : ''}`}
+                className={`w-full h-full object-contain ${((item.private === 'true' || item.private === true) || (item.privatePhotos === 'true' || item.privatePhotos === true)) && !isAdmin ? 'blur-xl' : ''}`}
               />
             ) : (
               <p className="text-neutral-400">
@@ -567,7 +573,7 @@ function ItemDetail({ list, setList, token, userRole }) {
                   <img
                     src={photo.url}
                     alt={`${item.itemName} ${index + 1}`}
-                    className={`w-full h-full object-cover ${(item.private === 'true' || item.private === true) && !token ? 'blur-lg' : ''}`}
+                    className={`w-full h-full object-cover ${((item.private === 'true' || item.private === true) || (item.privatePhotos === 'true' || item.privatePhotos === true)) && !isAdmin ? 'blur-lg' : ''}`}
                   />
                   {index === 0 && (
                     <div className="absolute top-0.5 left-0.5 bg-green-500 text-white text-[10px] px-1 rounded">
@@ -655,7 +661,7 @@ function ItemDetail({ list, setList, token, userRole }) {
                 className="w-full px-3 py-2 border border-neutral-300 dark:border-neutral-600 rounded-lg bg-white dark:bg-neutral-900 min-h-[120px]"
               />
             ) : (
-              <p className={(item.private === 'true' || item.private === true) && !isAdmin ? 'blur-sm' : ''}>
+              <p className={((item.private === 'true' || item.private === true) || (item.privateDescription === 'true' || item.privateDescription === true)) && !isAdmin ? 'blur-sm' : ''}>
                 <PrivateText text={item.description} isAuthenticated={!!token} isAdmin={isAdmin} />
               </p>
             )}
@@ -839,41 +845,106 @@ function ItemDetail({ list, setList, token, userRole }) {
             </div>
           )}
 
-          {/* Gifted and Private checkboxes */}
-          <div className="flex gap-8">
-            <div>
-              <label className="block text-sm font-medium text-neutral-500 dark:text-neutral-400 mb-1">Gifted?</label>
-              {isEditing ? (
-                <label className="flex items-center gap-2 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={editGifted}
-                    onChange={(e) => setEditGifted(e.target.checked)}
-                    className="w-5 h-5 rounded border-neutral-300 dark:border-neutral-600 text-green-600 focus:ring-green-500"
-                  />
-                  <span>Gift</span>
-                </label>
-              ) : (
-                <p>{item.gifted === 'true' || item.gifted === true ? 'Yes' : 'No'}</p>
-              )}
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-neutral-500 dark:text-neutral-400 mb-1">Private?</label>
-              {isEditing ? (
-                <label className="flex items-center gap-2 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={editPrivate}
-                    onChange={(e) => setEditPrivate(e.target.checked)}
-                    className="w-5 h-5 rounded border-neutral-300 dark:border-neutral-600 text-green-600 focus:ring-green-500"
-                  />
-                  <span>Private</span>
-                </label>
-              ) : (
-                <p>{item.private === 'true' || item.private === true ? 'Yes' : 'No'}</p>
-              )}
-            </div>
+          {/* Gifted checkbox */}
+          <div>
+            <label className="block text-sm font-medium text-neutral-500 dark:text-neutral-400 mb-1">Gifted?</label>
+            {isEditing ? (
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={editGifted}
+                  onChange={(e) => setEditGifted(e.target.checked)}
+                  className="w-5 h-5 rounded border-neutral-300 dark:border-neutral-600 text-green-600 focus:ring-green-500"
+                />
+                <span>Gift</span>
+              </label>
+            ) : (
+              <p>{item.gifted === 'true' || item.gifted === true ? 'Yes' : 'No'}</p>
+            )}
           </div>
+
+          {/* Privacy Controls */}
+          {isEditing ? (
+            <div className="p-3 border border-neutral-300 dark:border-neutral-600 rounded-lg bg-neutral-50 dark:bg-neutral-800/50">
+              <button
+                type="button"
+                onClick={() => setEditPrivate(!editPrivate)}
+                className={`w-full flex items-center justify-between p-2 rounded-lg transition-colors ${
+                  editPrivate
+                    ? 'bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300'
+                    : 'bg-neutral-100 dark:bg-neutral-700 text-neutral-600 dark:text-neutral-400'
+                }`}
+              >
+                <span className="font-medium">Private Item?</span>
+                <span className={`text-xs px-2 py-1 rounded ${editPrivate ? 'bg-purple-200 dark:bg-purple-800' : 'bg-neutral-200 dark:bg-neutral-600'}`}>
+                  {editPrivate ? 'Hidden from public' : 'Visible'}
+                </span>
+              </button>
+
+              <div className="mt-3 pt-3 border-t border-neutral-200 dark:border-neutral-700">
+                <p className="text-xs text-neutral-500 dark:text-neutral-400 mb-2">Or hide specific fields:</p>
+                <div className="flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setEditPrivatePhotos(!editPrivatePhotos)}
+                    className={`px-3 py-1.5 text-sm rounded-full transition-colors ${
+                      editPrivatePhotos
+                        ? 'bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 ring-1 ring-purple-300 dark:ring-purple-700'
+                        : 'bg-neutral-100 dark:bg-neutral-700 text-neutral-600 dark:text-neutral-400 hover:bg-neutral-200 dark:hover:bg-neutral-600'
+                    }`}
+                  >
+                    Photos {editPrivatePhotos && '🔒'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setEditPrivateDescription(!editPrivateDescription)}
+                    className={`px-3 py-1.5 text-sm rounded-full transition-colors ${
+                      editPrivateDescription
+                        ? 'bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 ring-1 ring-purple-300 dark:ring-purple-700'
+                        : 'bg-neutral-100 dark:bg-neutral-700 text-neutral-600 dark:text-neutral-400 hover:bg-neutral-200 dark:hover:bg-neutral-600'
+                    }`}
+                  >
+                    Description {editPrivateDescription && '🔒'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setEditPrivateOrigin(!editPrivateOrigin)}
+                    className={`px-3 py-1.5 text-sm rounded-full transition-colors ${
+                      editPrivateOrigin
+                        ? 'bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 ring-1 ring-purple-300 dark:ring-purple-700'
+                        : 'bg-neutral-100 dark:bg-neutral-700 text-neutral-600 dark:text-neutral-400 hover:bg-neutral-200 dark:hover:bg-neutral-600'
+                    }`}
+                  >
+                    Origin {editPrivateOrigin && '🔒'}
+                  </button>
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div>
+              <label className="block text-sm font-medium text-neutral-500 dark:text-neutral-400 mb-1">Privacy</label>
+              <div className="flex flex-wrap gap-2">
+                {(item.private === 'true' || item.private === true) && (
+                  <span className="px-2 py-1 text-xs bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 rounded">Entire Item 🔒</span>
+                )}
+                {(item.privatePhotos === 'true' || item.privatePhotos === true) && (
+                  <span className="px-2 py-1 text-xs bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 rounded">Photos 🔒</span>
+                )}
+                {(item.privateDescription === 'true' || item.privateDescription === true) && (
+                  <span className="px-2 py-1 text-xs bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 rounded">Description 🔒</span>
+                )}
+                {(item.privateOrigin === 'true' || item.privateOrigin === true) && (
+                  <span className="px-2 py-1 text-xs bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 rounded">Origin 🔒</span>
+                )}
+                {!(item.private === 'true' || item.private === true) &&
+                 !(item.privatePhotos === 'true' || item.privatePhotos === true) &&
+                 !(item.privateDescription === 'true' || item.privateDescription === true) &&
+                 !(item.privateOrigin === 'true' || item.privateOrigin === true) && (
+                  <span className="text-neutral-500">Public</span>
+                )}
+              </div>
+            </div>
+          )}
 
           {/* Origin */}
           <div>
@@ -886,7 +957,7 @@ function ItemDetail({ list, setList, token, userRole }) {
                 className="w-full px-3 py-2 border border-neutral-300 dark:border-neutral-600 rounded-lg bg-white dark:bg-neutral-900"
               />
             ) : (
-              <p className={(item.private === 'true' || item.private === true) && !token ? 'blur-sm' : ''}>{item.origin}</p>
+              <p className={((item.private === 'true' || item.private === true) || (item.privateOrigin === 'true' || item.privateOrigin === true)) && !isAdmin ? 'blur-sm' : ''}>{item.origin}</p>
             )}
           </div>
 
