@@ -587,7 +587,7 @@ function ItemDetail({ list, setList, token, userRole }) {
 
           {/* Photo management buttons (when editing) */}
           {isAdmin && isEditing && photos.length > 0 && (
-            <div className="mt-3 flex flex-wrap gap-2">
+            <div className="mt-3 flex flex-wrap gap-2 items-center">
               {selectedPhotoIndex !== 0 && (
                 <button
                   type="button"
@@ -603,6 +603,18 @@ function ItemDetail({ list, setList, token, userRole }) {
                 className="px-3 py-1.5 text-sm bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400 rounded-lg hover:bg-red-200 dark:hover:bg-red-900/50 transition-all"
               >
                 Delete Photo
+              </button>
+              <button
+                type="button"
+                onClick={() => setEditPrivatePhotos(!editPrivatePhotos)}
+                className={`px-3 py-1.5 text-sm rounded-lg transition-all flex items-center gap-1 ${
+                  editPrivatePhotos
+                    ? 'bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-400'
+                    : 'bg-neutral-100 dark:bg-neutral-700 text-neutral-600 dark:text-neutral-400 hover:bg-neutral-200 dark:hover:bg-neutral-600'
+                }`}
+                title={editPrivatePhotos ? 'Photos are private' : 'Make photos private'}
+              >
+                {editPrivatePhotos ? '🔒' : '🔓'} Photos
               </button>
             </div>
           )}
@@ -652,7 +664,23 @@ function ItemDetail({ list, setList, token, userRole }) {
           
           {/* Description */}
           <div>
-            <label className="block text-sm font-medium text-neutral-500 dark:text-neutral-400 mb-1">Description</label>
+            <div className="flex items-center justify-between mb-1">
+              <label className="text-sm font-medium text-neutral-500 dark:text-neutral-400">Description</label>
+              {isEditing && (
+                <button
+                  type="button"
+                  onClick={() => setEditPrivateDescription(!editPrivateDescription)}
+                  className={`p-1 rounded transition-colors ${
+                    editPrivateDescription
+                      ? 'text-purple-600 dark:text-purple-400'
+                      : 'text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-300'
+                  }`}
+                  title={editPrivateDescription ? 'Description is private' : 'Make description private'}
+                >
+                  {editPrivateDescription ? '🔒' : '🔓'}
+                </button>
+              )}
+            </div>
             {isEditing ? (
               <textarea
                 value={editDescription}
@@ -865,61 +893,20 @@ function ItemDetail({ list, setList, token, userRole }) {
 
           {/* Privacy Controls */}
           {isEditing ? (
-            <div className="p-3 border border-neutral-300 dark:border-neutral-600 rounded-lg bg-neutral-50 dark:bg-neutral-800/50">
-              <button
-                type="button"
-                onClick={() => setEditPrivate(!editPrivate)}
-                className={`w-full flex items-center justify-between p-2 rounded-lg transition-colors ${
-                  editPrivate
-                    ? 'bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300'
-                    : 'bg-neutral-100 dark:bg-neutral-700 text-neutral-600 dark:text-neutral-400'
-                }`}
-              >
-                <span className="font-medium">Private Item?</span>
-                <span className={`text-xs px-2 py-1 rounded ${editPrivate ? 'bg-purple-200 dark:bg-purple-800' : 'bg-neutral-200 dark:bg-neutral-600'}`}>
-                  {editPrivate ? 'Hidden from public' : 'Visible'}
-                </span>
-              </button>
-
-              <div className="mt-3 pt-3 border-t border-neutral-200 dark:border-neutral-700">
-                <p className="text-xs text-neutral-500 dark:text-neutral-400 mb-2">Or hide specific fields:</p>
-                <div className="flex flex-wrap gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setEditPrivatePhotos(!editPrivatePhotos)}
-                    className={`px-3 py-1.5 text-sm rounded-full transition-colors ${
-                      editPrivatePhotos
-                        ? 'bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 ring-1 ring-purple-300 dark:ring-purple-700'
-                        : 'bg-neutral-100 dark:bg-neutral-700 text-neutral-600 dark:text-neutral-400 hover:bg-neutral-200 dark:hover:bg-neutral-600'
-                    }`}
-                  >
-                    Photos {editPrivatePhotos && '🔒'}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setEditPrivateDescription(!editPrivateDescription)}
-                    className={`px-3 py-1.5 text-sm rounded-full transition-colors ${
-                      editPrivateDescription
-                        ? 'bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 ring-1 ring-purple-300 dark:ring-purple-700'
-                        : 'bg-neutral-100 dark:bg-neutral-700 text-neutral-600 dark:text-neutral-400 hover:bg-neutral-200 dark:hover:bg-neutral-600'
-                    }`}
-                  >
-                    Description {editPrivateDescription && '🔒'}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setEditPrivateOrigin(!editPrivateOrigin)}
-                    className={`px-3 py-1.5 text-sm rounded-full transition-colors ${
-                      editPrivateOrigin
-                        ? 'bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 ring-1 ring-purple-300 dark:ring-purple-700'
-                        : 'bg-neutral-100 dark:bg-neutral-700 text-neutral-600 dark:text-neutral-400 hover:bg-neutral-200 dark:hover:bg-neutral-600'
-                    }`}
-                  >
-                    Origin {editPrivateOrigin && '🔒'}
-                  </button>
-                </div>
-              </div>
-            </div>
+            <button
+              type="button"
+              onClick={() => setEditPrivate(!editPrivate)}
+              className={`w-full flex items-center justify-between p-3 rounded-lg border transition-colors ${
+                editPrivate
+                  ? 'bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 border-purple-300 dark:border-purple-700'
+                  : 'bg-neutral-50 dark:bg-neutral-800/50 text-neutral-600 dark:text-neutral-400 border-neutral-300 dark:border-neutral-600'
+              }`}
+            >
+              <span className="font-medium">Private Item?</span>
+              <span className={`text-xs px-2 py-1 rounded ${editPrivate ? 'bg-purple-200 dark:bg-purple-800' : 'bg-neutral-200 dark:bg-neutral-600'}`}>
+                {editPrivate ? 'Hidden from public' : 'Visible'}
+              </span>
+            </button>
           ) : (
             <div>
               <label className="block text-sm font-medium text-neutral-500 dark:text-neutral-400 mb-1">Privacy</label>
@@ -948,7 +935,23 @@ function ItemDetail({ list, setList, token, userRole }) {
 
           {/* Origin */}
           <div>
-            <label className="block text-sm font-medium text-neutral-500 dark:text-neutral-400 mb-1">Origin</label>
+            <div className="flex items-center justify-between mb-1">
+              <label className="text-sm font-medium text-neutral-500 dark:text-neutral-400">Origin</label>
+              {isEditing && (
+                <button
+                  type="button"
+                  onClick={() => setEditPrivateOrigin(!editPrivateOrigin)}
+                  className={`p-1 rounded transition-colors ${
+                    editPrivateOrigin
+                      ? 'text-purple-600 dark:text-purple-400'
+                      : 'text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-300'
+                  }`}
+                  title={editPrivateOrigin ? 'Origin is private' : 'Make origin private'}
+                >
+                  {editPrivateOrigin ? '🔒' : '🔓'}
+                </button>
+              )}
+            </div>
             {isEditing ? (
               <input
                 type="text"

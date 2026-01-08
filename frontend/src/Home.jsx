@@ -828,7 +828,21 @@ function Home({ list, setList, token, userRole, setShowLogin, handleLogout }) {
           </div>
 
           <div className="mb-4">
-            <label className="block text-sm font-medium mb-1">Description: {shouldHighlight('description') && <span className="text-amber-600 text-xs ml-1">(not filled by AI)</span>}</label>
+            <div className="flex items-center justify-between mb-1">
+              <label className="text-sm font-medium">Description: {shouldHighlight('description') && <span className="text-amber-600 text-xs ml-1">(not filled by AI)</span>}</label>
+              <button
+                type="button"
+                onClick={() => setPrivateDescription(!privateDescription)}
+                className={`p-1 rounded transition-colors ${
+                  privateDescription
+                    ? 'text-purple-600 dark:text-purple-400'
+                    : 'text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-300'
+                }`}
+                title={privateDescription ? 'Description is private' : 'Make description private'}
+              >
+                {privateDescription ? '🔒' : '🔓'}
+              </button>
+            </div>
             <textarea
               ref={descriptionRef}
               value={description}
@@ -849,7 +863,21 @@ function Home({ list, setList, token, userRole, setShowLogin, handleLogout }) {
           </div>
 
           <div className="mb-4">
-            <label className="block text-sm font-medium mb-1">Origin: {shouldHighlight('origin') && <span className="text-amber-600 text-xs ml-1">(not filled by AI)</span>}</label>
+            <div className="flex items-center justify-between mb-1">
+              <label className="text-sm font-medium">Origin: {shouldHighlight('origin') && <span className="text-amber-600 text-xs ml-1">(not filled by AI)</span>}</label>
+              <button
+                type="button"
+                onClick={() => setPrivateOrigin(!privateOrigin)}
+                className={`p-1 rounded transition-colors ${
+                  privateOrigin
+                    ? 'text-purple-600 dark:text-purple-400'
+                    : 'text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-300'
+                }`}
+                title={privateOrigin ? 'Origin is private' : 'Make origin private'}
+              >
+                {privateOrigin ? '🔒' : '🔓'}
+              </button>
+            </div>
             <input
               type="text"
               ref={originRef}
@@ -1036,15 +1064,15 @@ function Home({ list, setList, token, userRole, setShowLogin, handleLogout }) {
             </label>
           </div>
 
-          {/* Privacy Controls */}
-          <div className="mb-4 p-3 border border-neutral-300 dark:border-neutral-600 rounded-lg bg-neutral-50 dark:bg-neutral-800/50">
+          {/* Privacy Controls - Just the main Private Item toggle */}
+          <div className="mb-4">
             <button
               type="button"
               onClick={() => setPrivateItem(!privateItem)}
-              className={`w-full flex items-center justify-between p-2 rounded-lg transition-colors ${
+              className={`w-full flex items-center justify-between p-3 rounded-lg border transition-colors ${
                 privateItem
-                  ? 'bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300'
-                  : 'bg-neutral-100 dark:bg-neutral-700 text-neutral-600 dark:text-neutral-400'
+                  ? 'bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 border-purple-300 dark:border-purple-700'
+                  : 'bg-neutral-50 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-400 border-neutral-300 dark:border-neutral-600'
               }`}
             >
               <span className="font-medium">Private Item?</span>
@@ -1052,49 +1080,24 @@ function Home({ list, setList, token, userRole, setShowLogin, handleLogout }) {
                 {privateItem ? 'Hidden from public' : 'Visible'}
               </span>
             </button>
-
-            <div className="mt-3 pt-3 border-t border-neutral-200 dark:border-neutral-700">
-              <p className="text-xs text-neutral-500 dark:text-neutral-400 mb-2">Or hide specific fields:</p>
-              <div className="flex flex-wrap gap-2">
-                <button
-                  type="button"
-                  onClick={() => setPrivatePhotos(!privatePhotos)}
-                  className={`px-3 py-1.5 text-sm rounded-full transition-colors ${
-                    privatePhotos
-                      ? 'bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 ring-1 ring-purple-300 dark:ring-purple-700'
-                      : 'bg-neutral-100 dark:bg-neutral-700 text-neutral-600 dark:text-neutral-400 hover:bg-neutral-200 dark:hover:bg-neutral-600'
-                  }`}
-                >
-                  Photos {privatePhotos && '🔒'}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setPrivateDescription(!privateDescription)}
-                  className={`px-3 py-1.5 text-sm rounded-full transition-colors ${
-                    privateDescription
-                      ? 'bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 ring-1 ring-purple-300 dark:ring-purple-700'
-                      : 'bg-neutral-100 dark:bg-neutral-700 text-neutral-600 dark:text-neutral-400 hover:bg-neutral-200 dark:hover:bg-neutral-600'
-                  }`}
-                >
-                  Description {privateDescription && '🔒'}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setPrivateOrigin(!privateOrigin)}
-                  className={`px-3 py-1.5 text-sm rounded-full transition-colors ${
-                    privateOrigin
-                      ? 'bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 ring-1 ring-purple-300 dark:ring-purple-700'
-                      : 'bg-neutral-100 dark:bg-neutral-700 text-neutral-600 dark:text-neutral-400 hover:bg-neutral-200 dark:hover:bg-neutral-600'
-                  }`}
-                >
-                  Origin {privateOrigin && '🔒'}
-                </button>
-              </div>
-            </div>
           </div>
 
 <div className="mb-4">
-  <label className="block text-sm font-medium mb-1">Photos (up to 5):</label>
+  <div className="flex items-center justify-between mb-1">
+    <label className="text-sm font-medium">Photos (up to 5):</label>
+    <button
+      type="button"
+      onClick={() => setPrivatePhotos(!privatePhotos)}
+      className={`p-1 rounded transition-colors ${
+        privatePhotos
+          ? 'text-purple-600 dark:text-purple-400'
+          : 'text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-300'
+      }`}
+      title={privatePhotos ? 'Photos are private' : 'Make photos private'}
+    >
+      {privatePhotos ? '🔒' : '🔓'}
+    </button>
+  </div>
 
   {/* Hidden file input */}
   <input
