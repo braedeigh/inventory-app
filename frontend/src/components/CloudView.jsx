@@ -1,16 +1,16 @@
-import { useState, useRef, useEffect, useMemo } from 'react'
+import { useState, useRef, useEffect, useMemo, useCallback } from 'react'
 
 // Category colors for borders
 const CATEGORY_COLORS = {
-  clothing: '#22c55e',      // green
-  jewelry: '#eab308',       // yellow
-  electronics: '#3b82f6',   // blue
-  furniture: '#a855f7',     // purple
-  kitchenware: '#f97316',   // orange
-  books: '#78716c',         // stone
-  bedding: '#ec4899',       // pink
-  toiletries: '#06b6d4',    // cyan
-  other: '#6b7280',         // gray
+  clothing: '#22c55e',
+  jewelry: '#eab308',
+  electronics: '#3b82f6',
+  furniture: '#a855f7',
+  kitchenware: '#f97316',
+  books: '#78716c',
+  bedding: '#ec4899',
+  toiletries: '#06b6d4',
+  other: '#6b7280',
 }
 
 // Calculate cluster positions for categories
@@ -32,27 +32,21 @@ function getCategoryClusterPositions(categories, containerWidth, containerHeight
   return positions
 }
 
-// Add some randomness to positions within a cluster
+// Get item position within cluster
 function getItemPosition(item, clusterPositions, index, isFiltered) {
   const cluster = clusterPositions[item.category] || { x: 400, y: 300 }
-
-  // Use item id to create consistent "random" offset
   const hash = item.id.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0)
   const offsetX = (Math.sin(hash) * 80) + (Math.cos(hash * 2) * 40)
   const offsetY = (Math.cos(hash) * 80) + (Math.sin(hash * 2) * 40)
 
   if (isFiltered) {
-    // Filtered items cluster toward center
     return {
       x: cluster.x * 0.3 + 400 * 0.7 + offsetX * 0.5,
       y: cluster.y * 0.3 + 300 * 0.7 + offsetY * 0.5
     }
   }
 
-  return {
-    x: cluster.x + offsetX,
-    y: cluster.y + offsetY
-  }
+  return { x: cluster.x + offsetX, y: cluster.y + offsetY }
 }
 
 function CloudView({
@@ -63,29 +57,27 @@ function CloudView({
   onNavigate
 }) {
   const containerRef = useRef(null)
+  const panRef = useRef(null)
   const [containerSize, setContainerSize] = useState({ width: 800, height: 600 })
-  const [pan, setPan] = useState({ x: 0, y: 0 })
-  const [isPanning, setIsPanning] = useState(false)
-  const [startPan, setStartPan] = useState({ x: 0, y: 0 })
-  const [startMouse, setStartMouse] = useState({ x: 0, y: 0 })
 
-  // Get unique categories from items
+  // Use refs for pan state to avoid re-renders
+  const panState = useRef({ x: 0, y: 0 })
+  const dragState = useRef({ isPanning: false, startX: 0, startY: 0, startPanX: 0, startPanY: 0 })
+
   const categories = useMemo(() => {
     const cats = [...new Set(items.map(item => item.category).filter(Boolean))]
     return cats.length > 0 ? cats : ['other']
   }, [items])
 
-  // Calculate cluster positions
   const clusterPositions = useMemo(() => {
     return getCategoryClusterPositions(categories, containerSize.width, containerSize.height)
   }, [categories, containerSize])
 
-  // Create a Set of filtered item IDs for quick lookup
   const filteredIds = useMemo(() => {
     return new Set(filteredItems.map(item => item.id))
   }, [filteredItems])
 
-  // Update container size on mount and resize
+  // Update container size
   useEffect(() => {
     const updateSize = () => {
       if (containerRef.current) {
@@ -100,43 +92,81 @@ function CloudView({
     return () => window.removeEventListener('resize', updateSize)
   }, [])
 
-  // Pan handlers
-  const handleMouseDown = (e) => {
-    setIsPanning(true)
-    setStartPan(pan)
-    setStartMouse({ x: e.clientX, y: e.clientY })
-  }
-
-  const handleMouseMove = (e) => {
-    if (isPanning) {
-      setPan({
-        x: startPan.x + (e.clientX - startMouse.x),
-        y: startPan.y + (e.clientY - startMouse.y)
-      })
+  // Direct DOM manipulation for smooth panning - no React re-renders
+  const updatePanTransform = useCallback(() => {
+    if (panRef.current) {
+      panRef.current.style.transform = `translate3d(${panState.current.x}px, ${panState.current.y}px, 0)`
     }
-  }
+  }, [])
 
-  const handleMouseUp = () => {
-    setIsPanning(false)
-  }
+  useEffect(() => {
+    const container = containerRef.current
+    if (!container) return
 
-  // Touch handlers for mobile
-  const handleTouchStart = (e) => {
-    const touch = e.touches[0]
-    setIsPanning(true)
-    setStartPan(pan)
-    setStartMouse({ x: touch.clientX, y: touch.clientY })
-  }
+    const handleMouseDown = (e) => {
+      dragState.current = {
+        isPanning: true,
+        startX: e.clientX,
+        startY: e.clientY,
+        startPanX: panState.current.x,
+        startPanY: panState.current.y
+      }
+      container.style.cursor = 'grabbing'
+    }
 
-  const handleTouchMove = (e) => {
-    if (isPanning) {
+    const handleMouseMove = (e) => {
+      if (!dragState.current.isPanning) return
+
+      panState.current.x = dragState.current.startPanX + (e.clientX - dragState.current.startX)
+      panState.current.y = dragState.current.startPanY + (e.clientY - dragState.current.startY)
+      updatePanTransform()
+    }
+
+    const handleMouseUp = () => {
+      dragState.current.isPanning = false
+      container.style.cursor = 'grab'
+    }
+
+    const handleTouchStart = (e) => {
       const touch = e.touches[0]
-      setPan({
-        x: startPan.x + (touch.clientX - startMouse.x),
-        y: startPan.y + (touch.clientY - startMouse.y)
-      })
+      dragState.current = {
+        isPanning: true,
+        startX: touch.clientX,
+        startY: touch.clientY,
+        startPanX: panState.current.x,
+        startPanY: panState.current.y
+      }
     }
-  }
+
+    const handleTouchMove = (e) => {
+      if (!dragState.current.isPanning) return
+      const touch = e.touches[0]
+
+      panState.current.x = dragState.current.startPanX + (touch.clientX - dragState.current.startX)
+      panState.current.y = dragState.current.startPanY + (touch.clientY - dragState.current.startY)
+      updatePanTransform()
+    }
+
+    const handleTouchEnd = () => {
+      dragState.current.isPanning = false
+    }
+
+    container.addEventListener('mousedown', handleMouseDown)
+    window.addEventListener('mousemove', handleMouseMove)
+    window.addEventListener('mouseup', handleMouseUp)
+    container.addEventListener('touchstart', handleTouchStart, { passive: true })
+    window.addEventListener('touchmove', handleTouchMove, { passive: true })
+    window.addEventListener('touchend', handleTouchEnd)
+
+    return () => {
+      container.removeEventListener('mousedown', handleMouseDown)
+      window.removeEventListener('mousemove', handleMouseMove)
+      window.removeEventListener('mouseup', handleMouseUp)
+      container.removeEventListener('touchstart', handleTouchStart)
+      window.removeEventListener('touchmove', handleTouchMove)
+      window.removeEventListener('touchend', handleTouchEnd)
+    }
+  }, [updatePanTransform])
 
   // Pre-compute item data
   const itemsData = useMemo(() => {
@@ -151,24 +181,27 @@ function CloudView({
     })
   }, [items, filteredIds, filteredItems.length, clusterPositions, isAdmin])
 
+  const handleCardClick = useCallback((e, item, isPrivate) => {
+    // Only navigate if we didn't just finish a drag
+    if (!dragState.current.isPanning && !isPrivate) {
+      e.stopPropagation()
+      onNavigate(item.id)
+    }
+  }, [onNavigate])
+
   return (
     <div
       ref={containerRef}
-      className="relative w-full h-[600px] md:h-[700px] overflow-hidden bg-neutral-100 dark:bg-neutral-900 rounded-xl border border-neutral-200 dark:border-neutral-700 cursor-grab active:cursor-grabbing"
-      onMouseDown={handleMouseDown}
-      onMouseMove={handleMouseMove}
-      onMouseUp={handleMouseUp}
-      onMouseLeave={handleMouseUp}
-      onTouchStart={handleTouchStart}
-      onTouchMove={handleTouchMove}
-      onTouchEnd={handleMouseUp}
+      className="relative w-full h-[600px] md:h-[700px] overflow-hidden bg-neutral-100 dark:bg-neutral-900 rounded-xl border border-neutral-200 dark:border-neutral-700 cursor-grab select-none"
     >
-      {/* Pannable container */}
+      {/* Pannable container - uses transform3d for GPU acceleration */}
       <div
+        ref={panRef}
         style={{
-          transform: `translate(${pan.x}px, ${pan.y}px)`,
           position: 'absolute',
-          inset: 0
+          inset: 0,
+          willChange: 'transform',
+          transform: 'translate3d(0, 0, 0)'
         }}
       >
         {/* Category labels */}
@@ -191,27 +224,23 @@ function CloudView({
           )
         })}
 
-        {/* Item cards - pure CSS, no animation library */}
+        {/* Item cards */}
         {itemsData.map(({ item, position, isMatching, isPrivate, shouldBlurPhoto }) => (
           <div
             key={item.id}
-            className={`absolute cursor-pointer select-none transition-opacity transition-transform duration-150 ${isPanning ? 'pointer-events-none' : ''} hover:scale-110`}
+            className="absolute cursor-pointer"
             style={{
               left: position.x - 40,
               top: position.y - 50,
               opacity: isMatching ? 1 : 0.15,
               transform: `scale(${isMatching ? 1 : 0.6})`,
-              zIndex: isMatching ? 10 : 1
+              zIndex: isMatching ? 10 : 1,
+              transition: 'opacity 0.15s, transform 0.15s'
             }}
-            onClick={(e) => {
-              if (!isPanning && !isPrivate) {
-                e.stopPropagation()
-                onNavigate(item.id)
-              }
-            }}
+            onClick={(e) => handleCardClick(e, item, isPrivate)}
           >
             <div
-              className={`w-20 h-24 rounded-lg overflow-hidden bg-white dark:bg-neutral-800 shadow-md hover:shadow-lg transition-shadow ${isPrivate ? 'opacity-50' : ''}`}
+              className={`w-20 h-24 rounded-lg overflow-hidden bg-white dark:bg-neutral-800 shadow-md ${isPrivate ? 'opacity-50' : ''}`}
               style={{
                 borderWidth: 3,
                 borderStyle: 'solid',
