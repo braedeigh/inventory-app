@@ -833,14 +833,14 @@ function Home({ list, setList, token, userRole, setShowLogin, handleLogout }) {
               <button
                 type="button"
                 onClick={() => setPrivateDescription(!privateDescription)}
-                className={`p-1 rounded transition-colors ${
+                className={`px-2 py-0.5 text-xs rounded-full transition-colors flex items-center gap-1 ${
                   privateDescription
-                    ? 'text-purple-600 dark:text-purple-400'
-                    : 'text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-300'
+                    ? 'bg-purple-100 dark:bg-purple-900/40 text-purple-700 dark:text-purple-300 ring-1 ring-purple-300 dark:ring-purple-600'
+                    : 'bg-neutral-100 dark:bg-neutral-700 text-neutral-500 dark:text-neutral-400 hover:bg-neutral-200 dark:hover:bg-neutral-600'
                 }`}
                 title={privateDescription ? 'Description is private' : 'Make description private'}
               >
-                {privateDescription ? '🔒' : '🔓'}
+                {privateDescription ? '🔒 Private' : '🔓 Public'}
               </button>
             </div>
             <textarea
@@ -868,14 +868,14 @@ function Home({ list, setList, token, userRole, setShowLogin, handleLogout }) {
               <button
                 type="button"
                 onClick={() => setPrivateOrigin(!privateOrigin)}
-                className={`p-1 rounded transition-colors ${
+                className={`px-2 py-0.5 text-xs rounded-full transition-colors flex items-center gap-1 ${
                   privateOrigin
-                    ? 'text-purple-600 dark:text-purple-400'
-                    : 'text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-300'
+                    ? 'bg-purple-100 dark:bg-purple-900/40 text-purple-700 dark:text-purple-300 ring-1 ring-purple-300 dark:ring-purple-600'
+                    : 'bg-neutral-100 dark:bg-neutral-700 text-neutral-500 dark:text-neutral-400 hover:bg-neutral-200 dark:hover:bg-neutral-600'
                 }`}
                 title={privateOrigin ? 'Origin is private' : 'Make origin private'}
               >
-                {privateOrigin ? '🔒' : '🔓'}
+                {privateOrigin ? '🔒 Private' : '🔓 Public'}
               </button>
             </div>
             <input
@@ -1088,14 +1088,14 @@ function Home({ list, setList, token, userRole, setShowLogin, handleLogout }) {
     <button
       type="button"
       onClick={() => setPrivatePhotos(!privatePhotos)}
-      className={`p-1 rounded transition-colors ${
+      className={`px-2 py-0.5 text-xs rounded-full transition-colors flex items-center gap-1 ${
         privatePhotos
-          ? 'text-purple-600 dark:text-purple-400'
-          : 'text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-300'
+          ? 'bg-purple-100 dark:bg-purple-900/40 text-purple-700 dark:text-purple-300 ring-1 ring-purple-300 dark:ring-purple-600'
+          : 'bg-neutral-100 dark:bg-neutral-700 text-neutral-500 dark:text-neutral-400 hover:bg-neutral-200 dark:hover:bg-neutral-600'
       }`}
       title={privatePhotos ? 'Photos are private' : 'Make photos private'}
     >
-      {privatePhotos ? '🔒' : '🔓'}
+      {privatePhotos ? '🔒 Private' : '🔓 Public'}
     </button>
   </div>
 
