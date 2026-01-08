@@ -1050,9 +1050,19 @@ def migrate_add_categories():
 def get_categories():
     """Get all available categories"""
     conn = get_db()
-    result = conn.execute('SELECT id, name, display_name FROM categories ORDER BY display_name ASC')
-    categories = [{"id": row[0], "name": row[1], "displayName": row[2]} for row in result.rows]
-    return jsonify(categories)
+    try:
+        result = conn.execute('SELECT id, name, display_name FROM categories ORDER BY display_name ASC')
+        categories = [{"id": row[0], "name": row[1], "displayName": row[2]} for row in result.rows]
+        return jsonify(categories)
+    except Exception:
+        # Table doesn't exist yet - return default categories for frontend to work
+        return jsonify([
+            {"id": "default-clothing", "name": "clothing", "displayName": "Clothing"},
+            {"id": "default-jewelry", "name": "jewelry", "displayName": "Jewelry"},
+            {"id": "default-sentimental", "name": "sentimental", "displayName": "Sentimental"},
+            {"id": "default-bedding", "name": "bedding", "displayName": "Bedding"},
+            {"id": "default-other", "name": "other", "displayName": "Other"}
+        ])
 
 
 @app.route('/categories', methods=['POST'])
