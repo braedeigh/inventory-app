@@ -1058,16 +1058,19 @@ function Home({ list, setList, token, userRole, setShowLogin, handleLogout }) {
             </div>
           )}
 
-          <div className="mb-4 flex gap-6">
-            <label className="flex items-center gap-2 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={gifted}
-                onChange={(e) => setGifted(e.target.checked)}
-                className="w-5 h-5 rounded border-neutral-300 dark:border-neutral-600 text-green-600 focus:ring-green-500"
-              />
-              <span className="text-sm font-medium">Gifted?</span>
-            </label>
+          <div className="mb-4">
+            <label className="block text-sm font-medium mb-1">Gifted?</label>
+            <button
+              type="button"
+              onClick={() => setGifted(!gifted)}
+              className={`px-3 py-1.5 text-sm rounded-lg transition-all flex items-center gap-1.5 ${
+                gifted
+                  ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 ring-1 ring-green-300 dark:ring-green-600'
+                  : 'bg-neutral-100 dark:bg-neutral-700 text-neutral-600 dark:text-neutral-400 hover:bg-neutral-200 dark:hover:bg-neutral-600'
+              }`}
+            >
+              {gifted ? '✓ Gift' : 'Gift?'}
+            </button>
           </div>
 
           {/* Privacy Controls - Just the main Private Item toggle */}

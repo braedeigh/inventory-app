@@ -897,21 +897,23 @@ function ItemDetail({ list, setList, token, userRole }) {
             </div>
           )}
 
-          {/* Gifted checkbox */}
+          {/* Gifted toggle */}
           <div>
             <label className="block text-sm font-medium text-neutral-500 dark:text-neutral-400 mb-1">Gifted?</label>
             {isEditing ? (
-              <label className="flex items-center gap-2 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={editGifted}
-                  onChange={(e) => setEditGifted(e.target.checked)}
-                  className="w-5 h-5 rounded border-neutral-300 dark:border-neutral-600 text-green-600 focus:ring-green-500"
-                />
-                <span>Gift</span>
-              </label>
+              <button
+                type="button"
+                onClick={() => setEditGifted(!editGifted)}
+                className={`px-3 py-1.5 text-sm rounded-lg transition-all flex items-center gap-1.5 ${
+                  editGifted
+                    ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 ring-1 ring-green-300 dark:ring-green-600'
+                    : 'bg-neutral-100 dark:bg-neutral-700 text-neutral-600 dark:text-neutral-400 hover:bg-neutral-200 dark:hover:bg-neutral-600'
+                }`}
+              >
+                {editGifted ? '✓ Gift' : 'Gift?'}
+              </button>
             ) : (
-              <p>{item.gifted === 'true' || item.gifted === true ? 'Yes' : 'No'}</p>
+              <p>{item.gifted === 'true' || item.gifted === true ? '✓ Gift' : 'No'}</p>
             )}
           </div>
 
