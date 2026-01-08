@@ -883,16 +883,16 @@ def extract_item():
         available_materials = [row[0] for row in materials_result.rows]
 
         # Build the extraction prompt
-        system_prompt = """You are a helpful assistant that extracts structured data from item descriptions for a personal inventory catalog.
+        system_prompt = """You are a helpful assistant that extracts structured data from item descriptions for a personal inventory catalog. Each item has a story - preserve the personal details and narrative.
 
 Extract the following fields from the user's description:
-- itemName: A concise name for the item
-- description: A brief description (1-2 sentences)
-- category: One of: clothing, electronics, books, furniture, kitchen, toys, tools, sports, decor, bedding, other
-- subcategory: For clothing only - one of: tops, bottoms, dresses, outerwear, shoes, accessories, underwear, swimwear, activewear, other
-- origin: Where the item was purchased/obtained (store name, website, or location)
+- itemName: A concise name for the item (e.g., "Blue Cotton T-Shirt", "Grandmother's Quilt")
+- description: This is the STORY field. Keep as much of the user's original wording and personal details as possible. Remove only the parts that are captured in other fields (store name, new/used status, material percentages). If the input is choppy or fragmented, smooth it into flowing sentences while preserving the exact details and sentiment. This should read like a personal memory or story about the item.
+- category: One of: clothing, jewelry, sentimental, bedding, other
+- subcategory: For clothing only - one of: undershirt, shirt, sweater, jacket, dress, pants, shorts, skirt, shoes, socks, underwear, accessories, other
+- origin: Where the item was purchased/obtained (store name, website, gift from person, etc.)
 - materials: Array of {material: string, percentage: number} for clothing/bedding items. Use these known materials when applicable: """ + ', '.join(available_materials) + """
-- secondhand: "new" or "used" based on context
+- secondhand: "new", "secondhand", "handmade", or "unknown"
 - gifted: "yes" if it was a gift, "no" otherwise
 
 Return ONLY a valid JSON object with these fields. Use null for fields you cannot determine. For materials, only include if it's clothing or bedding and materials are mentioned."""

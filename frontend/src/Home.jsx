@@ -58,6 +58,16 @@ function Home({ list, setList, token, userRole, setShowLogin, handleLogout }) {
   const [isExtracting, setIsExtracting] = useState(false)
   const [isListening, setIsListening] = useState(false)
   const [aiError, setAiError] = useState(null)
+  const [aiExtractedFields, setAiExtractedFields] = useState(null) // Track which fields AI filled
+
+  // Helper to check if a field should be highlighted (AI was used but didn't fill it)
+  const shouldHighlight = (fieldName) => {
+    if (!aiExtractedFields) return false
+    return !aiExtractedFields[fieldName]
+  }
+
+  // CSS class for AI-unfilled fields
+  const aiUnfilledClass = 'ring-2 ring-amber-400 bg-amber-50 dark:bg-amber-900/20'
 
   const [editForm, setEditForm] = useState({
     itemName: '',
@@ -308,6 +318,19 @@ function Home({ list, setList, token, userRole, setShowLogin, handleLogout }) {
         return
       }
 
+      // Track which fields were filled by AI
+      const filled = {
+        itemName: !!data.itemName,
+        description: !!data.description,
+        category: !!data.category,
+        subcategory: !!data.subcategory,
+        origin: !!data.origin,
+        secondhand: !!data.secondhand,
+        gifted: data.gifted === 'yes' || data.gifted === 'no',
+        materials: !!(data.materials && Array.isArray(data.materials) && data.materials.length > 0)
+      }
+      setAiExtractedFields(filled)
+
       // Populate form fields from extraction
       if (data.itemName) setItemName(data.itemName)
       if (data.description) setDescription(data.description)
@@ -400,6 +423,7 @@ function Home({ list, setList, token, userRole, setShowLogin, handleLogout }) {
       setPhotoFiles([])
       setPhotoPreviews([])
       setMainPhotoIndex(0)
+      setAiExtractedFields(null) // Clear AI highlighting
     } else {
       console.error("Failed to add item.", await response.text())
     }
@@ -779,8 +803,8 @@ function Home({ list, setList, token, userRole, setShowLogin, handleLogout }) {
           </div>
 
           <div className="mb-4">
-            <label className="block text-sm font-medium mb-1">Item Name:</label>
-            <input 
+            <label className="block text-sm font-medium mb-1">Item Name: {shouldHighlight('itemName') && <span className="text-amber-600 text-xs ml-1">(not filled by AI)</span>}</label>
+            <input
               type="text"
               ref={itemNameRef}
               value={itemName}
@@ -788,22 +812,22 @@ function Home({ list, setList, token, userRole, setShowLogin, handleLogout }) {
                 setItemName(e.target.value)
                 setErrors({...errors, itemName: false})
               }}
-              className={`w-full px-3 py-2 text-base border rounded-lg bg-white dark:bg-neutral-900 text-neutral-800 dark:text-neutral-100 focus:outline-none focus:ring-2 focus:ring-green-500 ${errors.itemName ? 'border-red-500' : 'border-neutral-300 dark:border-neutral-600'}`}
+              className={`w-full px-3 py-2 text-base border rounded-lg bg-white dark:bg-neutral-900 text-neutral-800 dark:text-neutral-100 focus:outline-none focus:ring-2 focus:ring-green-500 ${errors.itemName ? 'border-red-500' : 'border-neutral-300 dark:border-neutral-600'} ${shouldHighlight('itemName') && !itemName ? aiUnfilledClass : ''}`}
               onKeyDown={(e) => handleKeyDown(e, descriptionRef)}
             />
             {errors.itemName && <span className="text-red-500 text-xs">Required</span>}
           </div>
 
           <div className="mb-4">
-            <label className="block text-sm font-medium mb-1">Description:</label>
-            <textarea 
+            <label className="block text-sm font-medium mb-1">Description: {shouldHighlight('description') && <span className="text-amber-600 text-xs ml-1">(not filled by AI)</span>}</label>
+            <textarea
               ref={descriptionRef}
               value={description}
               onChange={(e) => {
                 setDescription(e.target.value)
                 setErrors({...errors, description: false})
               }}
-              className={`w-full px-3 py-2 text-base border rounded-lg bg-white dark:bg-neutral-900 text-neutral-800 dark:text-neutral-100 focus:outline-none focus:ring-2 focus:ring-green-500 min-h-[100px] ${errors.description ? 'border-red-500' : 'border-neutral-300 dark:border-neutral-600'}`}
+              className={`w-full px-3 py-2 text-base border rounded-lg bg-white dark:bg-neutral-900 text-neutral-800 dark:text-neutral-100 focus:outline-none focus:ring-2 focus:ring-green-500 min-h-[100px] ${errors.description ? 'border-red-500' : 'border-neutral-300 dark:border-neutral-600'} ${shouldHighlight('description') && !description ? aiUnfilledClass : ''}`}
               onKeyDown={(e) => {
                 if (e.key === 'Enter' && !e.shiftKey) {
                   e.preventDefault()
@@ -816,8 +840,8 @@ function Home({ list, setList, token, userRole, setShowLogin, handleLogout }) {
           </div>
 
           <div className="mb-4">
-            <label className="block text-sm font-medium mb-1">Origin:</label>
-            <input 
+            <label className="block text-sm font-medium mb-1">Origin: {shouldHighlight('origin') && <span className="text-amber-600 text-xs ml-1">(not filled by AI)</span>}</label>
+            <input
               type="text"
               ref={originRef}
               value={origin}
@@ -825,22 +849,22 @@ function Home({ list, setList, token, userRole, setShowLogin, handleLogout }) {
                 setOrigin(e.target.value)
                 setErrors({...errors, origin: false})
               }}
-              className={`w-full px-3 py-2 text-base border rounded-lg bg-white dark:bg-neutral-900 text-neutral-800 dark:text-neutral-100 focus:outline-none focus:ring-2 focus:ring-green-500 ${errors.origin ? 'border-red-500' : 'border-neutral-300 dark:border-neutral-600'}`}
+              className={`w-full px-3 py-2 text-base border rounded-lg bg-white dark:bg-neutral-900 text-neutral-800 dark:text-neutral-100 focus:outline-none focus:ring-2 focus:ring-green-500 ${errors.origin ? 'border-red-500' : 'border-neutral-300 dark:border-neutral-600'} ${shouldHighlight('origin') && !origin ? aiUnfilledClass : ''}`}
               onKeyDown={(e) => handleKeyDown(e, categoryRef)}
             />
             {errors.origin && <span className="text-red-500 text-xs">Required</span>}
           </div>
 
           <div className="mb-4">
-            <label className="block text-sm font-medium mb-1">Category:</label>
-            <select 
+            <label className="block text-sm font-medium mb-1">Category: {shouldHighlight('category') && <span className="text-amber-600 text-xs ml-1">(not filled by AI)</span>}</label>
+            <select
               ref={categoryRef}
               value={category}
               onChange={(e) => {
                 setCategory(e.target.value)
                 setErrors({...errors, category: false})
               }}
-              className={`w-full px-3 py-2 text-base border rounded-lg bg-white dark:bg-neutral-900 text-neutral-800 dark:text-neutral-100 focus:outline-none focus:ring-2 focus:ring-green-500 ${errors.category ? 'border-red-500' : 'border-neutral-300 dark:border-neutral-600'}`}
+              className={`w-full px-3 py-2 text-base border rounded-lg bg-white dark:bg-neutral-900 text-neutral-800 dark:text-neutral-100 focus:outline-none focus:ring-2 focus:ring-green-500 ${errors.category ? 'border-red-500' : 'border-neutral-300 dark:border-neutral-600'} ${shouldHighlight('category') && !category ? aiUnfilledClass : ''}`}
             >
               <option value="">-- Select --</option>
               <option value="clothing">Clothing</option>
@@ -854,11 +878,11 @@ function Home({ list, setList, token, userRole, setShowLogin, handleLogout }) {
 
           {category === 'clothing' && (
             <div className="mb-4">
-              <label className="block text-sm font-medium mb-1">Subcategory:</label>
+              <label className="block text-sm font-medium mb-1">Subcategory: {shouldHighlight('subcategory') && <span className="text-amber-600 text-xs ml-1">(not filled by AI)</span>}</label>
               <select
                 value={subcategory}
                 onChange={(e) => setSubcategory(e.target.value)}
-                className="w-full px-3 py-2 text-base border border-neutral-300 dark:border-neutral-600 rounded-lg bg-white dark:bg-neutral-900 text-neutral-800 dark:text-neutral-100 focus:outline-none focus:ring-2 focus:ring-green-500"
+                className={`w-full px-3 py-2 text-base border border-neutral-300 dark:border-neutral-600 rounded-lg bg-white dark:bg-neutral-900 text-neutral-800 dark:text-neutral-100 focus:outline-none focus:ring-2 focus:ring-green-500 ${shouldHighlight('subcategory') && !subcategory ? aiUnfilledClass : ''}`}
               >
                 <option value="">-- Select --</option>
                 <option value="undershirt">Undershirt</option>
@@ -879,11 +903,11 @@ function Home({ list, setList, token, userRole, setShowLogin, handleLogout }) {
           )}
 
           <div className="mb-4">
-            <label className="block text-sm font-medium mb-1">New or Secondhand:</label>
+            <label className="block text-sm font-medium mb-1">New or Secondhand: {shouldHighlight('secondhand') && <span className="text-amber-600 text-xs ml-1">(not filled by AI)</span>}</label>
             <select
               value={secondhand}
               onChange={(e) => setSecondhand(e.target.value)}
-              className="w-full px-3 py-2 text-base border border-neutral-300 dark:border-neutral-600 rounded-lg bg-white dark:bg-neutral-900 text-neutral-800 dark:text-neutral-100 focus:outline-none focus:ring-2 focus:ring-green-500"
+              className={`w-full px-3 py-2 text-base border border-neutral-300 dark:border-neutral-600 rounded-lg bg-white dark:bg-neutral-900 text-neutral-800 dark:text-neutral-100 focus:outline-none focus:ring-2 focus:ring-green-500 ${shouldHighlight('secondhand') && !secondhand ? aiUnfilledClass : ''}`}
             >
               <option value="">-- Select --</option>
               <option value="new">New</option>
@@ -895,8 +919,8 @@ function Home({ list, setList, token, userRole, setShowLogin, handleLogout }) {
 
           {/* Materials section - only for clothing and bedding */}
           {(category === 'clothing' || category === 'bedding') && (
-            <div className="mb-4">
-              <label className="block text-sm font-medium mb-2">Materials:</label>
+            <div className={`mb-4 ${shouldHighlight('materials') && materials.length === 0 ? 'p-3 rounded-lg ' + aiUnfilledClass : ''}`}>
+              <label className="block text-sm font-medium mb-2">Materials: {shouldHighlight('materials') && <span className="text-amber-600 text-xs ml-1">(not filled by AI)</span>}</label>
 
               {/* Available materials as buttons */}
               <div className="flex flex-wrap gap-2 mb-3">
