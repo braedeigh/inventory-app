@@ -606,15 +606,18 @@ function ItemDetail({ list, setList, token, userRole }) {
               </button>
               <button
                 type="button"
-                onClick={() => setEditPrivatePhotos(!editPrivatePhotos)}
+                onClick={() => !editPrivate && setEditPrivatePhotos(!editPrivatePhotos)}
+                disabled={editPrivate}
                 className={`px-3 py-1.5 text-sm rounded-lg transition-all flex items-center gap-1 ${
-                  editPrivatePhotos
-                    ? 'bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-400 ring-1 ring-purple-300 dark:ring-purple-600'
-                    : 'bg-neutral-100 dark:bg-neutral-700 text-neutral-600 dark:text-neutral-400 hover:bg-neutral-200 dark:hover:bg-neutral-600'
+                  editPrivate
+                    ? 'bg-purple-50 dark:bg-purple-900/20 text-purple-400 dark:text-purple-500 cursor-not-allowed opacity-60'
+                    : editPrivatePhotos
+                      ? 'bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-400 ring-1 ring-purple-300 dark:ring-purple-600'
+                      : 'bg-neutral-100 dark:bg-neutral-700 text-neutral-600 dark:text-neutral-400 hover:bg-neutral-200 dark:hover:bg-neutral-600'
                 }`}
-                title={editPrivatePhotos ? 'Photos are private' : 'Make photos private'}
+                title={editPrivate ? 'Entire item is private' : editPrivatePhotos ? 'Photos are private' : 'Make photos private'}
               >
-                {editPrivatePhotos ? '🔒 Private' : '🔓 Public'}
+                {editPrivate || editPrivatePhotos ? '🔒 Private' : '🔓 Public'}
               </button>
             </div>
           )}
@@ -687,15 +690,18 @@ function ItemDetail({ list, setList, token, userRole }) {
               {isEditing && (
                 <button
                   type="button"
-                  onClick={() => setEditPrivateDescription(!editPrivateDescription)}
+                  onClick={() => !editPrivate && setEditPrivateDescription(!editPrivateDescription)}
+                  disabled={editPrivate}
                   className={`px-2 py-0.5 text-xs rounded-full transition-colors flex items-center gap-1 ${
-                    editPrivateDescription
-                      ? 'bg-purple-100 dark:bg-purple-900/40 text-purple-700 dark:text-purple-300 ring-1 ring-purple-300 dark:ring-purple-600'
-                      : 'bg-neutral-100 dark:bg-neutral-700 text-neutral-500 dark:text-neutral-400 hover:bg-neutral-200 dark:hover:bg-neutral-600'
+                    editPrivate
+                      ? 'bg-purple-50 dark:bg-purple-900/20 text-purple-400 dark:text-purple-500 cursor-not-allowed opacity-60'
+                      : editPrivateDescription
+                        ? 'bg-purple-100 dark:bg-purple-900/40 text-purple-700 dark:text-purple-300 ring-1 ring-purple-300 dark:ring-purple-600'
+                        : 'bg-neutral-100 dark:bg-neutral-700 text-neutral-500 dark:text-neutral-400 hover:bg-neutral-200 dark:hover:bg-neutral-600'
                   }`}
-                  title={editPrivateDescription ? 'Description is private' : 'Make description private'}
+                  title={editPrivate ? 'Entire item is private' : editPrivateDescription ? 'Description is private' : 'Make description private'}
                 >
-                  {editPrivateDescription ? '🔒 Private' : '🔓 Public'}
+                  {editPrivate || editPrivateDescription ? '🔒 Private' : '🔓 Public'}
                 </button>
               )}
             </div>
@@ -943,15 +949,18 @@ function ItemDetail({ list, setList, token, userRole }) {
               {isEditing && (
                 <button
                   type="button"
-                  onClick={() => setEditPrivateOrigin(!editPrivateOrigin)}
+                  onClick={() => !editPrivate && setEditPrivateOrigin(!editPrivateOrigin)}
+                  disabled={editPrivate}
                   className={`px-2 py-0.5 text-xs rounded-full transition-colors flex items-center gap-1 ${
-                    editPrivateOrigin
-                      ? 'bg-purple-100 dark:bg-purple-900/40 text-purple-700 dark:text-purple-300 ring-1 ring-purple-300 dark:ring-purple-600'
-                      : 'bg-neutral-100 dark:bg-neutral-700 text-neutral-500 dark:text-neutral-400 hover:bg-neutral-200 dark:hover:bg-neutral-600'
+                    editPrivate
+                      ? 'bg-purple-50 dark:bg-purple-900/20 text-purple-400 dark:text-purple-500 cursor-not-allowed opacity-60'
+                      : editPrivateOrigin
+                        ? 'bg-purple-100 dark:bg-purple-900/40 text-purple-700 dark:text-purple-300 ring-1 ring-purple-300 dark:ring-purple-600'
+                        : 'bg-neutral-100 dark:bg-neutral-700 text-neutral-500 dark:text-neutral-400 hover:bg-neutral-200 dark:hover:bg-neutral-600'
                   }`}
-                  title={editPrivateOrigin ? 'Origin is private' : 'Make origin private'}
+                  title={editPrivate ? 'Entire item is private' : editPrivateOrigin ? 'Origin is private' : 'Make origin private'}
                 >
-                  {editPrivateOrigin ? '🔒 Private' : '🔓 Public'}
+                  {editPrivate || editPrivateOrigin ? '🔒 Private' : '🔓 Public'}
                 </button>
               )}
             </div>

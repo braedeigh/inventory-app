@@ -832,15 +832,18 @@ function Home({ list, setList, token, userRole, setShowLogin, handleLogout }) {
               <label className="text-sm font-medium">Description: {shouldHighlight('description') && <span className="text-amber-600 text-xs ml-1">(not filled by AI)</span>}</label>
               <button
                 type="button"
-                onClick={() => setPrivateDescription(!privateDescription)}
+                onClick={() => !privateItem && setPrivateDescription(!privateDescription)}
+                disabled={privateItem}
                 className={`px-2 py-0.5 text-xs rounded-full transition-colors flex items-center gap-1 ${
-                  privateDescription
-                    ? 'bg-purple-100 dark:bg-purple-900/40 text-purple-700 dark:text-purple-300 ring-1 ring-purple-300 dark:ring-purple-600'
-                    : 'bg-neutral-100 dark:bg-neutral-700 text-neutral-500 dark:text-neutral-400 hover:bg-neutral-200 dark:hover:bg-neutral-600'
+                  privateItem
+                    ? 'bg-purple-50 dark:bg-purple-900/20 text-purple-400 dark:text-purple-500 cursor-not-allowed opacity-60'
+                    : privateDescription
+                      ? 'bg-purple-100 dark:bg-purple-900/40 text-purple-700 dark:text-purple-300 ring-1 ring-purple-300 dark:ring-purple-600'
+                      : 'bg-neutral-100 dark:bg-neutral-700 text-neutral-500 dark:text-neutral-400 hover:bg-neutral-200 dark:hover:bg-neutral-600'
                 }`}
-                title={privateDescription ? 'Description is private' : 'Make description private'}
+                title={privateItem ? 'Entire item is private' : privateDescription ? 'Description is private' : 'Make description private'}
               >
-                {privateDescription ? '🔒 Private' : '🔓 Public'}
+                {privateItem || privateDescription ? '🔒 Private' : '🔓 Public'}
               </button>
             </div>
             <textarea
@@ -867,15 +870,18 @@ function Home({ list, setList, token, userRole, setShowLogin, handleLogout }) {
               <label className="text-sm font-medium">Origin: {shouldHighlight('origin') && <span className="text-amber-600 text-xs ml-1">(not filled by AI)</span>}</label>
               <button
                 type="button"
-                onClick={() => setPrivateOrigin(!privateOrigin)}
+                onClick={() => !privateItem && setPrivateOrigin(!privateOrigin)}
+                disabled={privateItem}
                 className={`px-2 py-0.5 text-xs rounded-full transition-colors flex items-center gap-1 ${
-                  privateOrigin
-                    ? 'bg-purple-100 dark:bg-purple-900/40 text-purple-700 dark:text-purple-300 ring-1 ring-purple-300 dark:ring-purple-600'
-                    : 'bg-neutral-100 dark:bg-neutral-700 text-neutral-500 dark:text-neutral-400 hover:bg-neutral-200 dark:hover:bg-neutral-600'
+                  privateItem
+                    ? 'bg-purple-50 dark:bg-purple-900/20 text-purple-400 dark:text-purple-500 cursor-not-allowed opacity-60'
+                    : privateOrigin
+                      ? 'bg-purple-100 dark:bg-purple-900/40 text-purple-700 dark:text-purple-300 ring-1 ring-purple-300 dark:ring-purple-600'
+                      : 'bg-neutral-100 dark:bg-neutral-700 text-neutral-500 dark:text-neutral-400 hover:bg-neutral-200 dark:hover:bg-neutral-600'
                 }`}
-                title={privateOrigin ? 'Origin is private' : 'Make origin private'}
+                title={privateItem ? 'Entire item is private' : privateOrigin ? 'Origin is private' : 'Make origin private'}
               >
-                {privateOrigin ? '🔒 Private' : '🔓 Public'}
+                {privateItem || privateOrigin ? '🔒 Private' : '🔓 Public'}
               </button>
             </div>
             <input
@@ -1087,15 +1093,18 @@ function Home({ list, setList, token, userRole, setShowLogin, handleLogout }) {
     <label className="text-sm font-medium">Photos (up to 5):</label>
     <button
       type="button"
-      onClick={() => setPrivatePhotos(!privatePhotos)}
+      onClick={() => !privateItem && setPrivatePhotos(!privatePhotos)}
+      disabled={privateItem}
       className={`px-2 py-0.5 text-xs rounded-full transition-colors flex items-center gap-1 ${
-        privatePhotos
-          ? 'bg-purple-100 dark:bg-purple-900/40 text-purple-700 dark:text-purple-300 ring-1 ring-purple-300 dark:ring-purple-600'
-          : 'bg-neutral-100 dark:bg-neutral-700 text-neutral-500 dark:text-neutral-400 hover:bg-neutral-200 dark:hover:bg-neutral-600'
+        privateItem
+          ? 'bg-purple-50 dark:bg-purple-900/20 text-purple-400 dark:text-purple-500 cursor-not-allowed opacity-60'
+          : privatePhotos
+            ? 'bg-purple-100 dark:bg-purple-900/40 text-purple-700 dark:text-purple-300 ring-1 ring-purple-300 dark:ring-purple-600'
+            : 'bg-neutral-100 dark:bg-neutral-700 text-neutral-500 dark:text-neutral-400 hover:bg-neutral-200 dark:hover:bg-neutral-600'
       }`}
-      title={privatePhotos ? 'Photos are private' : 'Make photos private'}
+      title={privateItem ? 'Entire item is private' : privatePhotos ? 'Photos are private' : 'Make photos private'}
     >
-      {privatePhotos ? '🔒 Private' : '🔓 Public'}
+      {privateItem || privatePhotos ? '🔒 Private' : '🔓 Public'}
     </button>
   </div>
 
