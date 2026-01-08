@@ -1086,24 +1086,6 @@ function Home({ list, setList, token, userRole, setShowLogin, handleLogout }) {
             </label>
           </div>
 
-          {/* Privacy Controls - Just the main Private Item toggle */}
-          <div className="mb-4">
-            <button
-              type="button"
-              onClick={() => setPrivateItem(!privateItem)}
-              className={`w-full flex items-center justify-between p-3 rounded-lg border transition-colors ${
-                privateItem
-                  ? 'bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 border-purple-300 dark:border-purple-700'
-                  : 'bg-neutral-50 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-400 border-neutral-300 dark:border-neutral-600'
-              }`}
-            >
-              <span className="font-medium">Private Item?</span>
-              <span className={`text-xs px-2 py-1 rounded ${privateItem ? 'bg-purple-200 dark:bg-purple-800' : 'bg-neutral-200 dark:bg-neutral-600'}`}>
-                {privateItem ? 'Hidden from public' : 'Visible'}
-              </span>
-            </button>
-          </div>
-
 <div className="mb-4">
   <div className="flex items-center justify-between mb-1">
     <label className="text-sm font-medium">Photos (up to 5):</label>
@@ -1199,8 +1181,26 @@ function Home({ list, setList, token, userRole, setShowLogin, handleLogout }) {
   )}
 </div>
 
-          <button 
-            type="button" 
+          {/* Privacy Controls - Private Item toggle */}
+          <div className="mb-4">
+            <button
+              type="button"
+              onClick={() => setPrivateItem(!privateItem)}
+              className={`w-full flex items-center justify-between p-3 rounded-lg border transition-colors ${
+                privateItem
+                  ? 'bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 border-purple-300 dark:border-purple-700'
+                  : 'bg-neutral-50 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-400 border-neutral-300 dark:border-neutral-600'
+              }`}
+            >
+              <span className="font-medium">Private Item?</span>
+              <span className={`text-xs px-2 py-1 rounded ${privateItem ? 'bg-purple-200 dark:bg-purple-800' : 'bg-neutral-200 dark:bg-neutral-600'}`}>
+                {privateItem ? 'Hidden from public' : 'Visible'}
+              </span>
+            </button>
+          </div>
+
+          <button
+            type="button"
             ref={submitRef}
             onClick={handleAddItem}
             disabled={isUploading}
