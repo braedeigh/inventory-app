@@ -1,5 +1,4 @@
-import { useState, useRef, useEffect, useMemo, memo } from 'react'
-import { motion, AnimatePresence } from 'framer-motion'
+import { useState, useRef, useEffect, useMemo } from 'react'
 
 // Category colors for borders
 const CATEGORY_COLORS = {
@@ -103,11 +102,9 @@ function CloudView({
 
   // Pan handlers
   const handleMouseDown = (e) => {
-    if (e.target === containerRef.current || e.target.classList.contains('cloud-bg')) {
-      setIsPanning(true)
-      setStartPan(pan)
-      setStartMouse({ x: e.clientX, y: e.clientY })
-    }
+    setIsPanning(true)
+    setStartPan(pan)
+    setStartMouse({ x: e.clientX, y: e.clientY })
   }
 
   const handleMouseMove = (e) => {
@@ -125,12 +122,10 @@ function CloudView({
 
   // Touch handlers for mobile
   const handleTouchStart = (e) => {
-    if (e.target === containerRef.current || e.target.classList.contains('cloud-bg')) {
-      const touch = e.touches[0]
-      setIsPanning(true)
-      setStartPan(pan)
-      setStartMouse({ x: touch.clientX, y: touch.clientY })
-    }
+    const touch = e.touches[0]
+    setIsPanning(true)
+    setStartPan(pan)
+    setStartMouse({ x: touch.clientX, y: touch.clientY })
   }
 
   const handleTouchMove = (e) => {
@@ -143,64 +138,7 @@ function CloudView({
     }
   }
 
-  // Memoized item card to prevent re-renders on pan
-  const ItemCard = memo(({ item, position, isMatching, isPrivate, shouldBlurPhoto, isPanning, onNavigate }) => (
-    <motion.div
-      className={`absolute cursor-pointer select-none ${isPanning ? 'pointer-events-none' : ''}`}
-      style={{
-        left: position.x - 40,
-        top: position.y - 50,
-      }}
-      initial={{ opacity: 0, scale: 0 }}
-      animate={{
-        opacity: isMatching ? 1 : 0.15,
-        scale: isMatching ? 1 : 0.6,
-        zIndex: isMatching ? 10 : 1
-      }}
-      exit={{ opacity: 0, scale: 0 }}
-      transition={{
-        opacity: { duration: 0.15 },
-        scale: { duration: 0.15 }
-      }}
-      onClick={(e) => {
-        if (!isPanning && !isPrivate) {
-          e.stopPropagation()
-          onNavigate(item.id)
-        }
-      }}
-      whileHover={!isPanning ? { scale: isMatching ? 1.1 : 0.7 } : {}}
-    >
-      <div
-        className={`w-20 h-24 rounded-lg overflow-hidden bg-white dark:bg-neutral-800 shadow-md hover:shadow-lg transition-shadow ${isPrivate ? 'opacity-50' : ''}`}
-        style={{
-          borderWidth: 3,
-          borderStyle: 'solid',
-          borderColor: CATEGORY_COLORS[item.category] || CATEGORY_COLORS.other
-        }}
-      >
-        <div className="w-full h-14 bg-neutral-200 dark:bg-neutral-700 overflow-hidden">
-          {item.mainPhoto ? (
-            <img
-              src={item.mainPhoto}
-              alt={item.itemName}
-              className={`w-full h-full object-cover ${shouldBlurPhoto ? 'blur-md' : ''}`}
-              draggable={false}
-              loading="lazy"
-            />
-          ) : (
-            <div className="w-full h-full flex items-center justify-center text-neutral-400 text-xs">
-              No img
-            </div>
-          )}
-        </div>
-        <div className={`p-1 text-[10px] leading-tight text-center truncate ${isPrivate ? 'blur-sm' : ''}`}>
-          {isPrivate ? 'Private' : item.itemName}
-        </div>
-      </div>
-    </motion.div>
-  ))
-
-  // Pre-compute item data to avoid recalculation during render
+  // Pre-compute item data
   const itemsData = useMemo(() => {
     return items.map((item, index) => {
       const isFiltered = filteredIds.has(item.id)
@@ -225,12 +163,12 @@ function CloudView({
       onTouchMove={handleTouchMove}
       onTouchEnd={handleMouseUp}
     >
-      {/* Pannable container - moves all items at once */}
+      {/* Pannable container */}
       <div
-        className="absolute inset-0"
         style={{
           transform: `translate(${pan.x}px, ${pan.y}px)`,
-          willChange: 'transform'
+          position: 'absolute',
+          inset: 0
         }}
       >
         {/* Category labels */}
@@ -253,21 +191,54 @@ function CloudView({
           )
         })}
 
-        {/* Item cards */}
-        <AnimatePresence>
-          {itemsData.map(({ item, position, isMatching, isPrivate, shouldBlurPhoto }) => (
-            <ItemCard
-              key={item.id}
-              item={item}
-              position={position}
-              isMatching={isMatching}
-              isPrivate={isPrivate}
-              shouldBlurPhoto={shouldBlurPhoto}
-              isPanning={isPanning}
-              onNavigate={onNavigate}
-            />
-          ))}
-        </AnimatePresence>
+        {/* Item cards - pure CSS, no animation library */}
+        {itemsData.map(({ item, position, isMatching, isPrivate, shouldBlurPhoto }) => (
+          <div
+            key={item.id}
+            className={`absolute cursor-pointer select-none transition-opacity transition-transform duration-150 ${isPanning ? 'pointer-events-none' : ''} hover:scale-110`}
+            style={{
+              left: position.x - 40,
+              top: position.y - 50,
+              opacity: isMatching ? 1 : 0.15,
+              transform: `scale(${isMatching ? 1 : 0.6})`,
+              zIndex: isMatching ? 10 : 1
+            }}
+            onClick={(e) => {
+              if (!isPanning && !isPrivate) {
+                e.stopPropagation()
+                onNavigate(item.id)
+              }
+            }}
+          >
+            <div
+              className={`w-20 h-24 rounded-lg overflow-hidden bg-white dark:bg-neutral-800 shadow-md hover:shadow-lg transition-shadow ${isPrivate ? 'opacity-50' : ''}`}
+              style={{
+                borderWidth: 3,
+                borderStyle: 'solid',
+                borderColor: CATEGORY_COLORS[item.category] || CATEGORY_COLORS.other
+              }}
+            >
+              <div className="w-full h-14 bg-neutral-200 dark:bg-neutral-700 overflow-hidden">
+                {item.mainPhoto ? (
+                  <img
+                    src={item.mainPhoto}
+                    alt={item.itemName}
+                    className={`w-full h-full object-cover ${shouldBlurPhoto ? 'blur-md' : ''}`}
+                    draggable={false}
+                    loading="lazy"
+                  />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center text-neutral-400 text-xs">
+                    No img
+                  </div>
+                )}
+              </div>
+              <div className={`p-1 text-[10px] leading-tight text-center truncate ${isPrivate ? 'blur-sm' : ''}`}>
+                {isPrivate ? 'Private' : item.itemName}
+              </div>
+            </div>
+          </div>
+        ))}
       </div>
 
       {/* Instructions */}
