@@ -240,13 +240,13 @@ function Home({ list, setList, token, userRole, setShowLogin, handleLogout }) {
         <button
           type="button"
           onClick={() => setShowFilters(!showFilters)}
-          className={`px-4 py-2 border rounded-lg transition-all flex items-center gap-2 ${
+          className={`px-4 py-2 border rounded-lg transition-all flex items-center gap-2 whitespace-nowrap ${
             showFilters || activeFilterCount > 0
               ? 'bg-green-100 dark:bg-green-900/30 border-green-300 dark:border-green-700 text-green-700 dark:text-green-300'
               : 'bg-white dark:bg-neutral-800 border-neutral-300 dark:border-neutral-600 text-neutral-800 dark:text-neutral-100 hover:bg-neutral-100 dark:hover:bg-neutral-700'
           }`}
         >
-          <span>Filters {showFilters ? '▼' : '▶'}</span>
+          Filters {showFilters ? '▼' : '▶'}
           {activeFilterCount > 0 && (
             <span className="bg-green-600 text-white text-xs px-1.5 py-0.5 rounded-full">
               {activeFilterCount}
