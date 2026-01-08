@@ -940,8 +940,8 @@ function Home({ list, setList, token, setShowLogin, handleLogout }) {
         </button>
       </div>
 
-      {/* Materials filter - only show if we have items with materials */}
-      {availableMaterials.length > 0 && (
+      {/* Materials filter - only show if clothing or bedding is selected */}
+      {availableMaterials.length > 0 && (selectedCategories.includes('clothing') || selectedCategories.includes('bedding')) && (
         <>
           <hr className="border-neutral-300 dark:border-neutral-600 mb-4" />
           <div className="flex flex-wrap gap-2 mb-6">
