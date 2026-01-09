@@ -584,6 +584,59 @@ function CloudView({
     }
   }, [token])
 
+  // Calculate canvas bounds
+  const canvasBounds = useMemo(() => {
+    let maxCol = 10
+    let maxRow = 10
+
+    Object.values(categoryBoxes).forEach(box => {
+      maxCol = Math.max(maxCol, box.gridCol + box.boxWidth + 2)
+      maxRow = Math.max(maxRow, box.gridRow + box.boxHeight + 2)
+    })
+
+    return {
+      width: maxCol * CELL_WIDTH,
+      height: maxRow * CELL_HEIGHT
+    }
+  }, [categoryBoxes])
+
+  // Calculate minimum zoom to fit all content
+  const minZoom = useMemo(() => {
+    if (canvasBounds.width === 0 || canvasBounds.height === 0) return 0.3
+    const zoomX = containerSize.width / canvasBounds.width
+    const zoomY = containerSize.height / canvasBounds.height
+    // Use the smaller of the two, with a small margin (0.9) and floor at 0.3
+    return Math.max(0.3, Math.min(zoomX, zoomY) * 0.9)
+  }, [canvasBounds, containerSize])
+
+  // Cursor-centered zoom handler
+  const handleZoom = useCallback((e, zoomIn) => {
+    e.preventDefault()
+    const container = containerRef.current
+    if (!container) return
+
+    const rect = container.getBoundingClientRect()
+    // Mouse position relative to container
+    const mouseX = e.clientX - rect.left
+    const mouseY = e.clientY - rect.top
+
+    // Current point in canvas coordinates (before zoom)
+    const canvasX = (mouseX - panState.current.x) / zoom
+    const canvasY = (mouseY - panState.current.y) / zoom
+
+    // Calculate new zoom
+    const delta = zoomIn ? 1.15 : 0.87
+    const newZoom = Math.min(2.5, Math.max(minZoom, zoom * delta))
+
+    // Calculate new pan to keep the point under cursor stationary
+    const newPanX = mouseX - canvasX * newZoom
+    const newPanY = mouseY - canvasY * newZoom
+
+    panState.current.x = newPanX
+    panState.current.y = newPanY
+    setZoom(newZoom)
+  }, [zoom, minZoom])
+
   // ============ EVENT HANDLERS ============
 
   useEffect(() => {
@@ -924,59 +977,6 @@ function CloudView({
       onNavigate(item.id)
     }
   }, [onNavigate, draggingItem, draggingBox, resizingBox, draggingSubcatBox, resizingSubcatBox])
-
-  // Calculate canvas bounds
-  const canvasBounds = useMemo(() => {
-    let maxCol = 10
-    let maxRow = 10
-
-    Object.values(categoryBoxes).forEach(box => {
-      maxCol = Math.max(maxCol, box.gridCol + box.boxWidth + 2)
-      maxRow = Math.max(maxRow, box.gridRow + box.boxHeight + 2)
-    })
-
-    return {
-      width: maxCol * CELL_WIDTH,
-      height: maxRow * CELL_HEIGHT
-    }
-  }, [categoryBoxes])
-
-  // Calculate minimum zoom to fit all content
-  const minZoom = useMemo(() => {
-    if (canvasBounds.width === 0 || canvasBounds.height === 0) return 0.3
-    const zoomX = containerSize.width / canvasBounds.width
-    const zoomY = containerSize.height / canvasBounds.height
-    // Use the smaller of the two, with a small margin (0.9) and floor at 0.3
-    return Math.max(0.3, Math.min(zoomX, zoomY) * 0.9)
-  }, [canvasBounds, containerSize])
-
-  // Cursor-centered zoom handler
-  const handleZoom = useCallback((e, zoomIn) => {
-    e.preventDefault()
-    const container = containerRef.current
-    if (!container) return
-
-    const rect = container.getBoundingClientRect()
-    // Mouse position relative to container
-    const mouseX = e.clientX - rect.left
-    const mouseY = e.clientY - rect.top
-
-    // Current point in canvas coordinates (before zoom)
-    const canvasX = (mouseX - panState.current.x) / zoom
-    const canvasY = (mouseY - panState.current.y) / zoom
-
-    // Calculate new zoom
-    const delta = zoomIn ? 1.15 : 0.87
-    const newZoom = Math.min(2.5, Math.max(minZoom, zoom * delta))
-
-    // Calculate new pan to keep the point under cursor stationary
-    const newPanX = mouseX - canvasX * newZoom
-    const newPanY = mouseY - canvasY * newZoom
-
-    panState.current.x = newPanX
-    panState.current.y = newPanY
-    setZoom(newZoom)
-  }, [zoom, minZoom])
 
   return (
     <div
