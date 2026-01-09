@@ -274,8 +274,8 @@ function Home({ list, setList, token, userRole, setShowLogin, handleLogout }) {
           className="w-48 px-3 py-2 border border-neutral-300 dark:border-neutral-600 rounded-lg bg-white dark:bg-neutral-800 text-neutral-800 dark:text-neutral-100"
         />
 
-        {/* View toggle */}
-        <div className="flex items-center gap-1 ml-auto">
+        {/* View toggle - hidden on mobile (CloudView is desktop-only) */}
+        <div className="hidden md:flex items-center gap-1 ml-auto">
           <button
             type="button"
             onClick={() => setViewMode('list')}
@@ -334,21 +334,47 @@ function Home({ list, setList, token, userRole, setShowLogin, handleLogout }) {
         </div>
       )}
 
-      {/* View Content */}
+      {/* View Content - CloudView only on desktop (md+), list view on mobile */}
       {viewMode === 'cloud' ? (
-        <CloudView
-          items={list}
-          filteredItems={filteredAndSortedList}
-          availableCategories={availableCategories}
-          isAdmin={isAdmin}
-          onNavigate={navigateToItem}
-          token={token}
-          onItemUpdate={(itemId, updates) => {
-            setList(list.map(item =>
-              item.id === itemId ? { ...item, ...updates } : item
-            ))
-          }}
-        />
+        <>
+          {/* CloudView - desktop only */}
+          <div className="hidden md:block">
+            <CloudView
+              items={list}
+              filteredItems={filteredAndSortedList}
+              availableCategories={availableCategories}
+              isAdmin={isAdmin}
+              onNavigate={navigateToItem}
+              token={token}
+              onItemUpdate={(itemId, updates) => {
+                setList(list.map(item =>
+                  item.id === itemId ? { ...item, ...updates } : item
+                ))
+              }}
+              onCategoryUpdate={(categoryName, updates) => {
+                setAvailableCategories(availableCategories.map(cat =>
+                  cat.name === categoryName ? { ...cat, ...updates } : cat
+                ))
+              }}
+            />
+          </div>
+          {/* Mobile fallback - show cards */}
+          <div className="md:hidden space-y-4">
+            {filteredAndSortedList.map((item, index) => (
+              <ItemCard
+                key={index}
+                item={item}
+                index={index}
+                isAdmin={isAdmin}
+                token={token}
+                confirmDelete={confirmDelete}
+                setConfirmDelete={setConfirmDelete}
+                onDelete={handleDelete}
+                onNavigate={navigateToItem}
+              />
+            ))}
+          </div>
+        </>
       ) : (
         <>
           {/* Table - Desktop */}

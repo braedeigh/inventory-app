@@ -2,6 +2,7 @@ import { useState, useRef, useEffect, useMemo, useCallback } from 'react'
 
 const API_URL = 'https://bradie-inventory-api.onrender.com'
 
+// Category colors for box borders
 const CATEGORY_COLORS = {
   clothing: '#22c55e',
   jewelry: '#eab308',
@@ -11,175 +12,206 @@ const CATEGORY_COLORS = {
   books: '#78716c',
   bedding: '#ec4899',
   toiletries: '#06b6d4',
+  sentimental: '#f43f5e',
   other: '#6b7280',
 }
 
-// Card dimensions
-const CARD_WIDTH = 48
-const CARD_HEIGHT = 56
-const CARD_GAP = 8
-const LABEL_PADDING = 20 // Padding above topmost card for label
+// Grid constants
+const CELL_WIDTH = 56   // 48px card + 8px gap
+const CELL_HEIGHT = 64  // 56px card + 8px gap
+const BOX_PADDING = 1   // 1 cell padding inside box (for header)
+const BOX_GAP = 1       // 1 cell gap between boxes
+const MAX_CANVAS_WIDTH = 24  // Max cells wide for initial packing
 
-// Subcategory layout configuration
-// Defines vertical order within each category (top to bottom)
-const SUBCATEGORY_LAYOUT = {
-  clothing: {
-    order: ['hats', 'tops', 'outerwear', 'bottoms', 'shoes', 'accessories'],
-    direction: 'vertical'
-  },
-  jewelry: {
-    order: ['necklaces', 'earrings', 'bracelets', 'rings', 'other'],
-    direction: 'vertical'
-  },
-  // Add more category layouts as needed
+// Subcategory ordering for auto-placement
+const SUBCATEGORY_ORDER = {
+  clothing: ['hats', 'tops', 'outerwear', 'bottoms', 'shoes', 'socks', 'underwear', 'accessories', 'other'],
+  jewelry: ['necklaces', 'earrings', 'bracelets', 'rings', 'other'],
 }
 
-// Default fallback for categories without explicit layout
-const DEFAULT_SUBCATEGORY_ORDER = ['other']
+// ============ GRID UTILITIES ============
 
-// Get subcategory order for a category
-function getSubcategoryOrder(category) {
-  return SUBCATEGORY_LAYOUT[category]?.order || DEFAULT_SUBCATEGORY_ORDER
-}
-
-// Calculate positions with subcategory stratification
-function getStratifiedPositions(items, categories, containerWidth, containerHeight, pinnedPositions = {}) {
-  const positions = {}
-  const clusterBounds = {} // Track bounds for each category for label positioning
-
-  // Group items by category
-  const itemsByCategory = {}
-  categories.forEach(cat => { itemsByCategory[cat] = [] })
-  items.forEach(item => {
-    const cat = item.category || 'other'
-    if (itemsByCategory[cat]) {
-      itemsByCategory[cat].push(item)
-    } else {
-      itemsByCategory['other'] = itemsByCategory['other'] || []
-      itemsByCategory['other'].push(item)
-    }
-  })
-
-  // Calculate cluster centers in a circle
-  const numCategories = categories.length
-  const centerX = containerWidth / 2
-  const centerY = containerHeight / 2
-  const radius = Math.min(containerWidth, containerHeight) * 0.35
-
-  categories.forEach((cat, catIndex) => {
-    const angle = (catIndex / numCategories) * 2 * Math.PI - Math.PI / 2
-    const clusterCenterX = centerX + radius * Math.cos(angle)
-    const clusterCenterY = centerY + radius * Math.sin(angle)
-
-    const catItems = itemsByCategory[cat] || []
-
-    // Separate pinned and unpinned items
-    const pinnedItems = catItems.filter(item => pinnedPositions[item.id])
-    const unpinnedItems = catItems.filter(item => !pinnedPositions[item.id])
-
-    // Group unpinned items by subcategory
-    const subcategoryOrder = getSubcategoryOrder(cat)
-    const itemsBySubcat = {}
-    subcategoryOrder.forEach(sub => { itemsBySubcat[sub] = [] })
-    itemsBySubcat['_other'] = [] // For items with unknown subcategory
-
-    unpinnedItems.forEach(item => {
-      const subcat = item.subcategory?.toLowerCase() || '_other'
-      if (itemsBySubcat[subcat]) {
-        itemsBySubcat[subcat].push(item)
-      } else {
-        itemsBySubcat['_other'].push(item)
-      }
-    })
-
-    // Calculate total rows needed
-    let totalRows = 0
-    const subcatRows = {}
-    const orderedSubcats = [...subcategoryOrder, '_other']
-
-    orderedSubcats.forEach(subcat => {
-      const subcatItems = itemsBySubcat[subcat] || []
-      if (subcatItems.length > 0) {
-        const cols = Math.ceil(Math.sqrt(subcatItems.length * 2)) // Wider than tall
-        const rows = Math.ceil(subcatItems.length / cols)
-        subcatRows[subcat] = { items: subcatItems, cols, rows, startRow: totalRows }
-        totalRows += rows
-      }
-    })
-
-    // Calculate grid dimensions
-    const maxCols = Math.max(...Object.values(subcatRows).map(s => s.cols), 1)
-    const gridWidth = maxCols * (CARD_WIDTH + CARD_GAP)
-    const gridHeight = totalRows * (CARD_HEIGHT + CARD_GAP)
-    const startX = clusterCenterX - gridWidth / 2
-    const startY = clusterCenterY - gridHeight / 2
-
-    // Initialize bounds tracking
-    let minY = Infinity, maxY = -Infinity, minX = Infinity, maxX = -Infinity
-
-    // Position unpinned items in subcategory rows
-    Object.entries(subcatRows).forEach(([subcat, { items: subcatItems, cols, startRow }]) => {
-      subcatItems.forEach((item, i) => {
-        const col = i % cols
-        const row = startRow + Math.floor(i / cols)
-        const x = startX + col * (CARD_WIDTH + CARD_GAP) + CARD_WIDTH / 2
-        const y = startY + row * (CARD_HEIGHT + CARD_GAP) + CARD_HEIGHT / 2
-
-        positions[item.id] = { x, y, category: cat, subcategory: subcat }
-
-        // Update bounds
-        minX = Math.min(minX, x - CARD_WIDTH / 2)
-        maxX = Math.max(maxX, x + CARD_WIDTH / 2)
-        minY = Math.min(minY, y - CARD_HEIGHT / 2)
-        maxY = Math.max(maxY, y + CARD_HEIGHT / 2)
-      })
-    })
-
-    // Position pinned items at their saved positions
-    pinnedItems.forEach(item => {
-      const pinned = pinnedPositions[item.id]
-      positions[item.id] = {
-        x: pinned.x,
-        y: pinned.y,
-        category: cat,
-        isPinned: true
-      }
-
-      // Update bounds
-      minX = Math.min(minX, pinned.x - CARD_WIDTH / 2)
-      maxX = Math.max(maxX, pinned.x + CARD_WIDTH / 2)
-      minY = Math.min(minY, pinned.y - CARD_HEIGHT / 2)
-      maxY = Math.max(maxY, pinned.y + CARD_HEIGHT / 2)
-    })
-
-    // Store bounds for label positioning
-    if (catItems.length > 0) {
-      clusterBounds[cat] = {
-        minX, maxX, minY, maxY,
-        centerX: (minX + maxX) / 2,
-        topY: minY - LABEL_PADDING
-      }
-    } else {
-      // Empty category - use cluster center
-      clusterBounds[cat] = {
-        centerX: clusterCenterX,
-        topY: clusterCenterY - 50
-      }
-    }
-  })
-
-  return { positions, clusterBounds }
-}
-
-// Snap position to grid
-function snapToGrid(x, y) {
-  const gridX = CARD_WIDTH + CARD_GAP
-  const gridY = CARD_HEIGHT + CARD_GAP
+function cellToPixel(col, row) {
   return {
-    x: Math.round(x / gridX) * gridX + CARD_WIDTH / 2,
-    y: Math.round(y / gridY) * gridY + CARD_HEIGHT / 2
+    x: col * CELL_WIDTH,
+    y: row * CELL_HEIGHT
   }
 }
+
+function pixelToCell(x, y) {
+  return {
+    col: Math.floor(x / CELL_WIDTH),
+    row: Math.floor(y / CELL_HEIGHT)
+  }
+}
+
+function snapToCell(x, y) {
+  const cell = pixelToCell(x, y)
+  return cellToPixel(cell.col, cell.row)
+}
+
+// ============ BOX OVERLAP DETECTION ============
+
+function boxesOverlap(box1, box2) {
+  // Add BOX_GAP to account for minimum spacing
+  return !(
+    box1.gridCol + box1.boxWidth + BOX_GAP <= box2.gridCol ||
+    box2.gridCol + box2.boxWidth + BOX_GAP <= box1.gridCol ||
+    box1.gridRow + box1.boxHeight + BOX_GAP <= box2.gridRow ||
+    box2.gridRow + box2.boxHeight + BOX_GAP <= box1.gridRow
+  )
+}
+
+function canPlaceBox(box, allBoxes, excludeId = null) {
+  for (const other of allBoxes) {
+    if (other.name === excludeId) continue
+    if (boxesOverlap(box, other)) return false
+  }
+  return true
+}
+
+// ============ SHELF-PACKING ALGORITHM ============
+
+function calculateMinBoxSize(itemCount) {
+  if (itemCount === 0) return { width: 2, height: 2 }
+
+  // Calculate columns needed (aim for wider than tall)
+  const cols = Math.max(2, Math.ceil(Math.sqrt(itemCount * 1.5)))
+  const rows = Math.max(1, Math.ceil(itemCount / cols))
+
+  // Add padding for header
+  return {
+    width: cols + BOX_PADDING,
+    height: rows + BOX_PADDING + 1 // +1 for header
+  }
+}
+
+function shelfPackBoxes(categories, itemCounts) {
+  const boxes = []
+
+  // Calculate sizes and sort by height (tallest first)
+  const categoryData = categories.map(cat => ({
+    name: cat.name,
+    displayName: cat.displayName,
+    ...calculateMinBoxSize(itemCounts[cat.name] || 0)
+  })).sort((a, b) => b.height - a.height)
+
+  let currentRow = 0
+  let currentCol = 0
+  let rowHeight = 0
+
+  for (const cat of categoryData) {
+    // Check if box fits on current row
+    if (currentCol + cat.width > MAX_CANVAS_WIDTH) {
+      // Move to next row
+      currentRow += rowHeight + BOX_GAP
+      currentCol = 0
+      rowHeight = 0
+    }
+
+    boxes.push({
+      name: cat.name,
+      displayName: cat.displayName,
+      gridCol: currentCol,
+      gridRow: currentRow,
+      boxWidth: cat.width,
+      boxHeight: cat.height
+    })
+
+    currentCol += cat.width + BOX_GAP
+    rowHeight = Math.max(rowHeight, cat.height)
+  }
+
+  return boxes
+}
+
+// ============ PUSH ALGORITHM FOR OVERLAPS ============
+
+function pushBoxesAway(movingBox, allBoxes, maxDepth = 10) {
+  if (maxDepth <= 0) return null // Cascade limit reached
+
+  const updates = []
+
+  for (const other of allBoxes) {
+    if (other.name === movingBox.name) continue
+
+    if (boxesOverlap(movingBox, other)) {
+      // Calculate push direction (push right)
+      const pushedBox = {
+        ...other,
+        gridCol: movingBox.gridCol + movingBox.boxWidth + BOX_GAP
+      }
+
+      // Recursively push any boxes that this push would overlap
+      const cascadeUpdates = pushBoxesAway(pushedBox, allBoxes.filter(b => b.name !== other.name), maxDepth - 1)
+
+      if (cascadeUpdates === null) return null // Cascade limit reached
+
+      updates.push(pushedBox)
+      updates.push(...cascadeUpdates)
+    }
+  }
+
+  return updates
+}
+
+// ============ ITEM AUTO-PLACEMENT WITHIN BOX ============
+
+function autoPlaceItems(items, boxWidth, boxHeight, category) {
+  const positions = {}
+  const order = SUBCATEGORY_ORDER[category] || ['other']
+
+  // Group by subcategory
+  const bySubcat = {}
+  order.forEach(sub => { bySubcat[sub] = [] })
+  bySubcat['_other'] = []
+
+  items.forEach(item => {
+    // If item has manual position, use it
+    if (item.localCol != null && item.localRow != null) {
+      positions[item.id] = { col: item.localCol, row: item.localRow }
+      return
+    }
+
+    const sub = item.subcategory?.toLowerCase() || '_other'
+    if (bySubcat[sub]) {
+      bySubcat[sub].push(item)
+    } else {
+      bySubcat['_other'].push(item)
+    }
+  })
+
+  // Available cells (excluding header row)
+  const availableWidth = boxWidth - BOX_PADDING
+  let currentRow = 1 // Start after header
+  let currentCol = 0
+
+  // Place items by subcategory order
+  const orderedSubcats = [...order, '_other']
+  for (const subcat of orderedSubcats) {
+    const subcatItems = bySubcat[subcat] || []
+
+    for (const item of subcatItems) {
+      // Skip items that already have positions
+      if (positions[item.id]) continue
+
+      // Find next available cell
+      while (currentRow < boxHeight) {
+        if (currentCol < availableWidth) {
+          positions[item.id] = { col: currentCol, row: currentRow }
+          currentCol++
+          break
+        }
+        currentCol = 0
+        currentRow++
+      }
+    }
+  }
+
+  return positions
+}
+
+// ============ MAIN COMPONENT ============
 
 function CloudView({
   items,
@@ -188,46 +220,147 @@ function CloudView({
   isAdmin,
   onNavigate,
   token,
-  onItemUpdate
+  onItemUpdate,
+  onCategoryUpdate
 }) {
   const containerRef = useRef(null)
   const panRef = useRef(null)
   const [containerSize, setContainerSize] = useState({ width: 800, height: 600 })
-  const [zoom, setZoom] = useState(1)
+  const [zoom, setZoom] = useState(0.8)
 
-  // Dragging state
+  // Box state (from database or auto-calculated)
+  const [categoryBoxes, setCategoryBoxes] = useState({})
+
+  // Drag state for boxes
+  const [draggingBox, setDraggingBox] = useState(null)
+  const [boxDragOffset, setBoxDragOffset] = useState({ x: 0, y: 0 })
+  const [boxGhostPosition, setBoxGhostPosition] = useState(null)
+
+  // Resize state for boxes
+  const [resizingBox, setResizingBox] = useState(null)
+  const [resizeGhost, setResizeGhost] = useState(null)
+
+  // Item drag state
   const [draggingItem, setDraggingItem] = useState(null)
-  const [dragPosition, setDragPosition] = useState(null)
-  const [ghostPosition, setGhostPosition] = useState(null)
-
-  // Pinned positions from items
-  const pinnedPositions = useMemo(() => {
-    const pinned = {}
-    items.forEach(item => {
-      if (item.pinnedX != null && item.pinnedY != null) {
-        pinned[item.id] = { x: item.pinnedX, y: item.pinnedY }
-      }
-    })
-    return pinned
-  }, [items])
+  const [itemGhostCell, setItemGhostCell] = useState(null)
 
   const panState = useRef({ x: 0, y: 0 })
   const dragState = useRef({ isPanning: false, startX: 0, startY: 0, startPanX: 0, startPanY: 0 })
 
+  // Get unique categories from items
   const categories = useMemo(() => {
     const cats = [...new Set(items.map(item => item.category).filter(Boolean))]
     return cats.length > 0 ? cats : ['other']
   }, [items])
 
-  // Stratified positions with subcategory layering
-  const { positions: itemPositions, clusterBounds } = useMemo(() => {
-    return getStratifiedPositions(items, categories, containerSize.width, containerSize.height, pinnedPositions)
-  }, [items, categories, containerSize, pinnedPositions])
+  // Count items per category
+  const itemCounts = useMemo(() => {
+    const counts = {}
+    items.forEach(item => {
+      const cat = item.category || 'other'
+      counts[cat] = (counts[cat] || 0) + 1
+    })
+    return counts
+  }, [items])
+
+  // Initialize category boxes from availableCategories or auto-calculate
+  useEffect(() => {
+    const boxes = {}
+    let needsPacking = false
+
+    // Check which categories have saved positions
+    availableCategories.forEach(cat => {
+      if (cat.gridCol != null && cat.gridRow != null && cat.boxWidth != null && cat.boxHeight != null) {
+        boxes[cat.name] = {
+          name: cat.name,
+          displayName: cat.displayName,
+          gridCol: cat.gridCol,
+          gridRow: cat.gridRow,
+          boxWidth: cat.boxWidth,
+          boxHeight: cat.boxHeight
+        }
+      } else if (categories.includes(cat.name)) {
+        needsPacking = true
+      }
+    })
+
+    // Also include categories from items that aren't in availableCategories
+    categories.forEach(catName => {
+      if (!boxes[catName] && !availableCategories.find(c => c.name === catName)) {
+        needsPacking = true
+      }
+    })
+
+    if (needsPacking) {
+      // Run shelf-packing for categories without positions
+      const categoriesToPack = categories
+        .filter(catName => !boxes[catName])
+        .map(catName => ({
+          name: catName,
+          displayName: availableCategories.find(c => c.name === catName)?.displayName || catName
+        }))
+
+      if (categoriesToPack.length > 0) {
+        const packedBoxes = shelfPackBoxes(categoriesToPack, itemCounts)
+
+        // Offset packed boxes to not overlap with existing boxes
+        let maxRow = 0
+        Object.values(boxes).forEach(box => {
+          maxRow = Math.max(maxRow, box.gridRow + box.boxHeight + BOX_GAP)
+        })
+
+        packedBoxes.forEach(box => {
+          boxes[box.name] = {
+            ...box,
+            gridRow: box.gridRow + maxRow
+          }
+        })
+      }
+    }
+
+    setCategoryBoxes(boxes)
+  }, [availableCategories, categories, itemCounts])
+
+  // Group items by category
+  const itemsByCategory = useMemo(() => {
+    const grouped = {}
+    categories.forEach(cat => { grouped[cat] = [] })
+    items.forEach(item => {
+      const cat = item.category || 'other'
+      if (!grouped[cat]) grouped[cat] = []
+      grouped[cat].push(item)
+    })
+    return grouped
+  }, [items, categories])
+
+  // Calculate item positions within each box
+  const itemPositions = useMemo(() => {
+    const positions = {}
+
+    Object.entries(categoryBoxes).forEach(([catName, box]) => {
+      const catItems = itemsByCategory[catName] || []
+      const catPositions = autoPlaceItems(catItems, box.boxWidth, box.boxHeight, catName)
+
+      catItems.forEach(item => {
+        const localPos = catPositions[item.id] || { col: 0, row: 1 }
+        positions[item.id] = {
+          x: (box.gridCol + localPos.col) * CELL_WIDTH + CELL_WIDTH / 2,
+          y: (box.gridRow + localPos.row) * CELL_HEIGHT + CELL_HEIGHT / 2,
+          boxName: catName,
+          localCol: localPos.col,
+          localRow: localPos.row
+        }
+      })
+    })
+
+    return positions
+  }, [categoryBoxes, itemsByCategory])
 
   const filteredIds = useMemo(() => {
     return new Set(filteredItems.map(item => item.id))
   }, [filteredItems])
 
+  // Container size tracking
   useEffect(() => {
     const updateSize = () => {
       if (containerRef.current) {
@@ -252,78 +385,116 @@ function CloudView({
     updateTransform()
   }, [zoom, updateTransform])
 
-  // Save pinned position to database
-  const savePinnedPosition = useCallback(async (itemId, x, y) => {
+  // Save category box position to database
+  const saveBoxPosition = useCallback(async (categoryName, gridCol, gridRow, boxWidth, boxHeight) => {
     if (!token) return false
 
     try {
-      const response = await fetch(`${API_URL}/item/${itemId}/pin`, {
+      const response = await fetch(`${API_URL}/categories/name/${categoryName}/box`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
         },
-        body: JSON.stringify({ pinnedX: x, pinnedY: y })
+        body: JSON.stringify({ gridCol, gridRow, boxWidth, boxHeight })
       })
 
-      if (response.ok && onItemUpdate) {
-        onItemUpdate(itemId, { pinnedX: x, pinnedY: y })
+      if (response.ok && onCategoryUpdate) {
+        onCategoryUpdate(categoryName, { gridCol, gridRow, boxWidth, boxHeight })
       }
       return response.ok
     } catch (error) {
-      console.error('Failed to save pinned position:', error)
+      console.error('Failed to save box position:', error)
       return false
     }
-  }, [token, onItemUpdate])
+  }, [token, onCategoryUpdate])
 
-  // Clear pinned position
-  const clearPinnedPosition = useCallback(async (itemId) => {
+  // Save item position within box
+  const saveItemPosition = useCallback(async (itemId, localCol, localRow) => {
     if (!token) return false
 
     try {
-      const response = await fetch(`${API_URL}/item/${itemId}/pin`, {
-        method: 'DELETE',
+      const response = await fetch(`${API_URL}/item/${itemId}/position`, {
+        method: 'PUT',
         headers: {
+          'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
-        }
+        },
+        body: JSON.stringify({ localCol, localRow })
       })
 
       if (response.ok && onItemUpdate) {
-        onItemUpdate(itemId, { pinnedX: null, pinnedY: null })
+        onItemUpdate(itemId, { localCol, localRow })
       }
       return response.ok
     } catch (error) {
-      console.error('Failed to clear pinned position:', error)
+      console.error('Failed to save item position:', error)
       return false
     }
   }, [token, onItemUpdate])
+
+  // ============ EVENT HANDLERS ============
 
   useEffect(() => {
     const container = containerRef.current
     if (!container) return
 
     const handleMouseDown = (e) => {
-      // Check if clicking on a card (for dragging)
+      // Check for resize handle
+      const resizeHandle = e.target.closest('[data-resize-box]')
+      if (resizeHandle && isAdmin && token) {
+        e.preventDefault()
+        e.stopPropagation()
+        const boxName = resizeHandle.dataset.resizeBox
+        const box = categoryBoxes[boxName]
+        if (box) {
+          setResizingBox(boxName)
+          setResizeGhost({ width: box.boxWidth, height: box.boxHeight })
+        }
+        return
+      }
+
+      // Check for box header drag
+      const boxHeader = e.target.closest('[data-box-header]')
+      if (boxHeader && isAdmin && token) {
+        e.preventDefault()
+        e.stopPropagation()
+        const boxName = boxHeader.dataset.boxHeader
+        const box = categoryBoxes[boxName]
+        if (box) {
+          const rect = panRef.current.getBoundingClientRect()
+          const mouseX = (e.clientX - rect.left) / zoom
+          const mouseY = (e.clientY - rect.top) / zoom
+          const boxPixel = cellToPixel(box.gridCol, box.gridRow)
+
+          setDraggingBox(boxName)
+          setBoxDragOffset({
+            x: mouseX - boxPixel.x,
+            y: mouseY - boxPixel.y
+          })
+          setBoxGhostPosition({ col: box.gridCol, row: box.gridRow })
+        }
+        return
+      }
+
+      // Check for item card drag
       const card = e.target.closest('[data-item-id]')
       if (card && isAdmin && token) {
+        e.preventDefault()
+        e.stopPropagation()
         const itemId = card.dataset.itemId
         const item = items.find(i => i.id === itemId)
         if (item) {
-          e.preventDefault()
-          e.stopPropagation()
-
-          const rect = panRef.current.getBoundingClientRect()
-          const x = (e.clientX - rect.left) / zoom
-          const y = (e.clientY - rect.top) / zoom
-
-          setDraggingItem(item)
-          setDragPosition({ x, y })
-          setGhostPosition(snapToGrid(x, y))
-          return
+          const pos = itemPositions[item.id]
+          if (pos) {
+            setDraggingItem(item)
+            setItemGhostCell({ col: pos.localCol, row: pos.localRow, boxName: pos.boxName })
+          }
         }
+        return
       }
 
-      // Otherwise, pan the view
+      // Otherwise pan
       dragState.current = {
         isPanning: true,
         startX: e.clientX,
@@ -335,16 +506,51 @@ function CloudView({
     }
 
     const handleMouseMove = (e) => {
-      if (draggingItem) {
-        const rect = panRef.current.getBoundingClientRect()
-        const x = (e.clientX - rect.left) / zoom
-        const y = (e.clientY - rect.top) / zoom
+      const rect = panRef.current.getBoundingClientRect()
+      const mouseX = (e.clientX - rect.left) / zoom
+      const mouseY = (e.clientY - rect.top) / zoom
 
-        setDragPosition({ x, y })
-        setGhostPosition(snapToGrid(x, y))
+      // Resizing box
+      if (resizingBox) {
+        const box = categoryBoxes[resizingBox]
+        if (box) {
+          const cell = pixelToCell(mouseX, mouseY)
+          const newWidth = Math.max(2, cell.col - box.gridCol + 1)
+          const newHeight = Math.max(2, cell.row - box.gridRow + 1)
+          setResizeGhost({ width: newWidth, height: newHeight })
+        }
         return
       }
 
+      // Dragging box
+      if (draggingBox) {
+        const targetX = mouseX - boxDragOffset.x
+        const targetY = mouseY - boxDragOffset.y
+        const snapped = pixelToCell(targetX, targetY)
+        setBoxGhostPosition({ col: Math.max(0, snapped.col), row: Math.max(0, snapped.row) })
+        return
+      }
+
+      // Dragging item
+      if (draggingItem) {
+        const pos = itemPositions[draggingItem.id]
+        if (pos) {
+          const box = categoryBoxes[pos.boxName]
+          if (box) {
+            const cell = pixelToCell(mouseX, mouseY)
+            const localCol = cell.col - box.gridCol
+            const localRow = cell.row - box.gridRow
+
+            // Constrain to box bounds
+            if (localCol >= 0 && localCol < box.boxWidth && localRow >= 1 && localRow < box.boxHeight) {
+              setItemGhostCell({ col: localCol, row: localRow, boxName: pos.boxName })
+            }
+          }
+        }
+        return
+      }
+
+      // Panning
       if (!dragState.current.isPanning) return
       panState.current.x = dragState.current.startPanX + (e.clientX - dragState.current.startX)
       panState.current.y = dragState.current.startPanY + (e.clientY - dragState.current.startY)
@@ -352,11 +558,69 @@ function CloudView({
     }
 
     const handleMouseUp = async () => {
-      if (draggingItem && ghostPosition) {
-        await savePinnedPosition(draggingItem.id, ghostPosition.x, ghostPosition.y)
+      // Finish resizing
+      if (resizingBox && resizeGhost) {
+        const box = categoryBoxes[resizingBox]
+        if (box) {
+          const newBox = {
+            ...box,
+            boxWidth: resizeGhost.width,
+            boxHeight: resizeGhost.height
+          }
+
+          // Check for overlaps and push
+          const otherBoxes = Object.values(categoryBoxes).filter(b => b.name !== resizingBox)
+          const canPlace = canPlaceBox(newBox, otherBoxes)
+
+          if (canPlace) {
+            setCategoryBoxes(prev => ({ ...prev, [resizingBox]: newBox }))
+            await saveBoxPosition(resizingBox, box.gridCol, box.gridRow, resizeGhost.width, resizeGhost.height)
+          } else {
+            // Try push algorithm
+            const pushUpdates = pushBoxesAway(newBox, otherBoxes)
+            if (pushUpdates) {
+              const updatedBoxes = { ...categoryBoxes, [resizingBox]: newBox }
+              for (const pushed of pushUpdates) {
+                updatedBoxes[pushed.name] = pushed
+                await saveBoxPosition(pushed.name, pushed.gridCol, pushed.gridRow, pushed.boxWidth, pushed.boxHeight)
+              }
+              setCategoryBoxes(updatedBoxes)
+              await saveBoxPosition(resizingBox, box.gridCol, box.gridRow, resizeGhost.width, resizeGhost.height)
+            }
+          }
+        }
+        setResizingBox(null)
+        setResizeGhost(null)
+        return
+      }
+
+      // Finish dragging box
+      if (draggingBox && boxGhostPosition) {
+        const box = categoryBoxes[draggingBox]
+        if (box) {
+          const newBox = {
+            ...box,
+            gridCol: boxGhostPosition.col,
+            gridRow: boxGhostPosition.row
+          }
+
+          // Check for overlaps
+          const otherBoxes = Object.values(categoryBoxes).filter(b => b.name !== draggingBox)
+          if (canPlaceBox(newBox, otherBoxes)) {
+            setCategoryBoxes(prev => ({ ...prev, [draggingBox]: newBox }))
+            await saveBoxPosition(draggingBox, boxGhostPosition.col, boxGhostPosition.row, box.boxWidth, box.boxHeight)
+          }
+        }
+        setDraggingBox(null)
+        setBoxGhostPosition(null)
+        return
+      }
+
+      // Finish dragging item
+      if (draggingItem && itemGhostCell) {
+        await saveItemPosition(draggingItem.id, itemGhostCell.col, itemGhostCell.row)
         setDraggingItem(null)
-        setDragPosition(null)
-        setGhostPosition(null)
+        setItemGhostCell(null)
         return
       }
 
@@ -367,115 +631,50 @@ function CloudView({
     const handleWheel = (e) => {
       e.preventDefault()
       const delta = e.deltaY > 0 ? 0.9 : 1.1
-      setZoom(z => Math.min(3, Math.max(0.3, z * delta)))
-    }
-
-    const handleTouchStart = (e) => {
-      const touch = e.touches[0]
-
-      // Check if touching a card (for dragging)
-      const card = e.target.closest('[data-item-id]')
-      if (card && isAdmin && token) {
-        const itemId = card.dataset.itemId
-        const item = items.find(i => i.id === itemId)
-        if (item) {
-          const rect = panRef.current.getBoundingClientRect()
-          const x = (touch.clientX - rect.left) / zoom
-          const y = (touch.clientY - rect.top) / zoom
-
-          setDraggingItem(item)
-          setDragPosition({ x, y })
-          setGhostPosition(snapToGrid(x, y))
-          return
-        }
-      }
-
-      dragState.current = {
-        isPanning: true,
-        startX: touch.clientX,
-        startY: touch.clientY,
-        startPanX: panState.current.x,
-        startPanY: panState.current.y
-      }
-    }
-
-    const handleTouchMove = (e) => {
-      const touch = e.touches[0]
-
-      if (draggingItem) {
-        const rect = panRef.current.getBoundingClientRect()
-        const x = (touch.clientX - rect.left) / zoom
-        const y = (touch.clientY - rect.top) / zoom
-
-        setDragPosition({ x, y })
-        setGhostPosition(snapToGrid(x, y))
-        return
-      }
-
-      if (!dragState.current.isPanning) return
-      panState.current.x = dragState.current.startPanX + (touch.clientX - dragState.current.startX)
-      panState.current.y = dragState.current.startPanY + (touch.clientY - dragState.current.startY)
-      updateTransform()
-    }
-
-    const handleTouchEnd = async () => {
-      if (draggingItem && ghostPosition) {
-        await savePinnedPosition(draggingItem.id, ghostPosition.x, ghostPosition.y)
-        setDraggingItem(null)
-        setDragPosition(null)
-        setGhostPosition(null)
-        return
-      }
-
-      dragState.current.isPanning = false
+      setZoom(z => Math.min(2, Math.max(0.2, z * delta)))
     }
 
     container.addEventListener('mousedown', handleMouseDown)
     container.addEventListener('wheel', handleWheel, { passive: false })
     window.addEventListener('mousemove', handleMouseMove)
     window.addEventListener('mouseup', handleMouseUp)
-    container.addEventListener('touchstart', handleTouchStart, { passive: false })
-    window.addEventListener('touchmove', handleTouchMove, { passive: false })
-    window.addEventListener('touchend', handleTouchEnd)
 
     return () => {
       container.removeEventListener('mousedown', handleMouseDown)
       container.removeEventListener('wheel', handleWheel)
       window.removeEventListener('mousemove', handleMouseMove)
       window.removeEventListener('mouseup', handleMouseUp)
-      container.removeEventListener('touchstart', handleTouchStart)
-      window.removeEventListener('touchmove', handleTouchMove)
-      window.removeEventListener('touchend', handleTouchEnd)
     }
-  }, [updateTransform, draggingItem, ghostPosition, savePinnedPosition, isAdmin, token, items, zoom])
+  }, [
+    categoryBoxes, updateTransform, draggingBox, boxGhostPosition, boxDragOffset,
+    resizingBox, resizeGhost, draggingItem, itemGhostCell, itemPositions,
+    isAdmin, token, items, zoom, saveBoxPosition, saveItemPosition
+  ])
 
-  const itemsData = useMemo(() => {
-    return items.map((item) => {
-      const isFiltered = filteredIds.has(item.id)
-      const isMatching = filteredItems.length === items.length || isFiltered
-      const position = itemPositions[item.id] || { x: 400, y: 300 }
-      const isPrivate = (item.private === 'true' || item.private === true) && !isAdmin
-      const shouldBlurPhoto = ((item.private === 'true' || item.private === true) ||
-                               (item.privatePhotos === 'true' || item.privatePhotos === true)) && !isAdmin
-      const isPinned = pinnedPositions[item.id] != null
-      return { item, position, isMatching, isPrivate, shouldBlurPhoto, isPinned }
-    })
-  }, [items, filteredIds, filteredItems.length, itemPositions, isAdmin, pinnedPositions])
-
+  // Handle card click (navigate to item)
   const handleCardClick = useCallback((e, item, isPrivate) => {
-    // Don't navigate if we just finished dragging
-    if (draggingItem) return
-
+    if (draggingItem || draggingBox || resizingBox) return
     if (!dragState.current.isPanning && !isPrivate) {
       e.stopPropagation()
       onNavigate(item.id)
     }
-  }, [onNavigate, draggingItem])
+  }, [onNavigate, draggingItem, draggingBox, resizingBox])
 
-  const handleUnpin = useCallback(async (e, itemId) => {
-    e.stopPropagation()
-    await clearPinnedPosition(itemId)
-  }, [clearPinnedPosition])
+  // Calculate canvas bounds
+  const canvasBounds = useMemo(() => {
+    let maxCol = 10
+    let maxRow = 10
+
+    Object.values(categoryBoxes).forEach(box => {
+      maxCol = Math.max(maxCol, box.gridCol + box.boxWidth + 2)
+      maxRow = Math.max(maxRow, box.gridRow + box.boxHeight + 2)
+    })
+
+    return {
+      width: maxCol * CELL_WIDTH,
+      height: maxRow * CELL_HEIGHT
+    }
+  }, [categoryBoxes])
 
   return (
     <div
@@ -485,19 +684,19 @@ function CloudView({
       {/* Zoom controls */}
       <div className="absolute top-3 right-3 z-20 flex gap-1">
         <button
-          onClick={() => setZoom(z => Math.min(3, z * 1.2))}
+          onClick={() => setZoom(z => Math.min(2, z * 1.2))}
           className="w-8 h-8 bg-white dark:bg-neutral-800 rounded border border-neutral-300 dark:border-neutral-600 text-lg font-bold hover:bg-neutral-100 dark:hover:bg-neutral-700"
         >
           +
         </button>
         <button
-          onClick={() => setZoom(z => Math.max(0.3, z / 1.2))}
+          onClick={() => setZoom(z => Math.max(0.2, z / 1.2))}
           className="w-8 h-8 bg-white dark:bg-neutral-800 rounded border border-neutral-300 dark:border-neutral-600 text-lg font-bold hover:bg-neutral-100 dark:hover:bg-neutral-700"
         >
           −
         </button>
         <button
-          onClick={() => { setZoom(1); panState.current = { x: 0, y: 0 }; updateTransform() }}
+          onClick={() => { setZoom(0.8); panState.current = { x: 0, y: 0 }; updateTransform() }}
           className="px-2 h-8 bg-white dark:bg-neutral-800 rounded border border-neutral-300 dark:border-neutral-600 text-xs hover:bg-neutral-100 dark:hover:bg-neutral-700"
         >
           Reset
@@ -509,38 +708,89 @@ function CloudView({
         ref={panRef}
         style={{
           position: 'absolute',
-          inset: 0,
+          width: canvasBounds.width,
+          height: canvasBounds.height,
           willChange: 'transform',
-          transformOrigin: 'center center',
-          transform: 'translate3d(0, 0, 0) scale(1)'
+          transformOrigin: '0 0',
+          transform: 'translate3d(0, 0, 0) scale(0.8)'
         }}
       >
-        {/* Category labels - positioned above topmost card in each cluster */}
-        {categories.map(cat => {
-          const bounds = clusterBounds[cat]
-          if (!bounds) return null
-          const displayName = availableCategories.find(c => c.name === cat)?.displayName || cat
+        {/* Category boxes */}
+        {Object.values(categoryBoxes).map(box => {
+          const pixel = cellToPixel(box.gridCol, box.gridRow)
+          const width = box.boxWidth * CELL_WIDTH
+          const height = box.boxHeight * CELL_HEIGHT
+          const color = CATEGORY_COLORS[box.name] || CATEGORY_COLORS.other
+          const isDragging = draggingBox === box.name
+          const isResizing = resizingBox === box.name
+
           return (
             <div
-              key={`label-${cat}`}
-              className="absolute pointer-events-none text-[10px] font-semibold uppercase tracking-wide opacity-60 whitespace-nowrap"
+              key={box.name}
+              className={`absolute rounded-lg border-2 ${isDragging || isResizing ? 'opacity-50' : ''}`}
               style={{
-                left: bounds.centerX,
-                top: bounds.topY,
-                transform: 'translateX(-50%)',
-                color: CATEGORY_COLORS[cat] || CATEGORY_COLORS.other,
-                zIndex: 100 // Always above cards
+                left: pixel.x,
+                top: pixel.y,
+                width: isResizing && resizeGhost ? resizeGhost.width * CELL_WIDTH : width,
+                height: isResizing && resizeGhost ? resizeGhost.height * CELL_HEIGHT : height,
+                borderColor: color,
+                backgroundColor: `${color}10`,
+                transition: isDragging || isResizing ? 'none' : 'all 0.2s'
               }}
             >
-              {displayName}
+              {/* Box header (draggable) */}
+              <div
+                data-box-header={box.name}
+                className={`h-6 px-2 flex items-center text-xs font-semibold uppercase tracking-wide ${isAdmin && token ? 'cursor-move' : ''}`}
+                style={{ color }}
+              >
+                {box.displayName || box.name}
+                <span className="ml-auto text-[10px] opacity-60">
+                  {itemsByCategory[box.name]?.length || 0}
+                </span>
+              </div>
+
+              {/* Resize handle (admin only) */}
+              {isAdmin && token && (
+                <div
+                  data-resize-box={box.name}
+                  className="absolute bottom-0 right-0 w-4 h-4 cursor-se-resize opacity-0 hover:opacity-100 transition-opacity"
+                  style={{
+                    background: `linear-gradient(135deg, transparent 50%, ${color} 50%)`
+                  }}
+                />
+              )}
             </div>
           )
         })}
 
+        {/* Ghost for box dragging */}
+        {draggingBox && boxGhostPosition && (
+          <div
+            className="absolute border-2 border-dashed rounded-lg pointer-events-none"
+            style={{
+              left: boxGhostPosition.col * CELL_WIDTH,
+              top: boxGhostPosition.row * CELL_HEIGHT,
+              width: categoryBoxes[draggingBox]?.boxWidth * CELL_WIDTH,
+              height: categoryBoxes[draggingBox]?.boxHeight * CELL_HEIGHT,
+              borderColor: CATEGORY_COLORS[draggingBox] || CATEGORY_COLORS.other,
+              backgroundColor: 'rgba(34, 197, 94, 0.1)',
+              zIndex: 1000
+            }}
+          />
+        )}
+
         {/* Item cards */}
-        {itemsData.map(({ item, position, isMatching, isPrivate, shouldBlurPhoto, isPinned }) => {
+        {items.map(item => {
+          const position = itemPositions[item.id]
+          if (!position) return null
+
+          const isFiltered = filteredIds.has(item.id)
+          const isMatching = filteredItems.length === items.length || isFiltered
+          const isPrivate = (item.private === 'true' || item.private === true) && !isAdmin
+          const shouldBlurPhoto = ((item.private === 'true' || item.private === true) ||
+                                   (item.privatePhotos === 'true' || item.privatePhotos === true)) && !isAdmin
           const isDragging = draggingItem?.id === item.id
-          const displayPosition = isDragging && dragPosition ? dragPosition : position
 
           return (
             <div
@@ -548,11 +798,11 @@ function CloudView({
               data-item-id={item.id}
               className={`absolute ${isAdmin && token ? 'cursor-move' : 'cursor-pointer'}`}
               style={{
-                left: displayPosition.x - CARD_WIDTH / 2,
-                top: displayPosition.y - CARD_HEIGHT / 2,
-                width: CARD_WIDTH,
-                height: CARD_HEIGHT,
-                opacity: isDragging ? 0.7 : (isMatching ? 1 : 0.2),
+                left: position.x - 24,
+                top: position.y - 28,
+                width: 48,
+                height: 56,
+                opacity: isDragging ? 0.5 : (isMatching ? 1 : 0.2),
                 transform: `scale(${isMatching ? 1 : 0.8})`,
                 zIndex: isDragging ? 1000 : (isMatching ? 10 : 1),
                 transition: isDragging ? 'none' : 'opacity 0.15s, transform 0.15s'
@@ -560,10 +810,8 @@ function CloudView({
               onClick={(e) => handleCardClick(e, item, isPrivate)}
             >
               <div
-                className={`w-full h-full rounded overflow-hidden bg-white dark:bg-neutral-800 shadow-sm ${isPrivate ? 'opacity-50' : ''}`}
+                className={`w-full h-full rounded overflow-hidden bg-white dark:bg-neutral-800 shadow-sm border-2 ${isPrivate ? 'opacity-50' : ''}`}
                 style={{
-                  borderWidth: isPinned ? 3 : 2,
-                  borderStyle: isPinned ? 'dashed' : 'solid',
                   borderColor: CATEGORY_COLORS[item.category] || CATEGORY_COLORS.other
                 }}
               >
@@ -586,30 +834,19 @@ function CloudView({
                   {isPrivate ? '•••' : item.itemName}
                 </div>
               </div>
-
-              {/* Unpin button for pinned items */}
-              {isPinned && isAdmin && token && !isDragging && (
-                <button
-                  onClick={(e) => handleUnpin(e, item.id)}
-                  className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 text-white rounded-full text-[8px] flex items-center justify-center hover:bg-red-600 z-50"
-                  title="Unpin"
-                >
-                  ×
-                </button>
-              )}
             </div>
           )
         })}
 
-        {/* Ghost preview for drag target */}
-        {draggingItem && ghostPosition && (
+        {/* Ghost for item dragging */}
+        {draggingItem && itemGhostCell && categoryBoxes[itemGhostCell.boxName] && (
           <div
             className="absolute pointer-events-none"
             style={{
-              left: ghostPosition.x - CARD_WIDTH / 2,
-              top: ghostPosition.y - CARD_HEIGHT / 2,
-              width: CARD_WIDTH,
-              height: CARD_HEIGHT,
+              left: (categoryBoxes[itemGhostCell.boxName].gridCol + itemGhostCell.col) * CELL_WIDTH + 4,
+              top: (categoryBoxes[itemGhostCell.boxName].gridRow + itemGhostCell.row) * CELL_HEIGHT + 4,
+              width: 48,
+              height: 56,
               border: '2px dashed #22c55e',
               borderRadius: 4,
               backgroundColor: 'rgba(34, 197, 94, 0.1)',
@@ -622,7 +859,7 @@ function CloudView({
       {/* Instructions */}
       <div className="absolute bottom-3 left-3 text-xs text-neutral-400 pointer-events-none">
         {isAdmin && token
-          ? 'Drag cards to pin • Scroll to zoom • Click to view'
+          ? 'Drag boxes to move • Drag corners to resize • Drag items to reposition'
           : 'Drag to pan • Scroll to zoom • Click card to view'
         }
       </div>

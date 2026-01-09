@@ -43,13 +43,23 @@ def init_db():
             secondhand TEXT
         )
     ''')
-    # Add pinned position columns for cloud view
+    # Add pinned position columns for cloud view (DEPRECATED - kept for backwards compatibility)
     try:
         conn.execute('ALTER TABLE item ADD COLUMN pinned_x REAL')
     except:
         pass  # Column already exists
     try:
         conn.execute('ALTER TABLE item ADD COLUMN pinned_y REAL')
+    except:
+        pass  # Column already exists
+
+    # Add local position columns for grid-based CloudView (item position within category box)
+    try:
+        conn.execute('ALTER TABLE item ADD COLUMN local_col INTEGER')
+    except:
+        pass  # Column already exists
+    try:
+        conn.execute('ALTER TABLE item ADD COLUMN local_row INTEGER')
     except:
         pass  # Column already exists
 
@@ -82,8 +92,10 @@ def row_to_dict(row):
         "privatePhotos": row[13] if len(row) > 13 else None,
         "privateDescription": row[14] if len(row) > 14 else None,
         "privateOrigin": row[15] if len(row) > 15 else None,
-        "pinnedX": row[16] if len(row) > 16 else None,
-        "pinnedY": row[17] if len(row) > 17 else None
+        "pinnedX": row[16] if len(row) > 16 else None,  # DEPRECATED
+        "pinnedY": row[17] if len(row) > 17 else None,  # DEPRECATED
+        "localCol": row[18] if len(row) > 18 else None,
+        "localRow": row[19] if len(row) > 19 else None
     }
 
 def get_item_photos(conn, item_id):
@@ -244,7 +256,7 @@ def add_item():
         ''', [photo_id, item_id, photo['url'], photo['position'], created_at])
 
     # Return the created item with photos
-    result = conn.execute('SELECT id, item_name, description, category, origin, main_photo, created_at, subcategory, secondhand, last_edited, gifted, private, materials, private_photos, private_description, private_origin, pinned_x, pinned_y FROM item WHERE id=?', [item_id])
+    result = conn.execute('SELECT id, item_name, description, category, origin, main_photo, created_at, subcategory, secondhand, last_edited, gifted, private, materials, private_photos, private_description, private_origin, pinned_x, pinned_y, local_col, local_row FROM item WHERE id=?', [item_id])
     row = result.rows[0]
     item = row_to_dict(row)
     item['photos'] = get_item_photos(conn, item_id)
@@ -301,7 +313,7 @@ def update_item(item_id):
     ''', [data.get('itemName'), data.get('description'), data.get('category'),
            data.get('origin'), data.get('subcategory'), data.get('secondhand'), data.get('gifted'), data.get('private'), last_edited, materials_json, data.get('privatePhotos'), data.get('privateDescription'), data.get('privateOrigin'), item_id])
 
-    result = conn.execute('SELECT id, item_name, description, category, origin, main_photo, created_at, subcategory, secondhand, last_edited, gifted, private, materials, private_photos, private_description, private_origin, pinned_x, pinned_y FROM item WHERE id=?', [item_id])
+    result = conn.execute('SELECT id, item_name, description, category, origin, main_photo, created_at, subcategory, secondhand, last_edited, gifted, private, materials, private_photos, private_description, private_origin, pinned_x, pinned_y, local_col, local_row FROM item WHERE id=?', [item_id])
     rows = result.rows
     if not rows:
         return jsonify({"error": "Item not found"}), 404
@@ -539,7 +551,7 @@ def migrate_remove_new_purchase():
 @app.route('/', methods=['GET'])
 def list_return():
     conn = get_db()
-    result = conn.execute('SELECT id, item_name, description, category, origin, main_photo, created_at, subcategory, secondhand, last_edited, gifted, private, materials, private_photos, private_description, private_origin, pinned_x, pinned_y FROM item')
+    result = conn.execute('SELECT id, item_name, description, category, origin, main_photo, created_at, subcategory, secondhand, last_edited, gifted, private, materials, private_photos, private_description, private_origin, pinned_x, pinned_y, local_col, local_row FROM item')
     items = [row_to_dict(row) for row in result.rows]
     return jsonify(items)
 
@@ -649,7 +661,7 @@ def delete_community_item(item_id):
 @app.route('/random', methods=['GET'])
 def get_random_item():
     conn = get_db()
-    result = conn.execute('SELECT id, item_name, description, category, origin, main_photo, created_at, subcategory, secondhand, last_edited, gifted, private, materials, private_photos, private_description, private_origin, pinned_x, pinned_y FROM item ORDER BY RANDOM() LIMIT 1')
+    result = conn.execute('SELECT id, item_name, description, category, origin, main_photo, created_at, subcategory, secondhand, last_edited, gifted, private, materials, private_photos, private_description, private_origin, pinned_x, pinned_y, local_col, local_row FROM item ORDER BY RANDOM() LIMIT 1')
     if result.rows:
         return jsonify(row_to_dict(result.rows[0]))
     return jsonify(None)
@@ -1055,7 +1067,11 @@ def migrate_add_categories():
             CREATE TABLE IF NOT EXISTS categories (
                 id TEXT PRIMARY KEY,
                 name TEXT NOT NULL UNIQUE,
-                display_name TEXT NOT NULL
+                display_name TEXT NOT NULL,
+                grid_col INTEGER,
+                grid_row INTEGER,
+                box_width INTEGER,
+                box_height INTEGER
             )
         ''')
         # Insert default categories
@@ -1080,22 +1096,49 @@ def migrate_add_categories():
     return jsonify({"message": "Categories table created successfully"})
 
 
+@app.route('/migrate-add-category-box-columns', methods=['POST'])
+@token_required
+def migrate_add_category_box_columns():
+    """Add grid box columns to existing categories table"""
+    conn = get_db()
+    errors = []
+
+    columns = ['grid_col', 'grid_row', 'box_width', 'box_height']
+    for col in columns:
+        try:
+            conn.execute(f'ALTER TABLE categories ADD COLUMN {col} INTEGER')
+        except Exception as e:
+            errors.append(f"{col}: {str(e)}")
+
+    if errors:
+        return jsonify({"message": "Migration completed with notes", "notes": errors})
+    return jsonify({"message": "Category box columns added successfully"})
+
+
 @app.route('/categories', methods=['GET'])
 def get_categories():
-    """Get all available categories"""
+    """Get all available categories with box position data"""
     conn = get_db()
     try:
-        result = conn.execute('SELECT id, name, display_name FROM categories ORDER BY display_name ASC')
-        categories = [{"id": row[0], "name": row[1], "displayName": row[2]} for row in result.rows]
+        result = conn.execute('SELECT id, name, display_name, grid_col, grid_row, box_width, box_height FROM categories ORDER BY display_name ASC')
+        categories = [{
+            "id": row[0],
+            "name": row[1],
+            "displayName": row[2],
+            "gridCol": row[3],
+            "gridRow": row[4],
+            "boxWidth": row[5],
+            "boxHeight": row[6]
+        } for row in result.rows]
         return jsonify(categories)
     except Exception:
-        # Table doesn't exist yet - return default categories for frontend to work
+        # Table doesn't exist yet or missing columns - return default categories for frontend to work
         return jsonify([
-            {"id": "default-clothing", "name": "clothing", "displayName": "Clothing"},
-            {"id": "default-jewelry", "name": "jewelry", "displayName": "Jewelry"},
-            {"id": "default-sentimental", "name": "sentimental", "displayName": "Sentimental"},
-            {"id": "default-bedding", "name": "bedding", "displayName": "Bedding"},
-            {"id": "default-other", "name": "other", "displayName": "Other"}
+            {"id": "default-clothing", "name": "clothing", "displayName": "Clothing", "gridCol": None, "gridRow": None, "boxWidth": None, "boxHeight": None},
+            {"id": "default-jewelry", "name": "jewelry", "displayName": "Jewelry", "gridCol": None, "gridRow": None, "boxWidth": None, "boxHeight": None},
+            {"id": "default-sentimental", "name": "sentimental", "displayName": "Sentimental", "gridCol": None, "gridRow": None, "boxWidth": None, "boxHeight": None},
+            {"id": "default-bedding", "name": "bedding", "displayName": "Bedding", "gridCol": None, "gridRow": None, "boxWidth": None, "boxHeight": None},
+            {"id": "default-other", "name": "other", "displayName": "Other", "gridCol": None, "gridRow": None, "boxWidth": None, "boxHeight": None}
         ])
 
 
@@ -1150,6 +1193,108 @@ def delete_category(category_id):
     # Safe to delete
     conn.execute('DELETE FROM categories WHERE id = ?', [category_id])
     return jsonify({"message": "Category deleted"})
+
+
+@app.route('/categories/<category_id>/box', methods=['PUT'])
+@admin_required
+def update_category_box(category_id):
+    """Update category box position and size for CloudView grid layout"""
+    data = request.json
+    conn = get_db()
+
+    # Check category exists
+    existing = conn.execute('SELECT id FROM categories WHERE id = ?', [category_id])
+    if not existing.rows:
+        return jsonify({"error": "Category not found"}), 404
+
+    grid_col = data.get('gridCol')
+    grid_row = data.get('gridRow')
+    box_width = data.get('boxWidth')
+    box_height = data.get('boxHeight')
+
+    conn.execute('''
+        UPDATE categories SET grid_col=?, grid_row=?, box_width=?, box_height=?
+        WHERE id=?
+    ''', [grid_col, grid_row, box_width, box_height, category_id])
+
+    return jsonify({
+        "message": "Category box updated",
+        "gridCol": grid_col,
+        "gridRow": grid_row,
+        "boxWidth": box_width,
+        "boxHeight": box_height
+    })
+
+
+@app.route('/categories/name/<category_name>/box', methods=['PUT'])
+@admin_required
+def update_category_box_by_name(category_name):
+    """Update category box position and size by category name"""
+    data = request.json
+    conn = get_db()
+
+    # Check category exists
+    existing = conn.execute('SELECT id FROM categories WHERE name = ?', [category_name])
+    if not existing.rows:
+        return jsonify({"error": "Category not found"}), 404
+
+    grid_col = data.get('gridCol')
+    grid_row = data.get('gridRow')
+    box_width = data.get('boxWidth')
+    box_height = data.get('boxHeight')
+
+    conn.execute('''
+        UPDATE categories SET grid_col=?, grid_row=?, box_width=?, box_height=?
+        WHERE name=?
+    ''', [grid_col, grid_row, box_width, box_height, category_name])
+
+    return jsonify({
+        "message": "Category box updated",
+        "gridCol": grid_col,
+        "gridRow": grid_row,
+        "boxWidth": box_width,
+        "boxHeight": box_height
+    })
+
+
+@app.route('/item/<item_id>/position', methods=['PUT'])
+@admin_required
+def update_item_position(item_id):
+    """Update item position within its category box (localCol, localRow)"""
+    data = request.json
+    local_col = data.get('localCol')
+    local_row = data.get('localRow')
+
+    conn = get_db()
+
+    # Check item exists
+    existing = conn.execute('SELECT id FROM item WHERE id = ?', [item_id])
+    if not existing.rows:
+        return jsonify({"error": "Item not found"}), 404
+
+    conn.execute('UPDATE item SET local_col=?, local_row=? WHERE id=?', [local_col, local_row, item_id])
+
+    return jsonify({
+        "message": "Item position updated",
+        "localCol": local_col,
+        "localRow": local_row
+    })
+
+
+@app.route('/item/<item_id>/position', methods=['DELETE'])
+@admin_required
+def clear_item_position(item_id):
+    """Clear item position to return to auto-placement"""
+    conn = get_db()
+
+    # Check item exists
+    existing = conn.execute('SELECT id FROM item WHERE id = ?', [item_id])
+    if not existing.rows:
+        return jsonify({"error": "Item not found"}), 404
+
+    conn.execute('UPDATE item SET local_col=NULL, local_row=NULL WHERE id=?', [item_id])
+
+    return jsonify({"message": "Item position cleared"})
 
 
 # Subcategories endpoints
