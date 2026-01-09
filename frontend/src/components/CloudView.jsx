@@ -629,9 +629,7 @@ function CloudView({
     }
 
     const handleWheel = (e) => {
-      e.preventDefault()
-      const delta = e.deltaY > 0 ? 0.9 : 1.1
-      setZoom(z => Math.min(2, Math.max(0.2, z * delta)))
+      handleZoom(e, e.deltaY < 0)
     }
 
     container.addEventListener('mousedown', handleMouseDown)
@@ -648,7 +646,7 @@ function CloudView({
   }, [
     categoryBoxes, updateTransform, draggingBox, boxGhostPosition, boxDragOffset,
     resizingBox, resizeGhost, draggingItem, itemGhostCell, itemPositions,
-    isAdmin, token, items, zoom, saveBoxPosition, saveItemPosition
+    isAdmin, token, items, zoom, saveBoxPosition, saveItemPosition, handleZoom
   ])
 
   // Handle card click (navigate to item)
@@ -676,6 +674,43 @@ function CloudView({
     }
   }, [categoryBoxes])
 
+  // Calculate minimum zoom to fit all content
+  const minZoom = useMemo(() => {
+    if (canvasBounds.width === 0 || canvasBounds.height === 0) return 0.3
+    const zoomX = containerSize.width / canvasBounds.width
+    const zoomY = containerSize.height / canvasBounds.height
+    // Use the smaller of the two, with a small margin (0.9) and floor at 0.3
+    return Math.max(0.3, Math.min(zoomX, zoomY) * 0.9)
+  }, [canvasBounds, containerSize])
+
+  // Cursor-centered zoom handler
+  const handleZoom = useCallback((e, zoomIn) => {
+    e.preventDefault()
+    const container = containerRef.current
+    if (!container) return
+
+    const rect = container.getBoundingClientRect()
+    // Mouse position relative to container
+    const mouseX = e.clientX - rect.left
+    const mouseY = e.clientY - rect.top
+
+    // Current point in canvas coordinates (before zoom)
+    const canvasX = (mouseX - panState.current.x) / zoom
+    const canvasY = (mouseY - panState.current.y) / zoom
+
+    // Calculate new zoom
+    const delta = zoomIn ? 1.15 : 0.87
+    const newZoom = Math.min(2.5, Math.max(minZoom, zoom * delta))
+
+    // Calculate new pan to keep the point under cursor stationary
+    const newPanX = mouseX - canvasX * newZoom
+    const newPanY = mouseY - canvasY * newZoom
+
+    panState.current.x = newPanX
+    panState.current.y = newPanY
+    setZoom(newZoom)
+  }, [zoom, minZoom])
+
   return (
     <div
       ref={containerRef}
@@ -684,19 +719,24 @@ function CloudView({
       {/* Zoom controls */}
       <div className="absolute top-3 right-3 z-20 flex gap-1">
         <button
-          onClick={() => setZoom(z => Math.min(2, z * 1.2))}
+          onClick={() => setZoom(z => Math.min(2.5, z * 1.2))}
           className="w-8 h-8 bg-white dark:bg-neutral-800 rounded border border-neutral-300 dark:border-neutral-600 text-lg font-bold hover:bg-neutral-100 dark:hover:bg-neutral-700"
         >
           +
         </button>
         <button
-          onClick={() => setZoom(z => Math.max(0.2, z / 1.2))}
+          onClick={() => setZoom(z => Math.max(minZoom, z / 1.2))}
           className="w-8 h-8 bg-white dark:bg-neutral-800 rounded border border-neutral-300 dark:border-neutral-600 text-lg font-bold hover:bg-neutral-100 dark:hover:bg-neutral-700"
         >
           −
         </button>
         <button
-          onClick={() => { setZoom(0.8); panState.current = { x: 0, y: 0 }; updateTransform() }}
+          onClick={() => {
+            const fitZoom = Math.max(minZoom, Math.min(1, minZoom * 1.1))
+            setZoom(fitZoom)
+            panState.current = { x: 0, y: 0 }
+            updateTransform()
+          }}
           className="px-2 h-8 bg-white dark:bg-neutral-800 rounded border border-neutral-300 dark:border-neutral-600 text-xs hover:bg-neutral-100 dark:hover:bg-neutral-700"
         >
           Reset
@@ -715,8 +755,8 @@ function CloudView({
           transform: 'translate3d(0, 0, 0) scale(0.8)'
         }}
       >
-        {/* Category boxes */}
-        {Object.values(categoryBoxes).map(box => {
+        {/* Category boxes - only visible for admin */}
+        {isAdmin && token && Object.values(categoryBoxes).map(box => {
           const pixel = cellToPixel(box.gridCol, box.gridRow)
           const width = box.boxWidth * CELL_WIDTH
           const height = box.boxHeight * CELL_HEIGHT
@@ -741,7 +781,7 @@ function CloudView({
               {/* Box header (draggable) */}
               <div
                 data-box-header={box.name}
-                className={`h-6 px-2 flex items-center text-xs font-semibold uppercase tracking-wide ${isAdmin && token ? 'cursor-move' : ''}`}
+                className="h-6 px-2 flex items-center text-xs font-semibold uppercase tracking-wide cursor-move"
                 style={{ color }}
               >
                 {box.displayName || box.name}
@@ -750,16 +790,14 @@ function CloudView({
                 </span>
               </div>
 
-              {/* Resize handle (admin only) */}
-              {isAdmin && token && (
-                <div
-                  data-resize-box={box.name}
-                  className="absolute bottom-0 right-0 w-4 h-4 cursor-se-resize opacity-0 hover:opacity-100 transition-opacity"
-                  style={{
-                    background: `linear-gradient(135deg, transparent 50%, ${color} 50%)`
-                  }}
-                />
-              )}
+              {/* Resize handle */}
+              <div
+                data-resize-box={box.name}
+                className="absolute bottom-0 right-0 w-4 h-4 cursor-se-resize opacity-0 hover:opacity-100 transition-opacity"
+                style={{
+                  background: `linear-gradient(135deg, transparent 50%, ${color} 50%)`
+                }}
+              />
             </div>
           )
         })}
