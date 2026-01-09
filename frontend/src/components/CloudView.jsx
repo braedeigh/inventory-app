@@ -31,7 +31,7 @@ const SUBCATEGORY_ORDER = {
 
 // Cluster constants
 const CLUSTER_PADDING = 1  // 1 cell padding inside cluster for header
-const CLUSTER_GAP = 1      // 1 cell gap between clusters
+const CLUSTER_GAP = 0      // No gap - use glow effect for visual separation
 
 // Cluster colors (lighter variants of category colors)
 const CLUSTER_COLORS = {
@@ -1334,14 +1334,15 @@ function CloudView({
               <div
                 key={`cluster-${catName}-${subcatName}`}
                 data-cluster-header={`${catName}:${subcatName}`}
-                className={`absolute rounded border ${isDraggingCluster ? 'opacity-50' : ''}`}
+                className={`absolute rounded-md ${isDraggingCluster ? 'opacity-50' : ''}`}
                 style={{
                   left: clusterPixel.x,
                   top: clusterPixel.y,
                   width: clusterWidth,
                   height: clusterHeight,
-                  borderColor: clusterColor,
-                  backgroundColor: `${clusterColor}15`,
+                  border: `1.5px solid ${clusterColor}`,
+                  backgroundColor: `${clusterColor}08`,
+                  boxShadow: `0 0 8px ${clusterColor}40, inset 0 0 12px ${clusterColor}15`,
                   zIndex: 5,
                   transition: isDraggingCluster ? 'none' : 'all 0.2s'
                 }}
