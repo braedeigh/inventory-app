@@ -975,6 +975,12 @@ function CloudView({
 
     panState.current.x = newPanX
     panState.current.y = newPanY
+
+    // Apply transform immediately (don't wait for useEffect)
+    if (panRef.current) {
+      panRef.current.style.transform = `translate3d(${newPanX}px, ${newPanY}px, 0) scale(${newZoom})`
+    }
+
     setZoom(newZoom)
   }, [zoom, minZoom])
 
