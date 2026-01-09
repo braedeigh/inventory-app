@@ -272,7 +272,7 @@ function CloudView({
   const [itemGhostCell, setItemGhostCell] = useState(null)
 
   const panState = useRef({ x: 0, y: 0 })
-  const dragState = useRef({ isPanning: false, startX: 0, startY: 0, startPanX: 0, startPanY: 0 })
+  const dragState = useRef({ isPanning: false, didDrag: false, startX: 0, startY: 0, startPanX: 0, startPanY: 0 })
 
   // Get unique categories from items
   const categories = useMemo(() => {
@@ -743,6 +743,7 @@ function CloudView({
       // Otherwise pan
       dragState.current = {
         isPanning: true,
+        didDrag: false,
         startX: e.clientX,
         startY: e.clientY,
         startPanX: panState.current.x,
@@ -834,8 +835,14 @@ function CloudView({
 
       // Panning
       if (!dragState.current.isPanning) return
-      panState.current.x = dragState.current.startPanX + (e.clientX - dragState.current.startX)
-      panState.current.y = dragState.current.startPanY + (e.clientY - dragState.current.startY)
+      const dx = e.clientX - dragState.current.startX
+      const dy = e.clientY - dragState.current.startY
+      // Mark as dragged if moved more than 5 pixels
+      if (Math.abs(dx) > 5 || Math.abs(dy) > 5) {
+        dragState.current.didDrag = true
+      }
+      panState.current.x = dragState.current.startPanX + dx
+      panState.current.y = dragState.current.startPanY + dy
       updateTransform()
     }
 
@@ -972,10 +979,10 @@ function CloudView({
   // Handle card click (navigate to item)
   const handleCardClick = useCallback((e, item, isPrivate) => {
     if (draggingItem || draggingBox || resizingBox || draggingSubcatBox || resizingSubcatBox) return
-    if (!dragState.current.isPanning && !isPrivate) {
-      e.stopPropagation()
-      onNavigate(item.id)
-    }
+    // Don't navigate if user was panning/dragging
+    if (dragState.current.didDrag || isPrivate) return
+    e.stopPropagation()
+    onNavigate(item.id)
   }, [onNavigate, draggingItem, draggingBox, resizingBox, draggingSubcatBox, resizingSubcatBox])
 
   return (
@@ -1065,6 +1072,33 @@ function CloudView({
                   background: `linear-gradient(135deg, transparent 50%, ${color} 50%)`
                 }}
               />
+            </div>
+          )
+        })}
+
+        {/* Category labels for non-admin viewers - centered titles only */}
+        {!(isAdmin && token) && Object.values(categoryBoxes).map(box => {
+          const pixel = cellToPixel(box.gridCol, box.gridRow)
+          const width = box.boxWidth * CELL_WIDTH
+          const color = CATEGORY_COLORS[box.name] || CATEGORY_COLORS.other
+
+          return (
+            <div
+              key={`label-${box.name}`}
+              className="absolute flex justify-center pointer-events-none"
+              style={{
+                left: pixel.x,
+                top: pixel.y,
+                width: width,
+                height: 24
+              }}
+            >
+              <span
+                className="text-xs font-semibold uppercase tracking-wide px-2 py-1"
+                style={{ color }}
+              >
+                {box.displayName || box.name}
+              </span>
             </div>
           )
         })}
