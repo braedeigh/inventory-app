@@ -43,6 +43,15 @@ def init_db():
             secondhand TEXT
         )
     ''')
+    # Add pinned position columns for cloud view
+    try:
+        conn.execute('ALTER TABLE item ADD COLUMN pinned_x REAL')
+    except:
+        pass  # Column already exists
+    try:
+        conn.execute('ALTER TABLE item ADD COLUMN pinned_y REAL')
+    except:
+        pass  # Column already exists
 
 with app.app_context():
     init_db()
@@ -72,7 +81,9 @@ def row_to_dict(row):
         "materials": materials,
         "privatePhotos": row[13] if len(row) > 13 else None,
         "privateDescription": row[14] if len(row) > 14 else None,
-        "privateOrigin": row[15] if len(row) > 15 else None
+        "privateOrigin": row[15] if len(row) > 15 else None,
+        "pinnedX": row[16] if len(row) > 16 else None,
+        "pinnedY": row[17] if len(row) > 17 else None
     }
 
 def get_item_photos(conn, item_id):
@@ -233,7 +244,7 @@ def add_item():
         ''', [photo_id, item_id, photo['url'], photo['position'], created_at])
 
     # Return the created item with photos
-    result = conn.execute('SELECT id, item_name, description, category, origin, main_photo, created_at, subcategory, secondhand, last_edited, gifted, private, materials, private_photos, private_description, private_origin FROM item WHERE id=?', [item_id])
+    result = conn.execute('SELECT id, item_name, description, category, origin, main_photo, created_at, subcategory, secondhand, last_edited, gifted, private, materials, private_photos, private_description, private_origin, pinned_x, pinned_y FROM item WHERE id=?', [item_id])
     row = result.rows[0]
     item = row_to_dict(row)
     item['photos'] = get_item_photos(conn, item_id)
@@ -290,7 +301,7 @@ def update_item(item_id):
     ''', [data.get('itemName'), data.get('description'), data.get('category'),
            data.get('origin'), data.get('subcategory'), data.get('secondhand'), data.get('gifted'), data.get('private'), last_edited, materials_json, data.get('privatePhotos'), data.get('privateDescription'), data.get('privateOrigin'), item_id])
 
-    result = conn.execute('SELECT id, item_name, description, category, origin, main_photo, created_at, subcategory, secondhand, last_edited, gifted, private, materials, private_photos, private_description, private_origin FROM item WHERE id=?', [item_id])
+    result = conn.execute('SELECT id, item_name, description, category, origin, main_photo, created_at, subcategory, secondhand, last_edited, gifted, private, materials, private_photos, private_description, private_origin, pinned_x, pinned_y FROM item WHERE id=?', [item_id])
     rows = result.rows
     if not rows:
         return jsonify({"error": "Item not found"}), 404
@@ -302,6 +313,29 @@ def delete_item(item_id):
     conn = get_db()
     conn.execute('DELETE FROM item WHERE id=?', [item_id])
     return jsonify({"message": "Item deleted"})
+
+@app.route('/item/<item_id>/pin', methods=['PUT'])
+@admin_required
+def pin_item(item_id):
+    """Set pinned position for an item in cloud view"""
+    data = request.json
+    pinned_x = data.get('pinnedX')
+    pinned_y = data.get('pinnedY')
+
+    if pinned_x is None or pinned_y is None:
+        return jsonify({"error": "pinnedX and pinnedY are required"}), 400
+
+    conn = get_db()
+    conn.execute('UPDATE item SET pinned_x=?, pinned_y=? WHERE id=?', [pinned_x, pinned_y, item_id])
+    return jsonify({"message": "Item pinned", "pinnedX": pinned_x, "pinnedY": pinned_y})
+
+@app.route('/item/<item_id>/pin', methods=['DELETE'])
+@admin_required
+def unpin_item(item_id):
+    """Clear pinned position for an item"""
+    conn = get_db()
+    conn.execute('UPDATE item SET pinned_x=NULL, pinned_y=NULL WHERE id=?', [item_id])
+    return jsonify({"message": "Item unpinned"})
 
 @app.route('/item/<item_id>/photo', methods=['POST'])
 @token_required
@@ -505,7 +539,7 @@ def migrate_remove_new_purchase():
 @app.route('/', methods=['GET'])
 def list_return():
     conn = get_db()
-    result = conn.execute('SELECT id, item_name, description, category, origin, main_photo, created_at, subcategory, secondhand, last_edited, gifted, private, materials, private_photos, private_description, private_origin FROM item')
+    result = conn.execute('SELECT id, item_name, description, category, origin, main_photo, created_at, subcategory, secondhand, last_edited, gifted, private, materials, private_photos, private_description, private_origin, pinned_x, pinned_y FROM item')
     items = [row_to_dict(row) for row in result.rows]
     return jsonify(items)
 
@@ -615,7 +649,7 @@ def delete_community_item(item_id):
 @app.route('/random', methods=['GET'])
 def get_random_item():
     conn = get_db()
-    result = conn.execute('SELECT id, item_name, description, category, origin, main_photo, created_at, subcategory, secondhand, last_edited, gifted, private, materials, private_photos, private_description, private_origin FROM item ORDER BY RANDOM() LIMIT 1')
+    result = conn.execute('SELECT id, item_name, description, category, origin, main_photo, created_at, subcategory, secondhand, last_edited, gifted, private, materials, private_photos, private_description, private_origin, pinned_x, pinned_y FROM item ORDER BY RANDOM() LIMIT 1')
     if result.rows:
         return jsonify(row_to_dict(result.rows[0]))
     return jsonify(None)

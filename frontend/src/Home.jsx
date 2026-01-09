@@ -342,6 +342,12 @@ function Home({ list, setList, token, userRole, setShowLogin, handleLogout }) {
           availableCategories={availableCategories}
           isAdmin={isAdmin}
           onNavigate={navigateToItem}
+          token={token}
+          onItemUpdate={(itemId, updates) => {
+            setList(list.map(item =>
+              item.id === itemId ? { ...item, ...updates } : item
+            ))
+          }}
         />
       ) : (
         <>
