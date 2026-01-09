@@ -29,6 +29,30 @@ const SUBCATEGORY_ORDER = {
   jewelry: ['necklaces', 'earrings', 'bracelets', 'rings', 'other'],
 }
 
+// Cluster constants
+const CLUSTER_PADDING = 1  // 1 cell padding inside cluster for header
+const CLUSTER_GAP = 1      // 1 cell gap between clusters
+
+// Cluster colors (lighter variants of category colors)
+const CLUSTER_COLORS = {
+  // Clothing subcategories
+  hats: '#86efac',
+  tops: '#a7f3d0',
+  outerwear: '#6ee7b7',
+  bottoms: '#34d399',
+  shoes: '#10b981',
+  socks: '#059669',
+  underwear: '#047857',
+  accessories: '#065f46',
+  // Jewelry subcategories
+  necklaces: '#fde047',
+  earrings: '#facc15',
+  bracelets: '#eab308',
+  rings: '#ca8a04',
+  // Default
+  other: '#9ca3af',
+}
+
 // ============ GRID UTILITIES ============
 
 function cellToPixel(col, row) {
@@ -68,6 +92,140 @@ function canPlaceBox(box, allBoxes, excludeId = null) {
     if (boxesOverlap(box, other)) return false
   }
   return true
+}
+
+// ============ CLUSTER UTILITIES ============
+
+function calculateClusterSize(itemCount) {
+  if (itemCount === 0) return { width: 2, height: 2 }
+
+  // Calculate columns needed (aim for square-ish)
+  const cols = Math.max(1, Math.ceil(Math.sqrt(itemCount)))
+  const rows = Math.max(1, Math.ceil(itemCount / cols))
+
+  // Add padding for header
+  return {
+    width: cols + CLUSTER_PADDING,
+    height: rows + CLUSTER_PADDING + 1 // +1 for header
+  }
+}
+
+function clustersOverlap(cluster1, cluster2) {
+  // Add CLUSTER_GAP to account for minimum spacing
+  return !(
+    cluster1.localCol + cluster1.width + CLUSTER_GAP <= cluster2.localCol ||
+    cluster2.localCol + cluster2.width + CLUSTER_GAP <= cluster1.localCol ||
+    cluster1.localRow + cluster1.height + CLUSTER_GAP <= cluster2.localRow ||
+    cluster2.localRow + cluster2.height + CLUSTER_GAP <= cluster1.localRow
+  )
+}
+
+function canPlaceCluster(cluster, allClusters, parentBox, excludeSubcat = null) {
+  // Check bounds within parent box (leaving space for parent header)
+  if (cluster.localCol < 0 ||
+      cluster.localRow < 1 || // Leave row 0 for parent header
+      cluster.localCol + cluster.width > parentBox.boxWidth ||
+      cluster.localRow + cluster.height > parentBox.boxHeight) {
+    return false
+  }
+
+  // Check overlap with other clusters
+  for (const other of allClusters) {
+    if (other.subcategory === excludeSubcat) continue
+    if (clustersOverlap(cluster, other)) return false
+  }
+  return true
+}
+
+function pushClustersAway(movingCluster, allClusters, parentBox, maxDepth = 10) {
+  if (maxDepth <= 0) return null // Cascade limit reached
+
+  const updates = []
+
+  for (const other of allClusters) {
+    if (other.subcategory === movingCluster.subcategory) continue
+
+    if (clustersOverlap(movingCluster, other)) {
+      // Calculate push direction (push right first, then down if needed)
+      let pushedCluster = {
+        ...other,
+        localCol: movingCluster.localCol + movingCluster.width + CLUSTER_GAP
+      }
+
+      // If pushed outside parent bounds, try pushing down instead
+      if (pushedCluster.localCol + pushedCluster.width > parentBox.boxWidth) {
+        pushedCluster = {
+          ...other,
+          localCol: 0,
+          localRow: movingCluster.localRow + movingCluster.height + CLUSTER_GAP
+        }
+      }
+
+      // If still outside bounds, give up
+      if (pushedCluster.localRow + pushedCluster.height > parentBox.boxHeight) {
+        return null
+      }
+
+      // Recursively push any clusters that this push would overlap
+      const cascadeUpdates = pushClustersAway(
+        pushedCluster,
+        allClusters.filter(c => c.subcategory !== other.subcategory),
+        parentBox,
+        maxDepth - 1
+      )
+
+      if (cascadeUpdates === null) return null // Cascade limit reached
+
+      updates.push(pushedCluster)
+      updates.push(...cascadeUpdates)
+    }
+  }
+
+  return updates
+}
+
+// Pack clusters within a category box using shelf-packing
+function shelfPackClusters(subcategoryItems, parentBox) {
+  const clusters = []
+
+  // Calculate sizes for each subcategory
+  const subcatData = Object.entries(subcategoryItems)
+    .filter(([, items]) => items.length > 0)
+    .map(([subcat, items]) => ({
+      subcategory: subcat,
+      itemCount: items.length,
+      ...calculateClusterSize(items.length)
+    }))
+    .sort((a, b) => b.height - a.height) // Tallest first
+
+  let currentRow = 1 // Start after parent header
+  let currentCol = 0
+  let rowHeight = 0
+  const availableWidth = parentBox.boxWidth
+
+  for (const subcat of subcatData) {
+    // Check if cluster fits on current row
+    if (currentCol + subcat.width > availableWidth) {
+      // Move to next row
+      currentRow += rowHeight + CLUSTER_GAP
+      currentCol = 0
+      rowHeight = 0
+    }
+
+    clusters.push({
+      subcategory: subcat.subcategory,
+      localCol: currentCol,
+      localRow: currentRow,
+      width: subcat.width,
+      height: subcat.height,
+      itemCount: subcat.itemCount
+    })
+
+    currentCol += subcat.width + CLUSTER_GAP
+    rowHeight = Math.max(rowHeight, subcat.height)
+  }
+
+  return clusters
 }
 
 // ============ SHELF-PACKING ALGORITHM ============
@@ -155,8 +313,37 @@ function pushBoxesAway(movingBox, allBoxes, maxDepth = 10) {
   return updates
 }
 
-// ============ ITEM AUTO-PLACEMENT WITHIN BOX ============
+// ============ ITEM AUTO-PLACEMENT WITHIN CLUSTERS ============
 
+function autoPlaceItemsInCluster(items, cluster) {
+  const positions = {}
+  const availableWidth = cluster.width - CLUSTER_PADDING
+  let currentRow = 1 // Start after cluster header
+  let currentCol = 0
+
+  for (const item of items) {
+    // If item has manual position within cluster, use it
+    if (item.clusterCol != null && item.clusterRow != null) {
+      positions[item.id] = { col: item.clusterCol, row: item.clusterRow }
+      continue
+    }
+
+    // Find next available cell
+    while (currentRow < cluster.height) {
+      if (currentCol < availableWidth) {
+        positions[item.id] = { col: currentCol, row: currentRow }
+        currentCol++
+        break
+      }
+      currentCol = 0
+      currentRow++
+    }
+  }
+
+  return positions
+}
+
+// Legacy function for backwards compatibility when clusters are disabled
 function autoPlaceItems(items, boxWidth, boxHeight, category) {
   const positions = {}
   const order = SUBCATEGORY_ORDER[category] || ['other']
@@ -243,6 +430,13 @@ function CloudView({
   // Item drag state
   const [draggingItem, setDraggingItem] = useState(null)
   const [itemGhostCell, setItemGhostCell] = useState(null)
+
+  // Subcategory cluster state
+  const [subcategoryClusters, setSubcategoryClusters] = useState({}) // { categoryName: { subcatName: clusterData } }
+  const [savedClusterPositions, setSavedClusterPositions] = useState(null) // Loaded from API
+  const [draggingCluster, setDraggingCluster] = useState(null)
+  const [clusterDragOffset, setClusterDragOffset] = useState({ x: 0, y: 0 })
+  const [clusterGhostPosition, setClusterGhostPosition] = useState(null)
 
   const panState = useRef({ x: 0, y: 0 })
   const dragState = useRef({ isPanning: false, startX: 0, startY: 0, startPanX: 0, startPanY: 0 })
@@ -333,28 +527,181 @@ function CloudView({
     return grouped
   }, [items, categories])
 
-  // Calculate item positions within each box
+  // Group items by subcategory within each category
+  const itemsBySubcategory = useMemo(() => {
+    const grouped = {}
+    categories.forEach(cat => {
+      grouped[cat] = {}
+      const order = SUBCATEGORY_ORDER[cat] || ['other']
+      order.forEach(sub => { grouped[cat][sub] = [] })
+      grouped[cat]['other'] = []
+    })
+
+    items.forEach(item => {
+      const cat = item.category || 'other'
+      if (!grouped[cat]) grouped[cat] = { other: [] }
+      const subcat = item.subcategory?.toLowerCase() || 'other'
+      if (!grouped[cat][subcat]) grouped[cat][subcat] = []
+      grouped[cat][subcat].push(item)
+    })
+
+    return grouped
+  }, [items, categories])
+
+  // Fetch saved cluster positions from API
+  useEffect(() => {
+    const fetchClusterPositions = async () => {
+      try {
+        const response = await fetch(`${API_URL}/clusters`)
+        if (response.ok) {
+          const data = await response.json()
+          setSavedClusterPositions(data)
+        }
+      } catch (error) {
+        console.error('Failed to fetch cluster positions:', error)
+        setSavedClusterPositions({})
+      }
+    }
+    fetchClusterPositions()
+  }, [])
+
+  // Initialize subcategory clusters for each category
+  useEffect(() => {
+    // Wait for saved positions to load
+    if (savedClusterPositions === null) return
+
+    const newClusters = {}
+
+    Object.entries(categoryBoxes).forEach(([catName, box]) => {
+      const subcatItems = itemsBySubcategory[catName] || {}
+
+      // Check if we have saved cluster positions from API
+      const savedCatClusters = savedClusterPositions[catName] || {}
+      const existingClusters = subcategoryClusters[catName] || {}
+      const hasApiPositions = Object.keys(savedCatClusters).length > 0
+      const hasExistingPositions = Object.keys(existingClusters).length > 0
+
+      if (hasApiPositions) {
+        // Use saved API positions, but update sizes based on item counts
+        newClusters[catName] = {}
+        Object.entries(subcatItems).forEach(([subcat, subcatItemList]) => {
+          if (subcatItemList.length === 0) return
+
+          const saved = savedCatClusters[subcat]
+          const size = calculateClusterSize(subcatItemList.length)
+
+          if (saved) {
+            // Use saved position, ensure size fits items
+            newClusters[catName][subcat] = {
+              subcategory: subcat,
+              localCol: saved.localCol,
+              localRow: saved.localRow,
+              width: Math.max(saved.width, size.width),
+              height: Math.max(saved.height, size.height),
+              itemCount: subcatItemList.length
+            }
+          } else {
+            // New subcategory - pack it
+            const packed = shelfPackClusters({ [subcat]: subcatItemList }, box)
+            if (packed.length > 0) {
+              newClusters[catName][subcat] = packed[0]
+            }
+          }
+        })
+      } else if (hasExistingPositions) {
+        // Use existing in-memory positions, but update sizes based on item counts
+        newClusters[catName] = {}
+        Object.entries(subcatItems).forEach(([subcat, subcatItemList]) => {
+          if (subcatItemList.length === 0) return
+
+          const existing = existingClusters[subcat]
+          const size = calculateClusterSize(subcatItemList.length)
+
+          if (existing) {
+            // Keep position, update size
+            newClusters[catName][subcat] = {
+              ...existing,
+              width: Math.max(existing.width, size.width),
+              height: Math.max(existing.height, size.height),
+              itemCount: subcatItemList.length
+            }
+          } else {
+            // New subcategory - pack it
+            const existingClustersList = Object.values(newClusters[catName])
+            const packed = shelfPackClusters({ [subcat]: subcatItemList }, box)
+            if (packed.length > 0) {
+              newClusters[catName][subcat] = packed[0]
+            }
+          }
+        })
+      } else {
+        // Auto-pack all clusters
+        const packed = shelfPackClusters(subcatItems, box)
+        newClusters[catName] = {}
+        packed.forEach(cluster => {
+          newClusters[catName][cluster.subcategory] = cluster
+        })
+      }
+    })
+
+    setSubcategoryClusters(newClusters)
+  }, [categoryBoxes, itemsBySubcategory, savedClusterPositions]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Calculate item positions within clusters
   const itemPositions = useMemo(() => {
     const positions = {}
 
     Object.entries(categoryBoxes).forEach(([catName, box]) => {
-      const catItems = itemsByCategory[catName] || []
-      const catPositions = autoPlaceItems(catItems, box.boxWidth, box.boxHeight, catName)
+      const catClusters = subcategoryClusters[catName] || {}
+      const subcatItems = itemsBySubcategory[catName] || {}
 
-      catItems.forEach(item => {
-        const localPos = catPositions[item.id] || { col: 0, row: 1 }
-        positions[item.id] = {
-          x: (box.gridCol + localPos.col) * CELL_WIDTH + CELL_WIDTH / 2,
-          y: (box.gridRow + localPos.row) * CELL_HEIGHT + CELL_HEIGHT / 2,
-          boxName: catName,
-          localCol: localPos.col,
-          localRow: localPos.row
+      // Process items within each cluster
+      Object.entries(subcatItems).forEach(([subcat, subcatItemList]) => {
+        if (subcatItemList.length === 0) return
+
+        const cluster = catClusters[subcat]
+        if (!cluster) {
+          // Fallback: place items directly in box if no cluster
+          subcatItemList.forEach((item, idx) => {
+            const col = idx % (box.boxWidth - BOX_PADDING)
+            const row = 1 + Math.floor(idx / (box.boxWidth - BOX_PADDING))
+            positions[item.id] = {
+              x: (box.gridCol + col) * CELL_WIDTH + CELL_WIDTH / 2,
+              y: (box.gridRow + row) * CELL_HEIGHT + CELL_HEIGHT / 2,
+              boxName: catName,
+              clusterName: null,
+              localCol: col,
+              localRow: row
+            }
+          })
+          return
         }
+
+        // Place items within cluster
+        const clusterPositions = autoPlaceItemsInCluster(subcatItemList, cluster)
+
+        subcatItemList.forEach(item => {
+          const localPos = clusterPositions[item.id] || { col: 0, row: 1 }
+          // Calculate absolute position: box position + cluster position + item position in cluster
+          const absCol = box.gridCol + cluster.localCol + localPos.col
+          const absRow = box.gridRow + cluster.localRow + localPos.row
+
+          positions[item.id] = {
+            x: absCol * CELL_WIDTH + CELL_WIDTH / 2,
+            y: absRow * CELL_HEIGHT + CELL_HEIGHT / 2,
+            boxName: catName,
+            clusterName: subcat,
+            localCol: localPos.col,
+            localRow: localPos.row,
+            clusterCol: cluster.localCol,
+            clusterRow: cluster.localRow
+          }
+        })
       })
     })
 
     return positions
-  }, [categoryBoxes, itemsByCategory])
+  }, [categoryBoxes, subcategoryClusters, itemsBySubcategory])
 
   const filteredIds = useMemo(() => {
     return new Set(filteredItems.map(item => item.id))
@@ -433,6 +780,51 @@ function CloudView({
     }
   }, [token, onItemUpdate])
 
+  // Save cluster position within category box
+  const saveClusterPosition = useCallback(async (categoryName, subcategoryName, localCol, localRow, width, height) => {
+    if (!token) return false
+
+    try {
+      const response = await fetch(`${API_URL}/categories/${categoryName}/subcategories/${subcategoryName}/cluster`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ localCol, localRow, width, height })
+      })
+
+      return response.ok
+    } catch (error) {
+      console.error('Failed to save cluster position:', error)
+      return false
+    }
+  }, [token])
+
+  // Update item subcategory when dragged to different cluster
+  const updateItemSubcategory = useCallback(async (itemId, newSubcategory) => {
+    if (!token) return false
+
+    try {
+      const response = await fetch(`${API_URL}/item/${itemId}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ subcategory: newSubcategory })
+      })
+
+      if (response.ok && onItemUpdate) {
+        onItemUpdate(itemId, { subcategory: newSubcategory })
+      }
+      return response.ok
+    } catch (error) {
+      console.error('Failed to update item subcategory:', error)
+      return false
+    }
+  }, [token, onItemUpdate])
+
   // ============ EVENT HANDLERS ============
 
   useEffect(() => {
@@ -450,6 +842,33 @@ function CloudView({
         if (box) {
           setResizingBox(boxName)
           setResizeGhost({ width: box.boxWidth, height: box.boxHeight })
+        }
+        return
+      }
+
+      // Check for cluster header drag
+      const clusterHeader = e.target.closest('[data-cluster-header]')
+      if (clusterHeader && isAdmin && token) {
+        e.preventDefault()
+        e.stopPropagation()
+        const [catName, subcatName] = clusterHeader.dataset.clusterHeader.split(':')
+        const box = categoryBoxes[catName]
+        const cluster = subcategoryClusters[catName]?.[subcatName]
+        if (box && cluster) {
+          const rect = panRef.current.getBoundingClientRect()
+          const mouseX = (e.clientX - rect.left) / zoom
+          const mouseY = (e.clientY - rect.top) / zoom
+          const clusterAbsPixel = cellToPixel(
+            box.gridCol + cluster.localCol,
+            box.gridRow + cluster.localRow
+          )
+
+          setDraggingCluster({ catName, subcatName })
+          setClusterDragOffset({
+            x: mouseX - clusterAbsPixel.x,
+            y: mouseY - clusterAbsPixel.y
+          })
+          setClusterGhostPosition({ col: cluster.localCol, row: cluster.localRow })
         }
         return
       }
@@ -531,6 +950,31 @@ function CloudView({
         return
       }
 
+      // Dragging cluster
+      if (draggingCluster) {
+        const box = categoryBoxes[draggingCluster.catName]
+        if (box) {
+          const targetX = mouseX - clusterDragOffset.x
+          const targetY = mouseY - clusterDragOffset.y
+          const cell = pixelToCell(targetX, targetY)
+          // Convert to local coordinates within the box
+          const localCol = cell.col - box.gridCol
+          const localRow = cell.row - box.gridRow
+
+          // Constrain within parent bounds
+          const cluster = subcategoryClusters[draggingCluster.catName]?.[draggingCluster.subcatName]
+          if (cluster) {
+            const maxCol = box.boxWidth - cluster.width
+            const maxRow = box.boxHeight - cluster.height
+            setClusterGhostPosition({
+              col: Math.max(0, Math.min(maxCol, localCol)),
+              row: Math.max(1, Math.min(maxRow, localRow)) // min row 1 for parent header
+            })
+          }
+        }
+        return
+      }
+
       // Dragging item
       if (draggingItem) {
         const pos = itemPositions[draggingItem.id]
@@ -543,7 +987,37 @@ function CloudView({
 
             // Constrain to box bounds
             if (localCol >= 0 && localCol < box.boxWidth && localRow >= 1 && localRow < box.boxHeight) {
-              setItemGhostCell({ col: localCol, row: localRow, boxName: pos.boxName })
+              // Check which cluster the mouse is over
+              const catClusters = subcategoryClusters[pos.boxName] || {}
+              let targetCluster = null
+
+              for (const [subcatName, cluster] of Object.entries(catClusters)) {
+                if (localCol >= cluster.localCol &&
+                    localCol < cluster.localCol + cluster.width &&
+                    localRow >= cluster.localRow &&
+                    localRow < cluster.localRow + cluster.height) {
+                  targetCluster = subcatName
+                  break
+                }
+              }
+
+              // Calculate position within target cluster
+              if (targetCluster && catClusters[targetCluster]) {
+                const cluster = catClusters[targetCluster]
+                const clusterCol = localCol - cluster.localCol
+                const clusterRow = localRow - cluster.localRow
+                setItemGhostCell({
+                  col: clusterCol,
+                  row: clusterRow,
+                  boxName: pos.boxName,
+                  clusterName: targetCluster,
+                  clusterLocalCol: cluster.localCol,
+                  clusterLocalRow: cluster.localRow
+                })
+              } else {
+                // No cluster under mouse - show in box coords
+                setItemGhostCell({ col: localCol, row: localRow, boxName: pos.boxName, clusterName: null })
+              }
             }
           }
         }
@@ -616,8 +1090,66 @@ function CloudView({
         return
       }
 
+      // Finish dragging cluster
+      if (draggingCluster && clusterGhostPosition) {
+        const { catName, subcatName } = draggingCluster
+        const box = categoryBoxes[catName]
+        const cluster = subcategoryClusters[catName]?.[subcatName]
+
+        if (box && cluster) {
+          const newCluster = {
+            ...cluster,
+            localCol: clusterGhostPosition.col,
+            localRow: clusterGhostPosition.row
+          }
+
+          // Check for overlaps with other clusters
+          const otherClusters = Object.values(subcategoryClusters[catName] || {})
+            .filter(c => c.subcategory !== subcatName)
+
+          if (canPlaceCluster(newCluster, otherClusters, box, subcatName)) {
+            setSubcategoryClusters(prev => ({
+              ...prev,
+              [catName]: {
+                ...prev[catName],
+                [subcatName]: newCluster
+              }
+            }))
+            // Save cluster position (will add API call later)
+            await saveClusterPosition(catName, subcatName, clusterGhostPosition.col, clusterGhostPosition.row, cluster.width, cluster.height)
+          } else {
+            // Try push algorithm
+            const pushUpdates = pushClustersAway(newCluster, otherClusters, box)
+            if (pushUpdates) {
+              const updatedClusters = { ...subcategoryClusters[catName], [subcatName]: newCluster }
+              for (const pushed of pushUpdates) {
+                updatedClusters[pushed.subcategory] = pushed
+                await saveClusterPosition(catName, pushed.subcategory, pushed.localCol, pushed.localRow, pushed.width, pushed.height)
+              }
+              setSubcategoryClusters(prev => ({
+                ...prev,
+                [catName]: updatedClusters
+              }))
+              await saveClusterPosition(catName, subcatName, clusterGhostPosition.col, clusterGhostPosition.row, cluster.width, cluster.height)
+            }
+          }
+        }
+        setDraggingCluster(null)
+        setClusterGhostPosition(null)
+        return
+      }
+
       // Finish dragging item
       if (draggingItem && itemGhostCell) {
+        const currentSubcat = draggingItem.subcategory?.toLowerCase() || 'other'
+        const targetSubcat = itemGhostCell.clusterName
+
+        // If dropped on a different cluster, update subcategory
+        if (targetSubcat && targetSubcat !== currentSubcat) {
+          await updateItemSubcategory(draggingItem.id, targetSubcat)
+        }
+
+        // Save position (col/row are now cluster-relative)
         await saveItemPosition(draggingItem.id, itemGhostCell.col, itemGhostCell.row)
         setDraggingItem(null)
         setItemGhostCell(null)
@@ -631,7 +1163,22 @@ function CloudView({
     const handleWheel = (e) => {
       e.preventDefault()
       const delta = e.deltaY > 0 ? 0.9 : 1.1
-      setZoom(z => Math.min(2, Math.max(0.2, z * delta)))
+      const newZoom = Math.min(2, Math.max(0.2, zoom * delta))
+
+      // Get mouse position relative to container
+      const rect = containerRef.current.getBoundingClientRect()
+      const mouseX = e.clientX - rect.left
+      const mouseY = e.clientY - rect.top
+
+      // Calculate the point on the canvas under the mouse (before zoom)
+      const canvasX = (mouseX - panState.current.x) / zoom
+      const canvasY = (mouseY - panState.current.y) / zoom
+
+      // Calculate new pan position to keep mouse over same canvas point
+      panState.current.x = mouseX - canvasX * newZoom
+      panState.current.y = mouseY - canvasY * newZoom
+
+      setZoom(newZoom)
     }
 
     container.addEventListener('mousedown', handleMouseDown)
@@ -646,19 +1193,22 @@ function CloudView({
       window.removeEventListener('mouseup', handleMouseUp)
     }
   }, [
-    categoryBoxes, updateTransform, draggingBox, boxGhostPosition, boxDragOffset,
+    categoryBoxes, subcategoryClusters, updateTransform,
+    draggingBox, boxGhostPosition, boxDragOffset,
+    draggingCluster, clusterGhostPosition, clusterDragOffset,
     resizingBox, resizeGhost, draggingItem, itemGhostCell, itemPositions,
-    isAdmin, token, items, zoom, saveBoxPosition, saveItemPosition
+    isAdmin, token, items, zoom,
+    saveBoxPosition, saveItemPosition, saveClusterPosition, updateItemSubcategory
   ])
 
   // Handle card click (navigate to item)
   const handleCardClick = useCallback((e, item, isPrivate) => {
-    if (draggingItem || draggingBox || resizingBox) return
+    if (draggingItem || draggingBox || resizingBox || draggingCluster) return
     if (!dragState.current.isPanning && !isPrivate) {
       e.stopPropagation()
       onNavigate(item.id)
     }
-  }, [onNavigate, draggingItem, draggingBox, resizingBox])
+  }, [onNavigate, draggingItem, draggingBox, resizingBox, draggingCluster])
 
   // Calculate canvas bounds
   const canvasBounds = useMemo(() => {
@@ -764,6 +1314,69 @@ function CloudView({
           )
         })}
 
+        {/* Subcategory clusters within boxes */}
+        {Object.entries(categoryBoxes).map(([catName, box]) => {
+          const catClusters = subcategoryClusters[catName] || {}
+          const boxPixel = cellToPixel(box.gridCol, box.gridRow)
+          const catColor = CATEGORY_COLORS[catName] || CATEGORY_COLORS.other
+
+          return Object.entries(catClusters).map(([subcatName, cluster]) => {
+            const clusterPixel = {
+              x: boxPixel.x + cluster.localCol * CELL_WIDTH,
+              y: boxPixel.y + cluster.localRow * CELL_HEIGHT
+            }
+            const clusterWidth = cluster.width * CELL_WIDTH
+            const clusterHeight = cluster.height * CELL_HEIGHT
+            const clusterColor = CLUSTER_COLORS[subcatName] || catColor
+            const isDraggingCluster = draggingCluster?.catName === catName && draggingCluster?.subcatName === subcatName
+
+            return (
+              <div
+                key={`cluster-${catName}-${subcatName}`}
+                data-cluster-header={`${catName}:${subcatName}`}
+                className={`absolute rounded border ${isDraggingCluster ? 'opacity-50' : ''}`}
+                style={{
+                  left: clusterPixel.x,
+                  top: clusterPixel.y,
+                  width: clusterWidth,
+                  height: clusterHeight,
+                  borderColor: clusterColor,
+                  backgroundColor: `${clusterColor}15`,
+                  zIndex: 5,
+                  transition: isDraggingCluster ? 'none' : 'all 0.2s'
+                }}
+              >
+                {/* Cluster header (draggable for admin) */}
+                <div
+                  className={`h-4 px-1 flex items-center text-[9px] font-medium capitalize ${isAdmin && token ? 'cursor-move' : ''}`}
+                  style={{ color: clusterColor }}
+                >
+                  {subcatName}
+                  <span className="ml-auto text-[8px] opacity-60">
+                    {cluster.itemCount || 0}
+                  </span>
+                </div>
+              </div>
+            )
+          })
+        })}
+
+        {/* Ghost for cluster dragging */}
+        {draggingCluster && clusterGhostPosition && categoryBoxes[draggingCluster.catName] && (
+          <div
+            className="absolute border-2 border-dashed rounded pointer-events-none"
+            style={{
+              left: (categoryBoxes[draggingCluster.catName].gridCol + clusterGhostPosition.col) * CELL_WIDTH,
+              top: (categoryBoxes[draggingCluster.catName].gridRow + clusterGhostPosition.row) * CELL_HEIGHT,
+              width: subcategoryClusters[draggingCluster.catName]?.[draggingCluster.subcatName]?.width * CELL_WIDTH,
+              height: subcategoryClusters[draggingCluster.catName]?.[draggingCluster.subcatName]?.height * CELL_HEIGHT,
+              borderColor: CLUSTER_COLORS[draggingCluster.subcatName] || '#9ca3af',
+              backgroundColor: 'rgba(34, 197, 94, 0.1)',
+              zIndex: 1001
+            }}
+          />
+        )}
+
         {/* Ghost for box dragging */}
         {draggingBox && boxGhostPosition && (
           <div
@@ -839,21 +1452,38 @@ function CloudView({
         })}
 
         {/* Ghost for item dragging */}
-        {draggingItem && itemGhostCell && categoryBoxes[itemGhostCell.boxName] && (
-          <div
-            className="absolute pointer-events-none"
-            style={{
-              left: (categoryBoxes[itemGhostCell.boxName].gridCol + itemGhostCell.col) * CELL_WIDTH + 4,
-              top: (categoryBoxes[itemGhostCell.boxName].gridRow + itemGhostCell.row) * CELL_HEIGHT + 4,
-              width: 48,
-              height: 56,
-              border: '2px dashed #22c55e',
-              borderRadius: 4,
-              backgroundColor: 'rgba(34, 197, 94, 0.1)',
-              zIndex: 999
-            }}
-          />
-        )}
+        {draggingItem && itemGhostCell && categoryBoxes[itemGhostCell.boxName] && (() => {
+          const box = categoryBoxes[itemGhostCell.boxName]
+          let ghostLeft, ghostTop
+          let ghostColor = '#22c55e'
+
+          if (itemGhostCell.clusterName && itemGhostCell.clusterLocalCol != null) {
+            // Item is over a cluster - position relative to cluster
+            ghostLeft = (box.gridCol + itemGhostCell.clusterLocalCol + itemGhostCell.col) * CELL_WIDTH + 4
+            ghostTop = (box.gridRow + itemGhostCell.clusterLocalRow + itemGhostCell.row) * CELL_HEIGHT + 4
+            ghostColor = CLUSTER_COLORS[itemGhostCell.clusterName] || '#22c55e'
+          } else {
+            // Item is over box but not a specific cluster
+            ghostLeft = (box.gridCol + itemGhostCell.col) * CELL_WIDTH + 4
+            ghostTop = (box.gridRow + itemGhostCell.row) * CELL_HEIGHT + 4
+          }
+
+          return (
+            <div
+              className="absolute pointer-events-none"
+              style={{
+                left: ghostLeft,
+                top: ghostTop,
+                width: 48,
+                height: 56,
+                border: `2px dashed ${ghostColor}`,
+                borderRadius: 4,
+                backgroundColor: `${ghostColor}20`,
+                zIndex: 999
+              }}
+            />
+          )
+        })()}
       </div>
 
       {/* Instructions */}
