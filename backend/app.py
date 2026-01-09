@@ -1432,5 +1432,118 @@ def delete_subcategory(subcategory_id):
     return jsonify({"message": "Subcategory deleted"})
 
 
+@app.route('/migrate-add-subcategory-box-columns', methods=['POST'])
+@token_required
+def migrate_add_subcategory_box_columns():
+    """Add grid box columns to subcategories table for mini-box layout within categories"""
+    conn = get_db()
+    errors = []
+
+    columns = ['local_col', 'local_row', 'box_width', 'box_height']
+    for col in columns:
+        try:
+            conn.execute(f'ALTER TABLE subcategories ADD COLUMN {col} INTEGER')
+        except Exception as e:
+            errors.append(f"{col}: {str(e)}")
+
+    if errors:
+        return jsonify({"message": "Migration completed with notes", "notes": errors})
+    return jsonify({"message": "Subcategory box columns added successfully"})
+
+
+@app.route('/subcategories/with-boxes', methods=['GET'])
+def get_subcategories_with_boxes():
+    """Get all subcategories with box position data for CloudView"""
+    conn = get_db()
+    category_filter = request.args.get('category')
+    try:
+        if category_filter:
+            result = conn.execute('''
+                SELECT id, name, display_name, category, local_col, local_row, box_width, box_height
+                FROM subcategories WHERE category = ? ORDER BY display_name ASC
+            ''', [category_filter])
+        else:
+            result = conn.execute('''
+                SELECT id, name, display_name, category, local_col, local_row, box_width, box_height
+                FROM subcategories ORDER BY category, display_name ASC
+            ''')
+        subcategories = [{
+            "id": row[0],
+            "name": row[1],
+            "displayName": row[2],
+            "category": row[3],
+            "localCol": row[4],
+            "localRow": row[5],
+            "boxWidth": row[6],
+            "boxHeight": row[7]
+        } for row in result.rows]
+        return jsonify(subcategories)
+    except Exception:
+        # Table doesn't have box columns yet - return without them
+        return get_subcategories()
+
+
+@app.route('/subcategories/<subcategory_id>/box', methods=['PUT'])
+@admin_required
+def update_subcategory_box(subcategory_id):
+    """Update subcategory mini-box position and size within its parent category box"""
+    data = request.json
+    conn = get_db()
+
+    # Check subcategory exists
+    existing = conn.execute('SELECT id FROM subcategories WHERE id = ?', [subcategory_id])
+    if not existing.rows:
+        return jsonify({"error": "Subcategory not found"}), 404
+
+    local_col = data.get('localCol')
+    local_row = data.get('localRow')
+    box_width = data.get('boxWidth')
+    box_height = data.get('boxHeight')
+
+    conn.execute('''
+        UPDATE subcategories SET local_col=?, local_row=?, box_width=?, box_height=?
+        WHERE id=?
+    ''', [local_col, local_row, box_width, box_height, subcategory_id])
+
+    return jsonify({
+        "message": "Subcategory box updated",
+        "localCol": local_col,
+        "localRow": local_row,
+        "boxWidth": box_width,
+        "boxHeight": box_height
+    })
+
+
+@app.route('/subcategories/name/<category>/<subcategory_name>/box', methods=['PUT'])
+@admin_required
+def update_subcategory_box_by_name(category, subcategory_name):
+    """Update subcategory mini-box by category and name"""
+    data = request.json
+    conn = get_db()
+
+    # Check subcategory exists
+    existing = conn.execute('SELECT id FROM subcategories WHERE name = ? AND category = ?', [subcategory_name, category])
+    if not existing.rows:
+        return jsonify({"error": "Subcategory not found"}), 404
+
+    local_col = data.get('localCol')
+    local_row = data.get('localRow')
+    box_width = data.get('boxWidth')
+    box_height = data.get('boxHeight')
+
+    conn.execute('''
+        UPDATE subcategories SET local_col=?, local_row=?, box_width=?, box_height=?
+        WHERE name=? AND category=?
+    ''', [local_col, local_row, box_width, box_height, subcategory_name, category])
+
+    return jsonify({
+        "message": "Subcategory box updated",
+        "localCol": local_col,
+        "localRow": local_row,
+        "boxWidth": box_width,
+        "boxHeight": box_height
+    })
+
+
 if __name__ == '__main__':
     app.run(debug=True, port=5000)

@@ -16,6 +16,23 @@ const CATEGORY_COLORS = {
   other: '#6b7280',
 }
 
+// Lighter subcategory colors (for mini-boxes within category boxes)
+const SUBCATEGORY_COLORS = {
+  hats: '#86efac',
+  tops: '#bbf7d0',
+  outerwear: '#4ade80',
+  bottoms: '#a7f3d0',
+  shoes: '#6ee7b7',
+  socks: '#d1fae5',
+  underwear: '#ecfdf5',
+  accessories: '#34d399',
+  necklaces: '#fde68a',
+  earrings: '#fef3c7',
+  bracelets: '#fcd34d',
+  rings: '#fbbf24',
+  other: '#d1d5db',
+}
+
 // Grid constants
 const CELL_WIDTH = 56   // 48px card + 8px gap
 const CELL_HEIGHT = 64  // 56px card + 8px gap
@@ -231,6 +248,9 @@ function CloudView({
   // Box state (from database or auto-calculated)
   const [categoryBoxes, setCategoryBoxes] = useState({})
 
+  // Subcategory mini-box state (fetched from database)
+  const [subcategoryBoxes, setSubcategoryBoxes] = useState({})
+
   // Drag state for boxes
   const [draggingBox, setDraggingBox] = useState(null)
   const [boxDragOffset, setBoxDragOffset] = useState({ x: 0, y: 0 })
@@ -239,6 +259,13 @@ function CloudView({
   // Resize state for boxes
   const [resizingBox, setResizingBox] = useState(null)
   const [resizeGhost, setResizeGhost] = useState(null)
+
+  // Subcategory mini-box drag/resize state
+  const [draggingSubcatBox, setDraggingSubcatBox] = useState(null)
+  const [subcatBoxDragOffset, setSubcatBoxDragOffset] = useState({ x: 0, y: 0 })
+  const [subcatBoxGhostPosition, setSubcatBoxGhostPosition] = useState(null)
+  const [resizingSubcatBox, setResizingSubcatBox] = useState(null)
+  const [subcatResizeGhost, setSubcatResizeGhost] = useState(null)
 
   // Item drag state
   const [draggingItem, setDraggingItem] = useState(null)
@@ -320,6 +347,101 @@ function CloudView({
 
     setCategoryBoxes(boxes)
   }, [availableCategories, categories, itemCounts])
+
+  // Fetch subcategories with box positions
+  useEffect(() => {
+    const fetchSubcategories = async () => {
+      try {
+        const response = await fetch(`${API_URL}/subcategories/with-boxes`)
+        if (response.ok) {
+          const data = await response.json()
+          const boxes = {}
+          data.forEach(subcat => {
+            const key = `${subcat.category}:${subcat.name}`
+            boxes[key] = {
+              id: subcat.id,
+              name: subcat.name,
+              displayName: subcat.displayName,
+              category: subcat.category,
+              localCol: subcat.localCol,
+              localRow: subcat.localRow,
+              boxWidth: subcat.boxWidth,
+              boxHeight: subcat.boxHeight
+            }
+          })
+          setSubcategoryBoxes(boxes)
+        }
+      } catch (error) {
+        console.error('Failed to fetch subcategories:', error)
+      }
+    }
+    fetchSubcategories()
+  }, [])
+
+  // Count items per subcategory within each category
+  const itemsBySubcategory = useMemo(() => {
+    const grouped = {}
+    items.forEach(item => {
+      const cat = item.category || 'other'
+      const subcat = item.subcategory || 'other'
+      const key = `${cat}:${subcat}`
+      if (!grouped[key]) grouped[key] = []
+      grouped[key].push(item)
+    })
+    return grouped
+  }, [items])
+
+  // Calculate auto-positioned subcategory boxes within each category box
+  const calculatedSubcatBoxes = useMemo(() => {
+    const result = {}
+
+    Object.entries(categoryBoxes).forEach(([catName, catBox]) => {
+      // Get all subcategories for this category from items
+      const subcatsInCat = new Set()
+      items.forEach(item => {
+        if ((item.category || 'other') === catName) {
+          subcatsInCat.add(item.subcategory || 'other')
+        }
+      })
+
+      // Place subcategory boxes within category box
+      let currentLocalRow = 1 // Start after header
+      const availableWidth = catBox.boxWidth - 1 // Leave 1 cell margin
+
+      Array.from(subcatsInCat).forEach(subcatName => {
+        const key = `${catName}:${subcatName}`
+        const savedBox = subcategoryBoxes[key]
+        const itemCount = itemsBySubcategory[key]?.length || 0
+
+        // Calculate minimum size for this subcategory
+        const cols = Math.max(2, Math.ceil(Math.sqrt(itemCount * 1.5)))
+        const rows = Math.max(1, Math.ceil(itemCount / cols)) + 1 // +1 for header
+
+        if (savedBox && savedBox.localCol != null && savedBox.localRow != null) {
+          // Use saved position
+          result[key] = {
+            ...savedBox,
+            boxWidth: savedBox.boxWidth || cols,
+            boxHeight: savedBox.boxHeight || rows
+          }
+        } else {
+          // Auto-place
+          result[key] = {
+            name: subcatName,
+            displayName: subcatName,
+            category: catName,
+            localCol: 0,
+            localRow: currentLocalRow,
+            boxWidth: Math.min(cols, availableWidth),
+            boxHeight: rows
+          }
+          currentLocalRow += rows
+        }
+      })
+    })
+
+    return result
+  }, [categoryBoxes, items, subcategoryBoxes, itemsBySubcategory])
 
   // Group items by category
   const itemsByCategory = useMemo(() => {
@@ -433,6 +555,35 @@ function CloudView({
     }
   }, [token, onItemUpdate])
 
+  // Save subcategory mini-box position
+  const saveSubcatBoxPosition = useCallback(async (category, subcatName, localCol, localRow, boxWidth, boxHeight) => {
+    if (!token) return false
+
+    try {
+      const response = await fetch(`${API_URL}/subcategories/name/${category}/${subcatName}/box`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ localCol, localRow, boxWidth, boxHeight })
+      })
+
+      if (response.ok) {
+        // Update local state
+        const key = `${category}:${subcatName}`
+        setSubcategoryBoxes(prev => ({
+          ...prev,
+          [key]: { ...prev[key], localCol, localRow, boxWidth, boxHeight }
+        }))
+      }
+      return response.ok
+    } catch (error) {
+      console.error('Failed to save subcategory box position:', error)
+      return false
+    }
+  }, [token])
+
   // ============ EVENT HANDLERS ============
 
   useEffect(() => {
@@ -440,6 +591,48 @@ function CloudView({
     if (!container) return
 
     const handleMouseDown = (e) => {
+      // Check for subcategory resize handle
+      const subcatResizeHandle = e.target.closest('[data-resize-subcat]')
+      if (subcatResizeHandle && isAdmin && token) {
+        e.preventDefault()
+        e.stopPropagation()
+        const subcatKey = subcatResizeHandle.dataset.resizeSubcat
+        const subcatBox = calculatedSubcatBoxes[subcatKey]
+        if (subcatBox) {
+          setResizingSubcatBox(subcatKey)
+          setSubcatResizeGhost({ width: subcatBox.boxWidth, height: subcatBox.boxHeight })
+        }
+        return
+      }
+
+      // Check for subcategory header drag
+      const subcatHeader = e.target.closest('[data-subcat-header]')
+      if (subcatHeader && isAdmin && token) {
+        e.preventDefault()
+        e.stopPropagation()
+        const subcatKey = subcatHeader.dataset.subcatHeader
+        const subcatBox = calculatedSubcatBoxes[subcatKey]
+        if (subcatBox) {
+          const catBox = categoryBoxes[subcatBox.category]
+          if (catBox) {
+            const rect = panRef.current.getBoundingClientRect()
+            const mouseX = (e.clientX - rect.left) / zoom
+            const mouseY = (e.clientY - rect.top) / zoom
+            const subcatGlobalCol = catBox.gridCol + subcatBox.localCol
+            const subcatGlobalRow = catBox.gridRow + subcatBox.localRow
+            const subcatPixel = cellToPixel(subcatGlobalCol, subcatGlobalRow)
+
+            setDraggingSubcatBox(subcatKey)
+            setSubcatBoxDragOffset({
+              x: mouseX - subcatPixel.x,
+              y: mouseY - subcatPixel.y
+            })
+            setSubcatBoxGhostPosition({ col: subcatBox.localCol, row: subcatBox.localRow })
+          }
+        }
+        return
+      }
+
       // Check for resize handle
       const resizeHandle = e.target.closest('[data-resize-box]')
       if (resizeHandle && isAdmin && token) {
@@ -510,6 +703,42 @@ function CloudView({
       const mouseX = (e.clientX - rect.left) / zoom
       const mouseY = (e.clientY - rect.top) / zoom
 
+      // Resizing subcategory box
+      if (resizingSubcatBox) {
+        const subcatBox = calculatedSubcatBoxes[resizingSubcatBox]
+        if (subcatBox) {
+          const catBox = categoryBoxes[subcatBox.category]
+          if (catBox) {
+            const cell = pixelToCell(mouseX, mouseY)
+            // Calculate size relative to the parent category box
+            const globalCol = catBox.gridCol + subcatBox.localCol
+            const globalRow = catBox.gridRow + subcatBox.localRow
+            const newWidth = Math.max(2, cell.col - globalCol + 1)
+            const newHeight = Math.max(2, cell.row - globalRow + 1)
+            setSubcatResizeGhost({ width: newWidth, height: newHeight })
+          }
+        }
+        return
+      }
+
+      // Dragging subcategory box
+      if (draggingSubcatBox) {
+        const subcatBox = calculatedSubcatBoxes[draggingSubcatBox]
+        if (subcatBox) {
+          const catBox = categoryBoxes[subcatBox.category]
+          if (catBox) {
+            const targetX = mouseX - subcatBoxDragOffset.x
+            const targetY = mouseY - subcatBoxDragOffset.y
+            const snapped = pixelToCell(targetX, targetY)
+            // Convert to local coordinates within category box
+            const localCol = Math.max(0, snapped.col - catBox.gridCol)
+            const localRow = Math.max(1, snapped.row - catBox.gridRow) // Start after header
+            setSubcatBoxGhostPosition({ col: localCol, row: localRow })
+          }
+        }
+        return
+      }
+
       // Resizing box
       if (resizingBox) {
         const box = categoryBoxes[resizingBox]
@@ -558,6 +787,42 @@ function CloudView({
     }
 
     const handleMouseUp = async () => {
+      // Finish resizing subcategory box
+      if (resizingSubcatBox && subcatResizeGhost) {
+        const subcatBox = calculatedSubcatBoxes[resizingSubcatBox]
+        if (subcatBox) {
+          await saveSubcatBoxPosition(
+            subcatBox.category,
+            subcatBox.name,
+            subcatBox.localCol,
+            subcatBox.localRow,
+            subcatResizeGhost.width,
+            subcatResizeGhost.height
+          )
+        }
+        setResizingSubcatBox(null)
+        setSubcatResizeGhost(null)
+        return
+      }
+
+      // Finish dragging subcategory box
+      if (draggingSubcatBox && subcatBoxGhostPosition) {
+        const subcatBox = calculatedSubcatBoxes[draggingSubcatBox]
+        if (subcatBox) {
+          await saveSubcatBoxPosition(
+            subcatBox.category,
+            subcatBox.name,
+            subcatBoxGhostPosition.col,
+            subcatBoxGhostPosition.row,
+            subcatBox.boxWidth,
+            subcatBox.boxHeight
+          )
+        }
+        setDraggingSubcatBox(null)
+        setSubcatBoxGhostPosition(null)
+        return
+      }
+
       // Finish resizing
       if (resizingBox && resizeGhost) {
         const box = categoryBoxes[resizingBox]
@@ -646,17 +911,19 @@ function CloudView({
   }, [
     categoryBoxes, updateTransform, draggingBox, boxGhostPosition, boxDragOffset,
     resizingBox, resizeGhost, draggingItem, itemGhostCell, itemPositions,
-    isAdmin, token, items, zoom, saveBoxPosition, saveItemPosition, handleZoom
+    isAdmin, token, items, zoom, saveBoxPosition, saveItemPosition, handleZoom,
+    calculatedSubcatBoxes, draggingSubcatBox, subcatBoxDragOffset, subcatBoxGhostPosition,
+    resizingSubcatBox, subcatResizeGhost, saveSubcatBoxPosition
   ])
 
   // Handle card click (navigate to item)
   const handleCardClick = useCallback((e, item, isPrivate) => {
-    if (draggingItem || draggingBox || resizingBox) return
+    if (draggingItem || draggingBox || resizingBox || draggingSubcatBox || resizingSubcatBox) return
     if (!dragState.current.isPanning && !isPrivate) {
       e.stopPropagation()
       onNavigate(item.id)
     }
-  }, [onNavigate, draggingItem, draggingBox, resizingBox])
+  }, [onNavigate, draggingItem, draggingBox, resizingBox, draggingSubcatBox, resizingSubcatBox])
 
   // Calculate canvas bounds
   const canvasBounds = useMemo(() => {
@@ -801,6 +1068,87 @@ function CloudView({
             </div>
           )
         })}
+
+        {/* Subcategory mini-boxes - only visible for admin */}
+        {isAdmin && token && Object.entries(calculatedSubcatBoxes).map(([subcatKey, subcatBox]) => {
+          const catBox = categoryBoxes[subcatBox.category]
+          if (!catBox) return null
+
+          // Calculate absolute position from category box + local position
+          const globalCol = catBox.gridCol + subcatBox.localCol
+          const globalRow = catBox.gridRow + subcatBox.localRow
+          const pixel = cellToPixel(globalCol, globalRow)
+          const width = subcatBox.boxWidth * CELL_WIDTH
+          const height = subcatBox.boxHeight * CELL_HEIGHT
+          const color = SUBCATEGORY_COLORS[subcatBox.name] || SUBCATEGORY_COLORS.other
+          const parentColor = CATEGORY_COLORS[subcatBox.category] || CATEGORY_COLORS.other
+          const isDragging = draggingSubcatBox === subcatKey
+          const isResizing = resizingSubcatBox === subcatKey
+          const itemCount = itemsBySubcategory[subcatKey]?.length || 0
+
+          return (
+            <div
+              key={subcatKey}
+              className={`absolute rounded border ${isDragging || isResizing ? 'opacity-50' : ''}`}
+              style={{
+                left: pixel.x + 2,
+                top: pixel.y,
+                width: isResizing && subcatResizeGhost ? subcatResizeGhost.width * CELL_WIDTH - 4 : width - 4,
+                height: isResizing && subcatResizeGhost ? subcatResizeGhost.height * CELL_HEIGHT : height,
+                borderColor: parentColor,
+                backgroundColor: `${color}30`,
+                transition: isDragging || isResizing ? 'none' : 'all 0.2s',
+                zIndex: 5
+              }}
+            >
+              {/* Subcategory header (draggable) */}
+              <div
+                data-subcat-header={subcatKey}
+                className="h-4 px-1 flex items-center text-[9px] font-medium capitalize cursor-move truncate"
+                style={{ color: parentColor }}
+              >
+                {subcatBox.displayName || subcatBox.name}
+                <span className="ml-auto text-[8px] opacity-60">
+                  {itemCount}
+                </span>
+              </div>
+
+              {/* Resize handle */}
+              <div
+                data-resize-subcat={subcatKey}
+                className="absolute bottom-0 right-0 w-3 h-3 cursor-se-resize opacity-0 hover:opacity-100 transition-opacity"
+                style={{
+                  background: `linear-gradient(135deg, transparent 50%, ${parentColor} 50%)`
+                }}
+              />
+            </div>
+          )
+        })}
+
+        {/* Ghost for subcategory box dragging */}
+        {draggingSubcatBox && subcatBoxGhostPosition && calculatedSubcatBoxes[draggingSubcatBox] && (
+          (() => {
+            const subcatBox = calculatedSubcatBoxes[draggingSubcatBox]
+            const catBox = categoryBoxes[subcatBox.category]
+            if (!catBox) return null
+            const globalCol = catBox.gridCol + subcatBoxGhostPosition.col
+            const globalRow = catBox.gridRow + subcatBoxGhostPosition.row
+            return (
+              <div
+                className="absolute border-2 border-dashed rounded pointer-events-none"
+                style={{
+                  left: globalCol * CELL_WIDTH,
+                  top: globalRow * CELL_HEIGHT,
+                  width: subcatBox.boxWidth * CELL_WIDTH,
+                  height: subcatBox.boxHeight * CELL_HEIGHT,
+                  borderColor: CATEGORY_COLORS[subcatBox.category] || CATEGORY_COLORS.other,
+                  backgroundColor: 'rgba(34, 197, 94, 0.1)',
+                  zIndex: 1000
+                }}
+              />
+            )
+          })()
+        )}
 
         {/* Ghost for box dragging */}
         {draggingBox && boxGhostPosition && (
