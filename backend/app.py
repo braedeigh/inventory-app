@@ -1432,5 +1432,134 @@ def delete_subcategory(subcategory_id):
     return jsonify({"message": "Subcategory deleted"})
 
 
+# Subcategory Cluster endpoints for CloudView
+@app.route('/migrate-add-subcategory-clusters', methods=['POST'])
+@token_required
+def migrate_add_subcategory_clusters():
+    """Create subcategory_clusters table for CloudView cluster positions"""
+    conn = get_db()
+    errors = []
+
+    try:
+        conn.execute('''
+            CREATE TABLE IF NOT EXISTS subcategory_clusters (
+                id TEXT PRIMARY KEY,
+                category TEXT NOT NULL,
+                subcategory TEXT NOT NULL,
+                local_col INTEGER NOT NULL DEFAULT 0,
+                local_row INTEGER NOT NULL DEFAULT 1,
+                width INTEGER NOT NULL DEFAULT 2,
+                height INTEGER NOT NULL DEFAULT 2,
+                UNIQUE(category, subcategory)
+            )
+        ''')
+    except Exception as e:
+        errors.append(f"subcategory_clusters table: {str(e)}")
+
+    if errors:
+        return jsonify({"message": "Migration completed with notes", "notes": errors})
+    return jsonify({"message": "Subcategory clusters table created successfully"})
+
+
+@app.route('/categories/<category_name>/clusters', methods=['GET'])
+def get_category_clusters(category_name):
+    """Get all cluster positions for a category"""
+    conn = get_db()
+    try:
+        result = conn.execute(
+            'SELECT id, subcategory, local_col, local_row, width, height FROM subcategory_clusters WHERE category = ?',
+            [category_name]
+        )
+        clusters = {}
+        for row in result.rows:
+            clusters[row[1]] = {
+                "id": row[0],
+                "subcategory": row[1],
+                "localCol": row[2],
+                "localRow": row[3],
+                "width": row[4],
+                "height": row[5]
+            }
+        return jsonify(clusters)
+    except Exception:
+        # Table doesn't exist yet
+        return jsonify({})
+
+
+@app.route('/clusters', methods=['GET'])
+def get_all_clusters():
+    """Get all cluster positions grouped by category"""
+    conn = get_db()
+    try:
+        result = conn.execute(
+            'SELECT id, category, subcategory, local_col, local_row, width, height FROM subcategory_clusters'
+        )
+        clusters = {}
+        for row in result.rows:
+            category = row[1]
+            subcategory = row[2]
+            if category not in clusters:
+                clusters[category] = {}
+            clusters[category][subcategory] = {
+                "id": row[0],
+                "subcategory": subcategory,
+                "localCol": row[3],
+                "localRow": row[4],
+                "width": row[5],
+                "height": row[6]
+            }
+        return jsonify(clusters)
+    except Exception:
+        # Table doesn't exist yet
+        return jsonify({})
+
+
+@app.route('/categories/<category_name>/subcategories/<subcategory_name>/cluster', methods=['PUT'])
+@admin_required
+def update_cluster_position(category_name, subcategory_name):
+    """Update or create cluster position for a subcategory within a category"""
+    data = request.json
+    local_col = data.get('localCol', 0)
+    local_row = data.get('localRow', 1)
+    width = data.get('width', 2)
+    height = data.get('height', 2)
+
+    conn = get_db()
+
+    # Check if cluster exists
+    existing = conn.execute(
+        'SELECT id FROM subcategory_clusters WHERE category = ? AND subcategory = ?',
+        [category_name, subcategory_name]
+    )
+
+    if existing.rows:
+        # Update existing
+        conn.execute(
+            'UPDATE subcategory_clusters SET local_col = ?, local_row = ?, width = ?, height = ? WHERE category = ? AND subcategory = ?',
+            [local_col, local_row, width, height, category_name, subcategory_name]
+        )
+        return jsonify({"message": "Cluster position updated"})
+    else:
+        # Create new
+        cluster_id = str(uuid.uuid4())
+        conn.execute(
+            'INSERT INTO subcategory_clusters (id, category, subcategory, local_col, local_row, width, height) VALUES (?, ?, ?, ?, ?, ?, ?)',
+            [cluster_id, category_name, subcategory_name, local_col, local_row, width, height]
+        )
+        return jsonify({"message": "Cluster position created", "id": cluster_id}), 201
+
+
+@app.route('/categories/<category_name>/subcategories/<subcategory_name>/cluster', methods=['DELETE'])
+@admin_required
+def delete_cluster_position(category_name, subcategory_name):
+    """Delete cluster position (resets to auto-calculated position)"""
+    conn = get_db()
+    conn.execute(
+        'DELETE FROM subcategory_clusters WHERE category = ? AND subcategory = ?',
+        [category_name, subcategory_name]
+    )
+    return jsonify({"message": "Cluster position deleted"})
+
+
 if __name__ == '__main__':
     app.run(debug=True, port=5000)
