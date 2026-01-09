@@ -218,7 +218,7 @@ function Home({ list, setList, token, userRole, setShowLogin, handleLogout }) {
           <select
             value={sortOrder}
             onChange={(e) => setSortOrder(e.target.value)}
-            className="flex-none w-auto px-3 py-2 border border-neutral-300 dark:border-neutral-600 rounded-lg bg-white dark:bg-neutral-800 text-neutral-800 dark:text-neutral-100"
+            className="w-fit px-3 py-2 border border-neutral-300 dark:border-neutral-600 rounded-lg bg-white dark:bg-neutral-800 text-neutral-800 dark:text-neutral-100"
           >
             <option value="newest">Newest first</option>
             <option value="oldest">Oldest first</option>
@@ -240,13 +240,13 @@ function Home({ list, setList, token, userRole, setShowLogin, handleLogout }) {
         <button
           type="button"
           onClick={() => setShowFilters(!showFilters)}
-          className={`px-4 py-2 border rounded-lg transition-all flex items-center gap-2 ${
+          className={`px-4 py-2 border rounded-lg transition-all flex items-center gap-2 whitespace-nowrap ${
             showFilters || activeFilterCount > 0
               ? 'bg-green-100 dark:bg-green-900/30 border-green-300 dark:border-green-700 text-green-700 dark:text-green-300'
               : 'bg-white dark:bg-neutral-800 border-neutral-300 dark:border-neutral-600 text-neutral-800 dark:text-neutral-100 hover:bg-neutral-100 dark:hover:bg-neutral-700'
           }`}
         >
-          <span>{showFilters ? '▼' : '▶'} Filters</span>
+          Filters {showFilters ? '▼' : '▶'}
           {activeFilterCount > 0 && (
             <span className="bg-green-600 text-white text-xs px-1.5 py-0.5 rounded-full">
               {activeFilterCount}
@@ -271,7 +271,7 @@ function Home({ list, setList, token, userRole, setShowLogin, handleLogout }) {
           placeholder="Search items..."
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
-          className="flex-none w-48 px-3 py-2 border border-neutral-300 dark:border-neutral-600 rounded-lg bg-white dark:bg-neutral-800 text-neutral-800 dark:text-neutral-100"
+          className="w-48 px-3 py-2 border border-neutral-300 dark:border-neutral-600 rounded-lg bg-white dark:bg-neutral-800 text-neutral-800 dark:text-neutral-100"
         />
 
         {/* View toggle */}
@@ -342,6 +342,12 @@ function Home({ list, setList, token, userRole, setShowLogin, handleLogout }) {
           availableCategories={availableCategories}
           isAdmin={isAdmin}
           onNavigate={navigateToItem}
+          token={token}
+          onItemUpdate={(itemId, updates) => {
+            setList(list.map(item =>
+              item.id === itemId ? { ...item, ...updates } : item
+            ))
+          }}
         />
       ) : (
         <>
