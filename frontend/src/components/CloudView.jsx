@@ -30,7 +30,7 @@ const SUBCATEGORY_ORDER = {
 }
 
 // Cluster constants
-const CLUSTER_PADDING = 1  // 1 cell padding inside cluster for header
+const CLUSTER_PADDING = 0  // No padding - items flush with cluster edges
 const CLUSTER_GAP = 0      // No gap - use glow effect for visual separation
 
 // Cluster colors (lighter variants of category colors)
