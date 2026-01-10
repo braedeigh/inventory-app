@@ -19,7 +19,7 @@ const CATEGORY_COLORS = {
 // Grid constants
 const CELL_WIDTH = 50   // 48px card + 2px gap
 const CELL_HEIGHT = 58  // 56px card + 2px gap
-const BOX_PADDING = 1   // 1 cell padding inside box (for header)
+const BOX_PADDING = 0   // No padding inside box
 const BOX_GAP = 0       // No gap - user controls spacing manually
 const MAX_CANVAS_WIDTH = 24  // Max cells wide for initial packing
 
@@ -103,10 +103,10 @@ function calculateClusterSize(itemCount) {
   const cols = Math.max(1, Math.ceil(Math.sqrt(itemCount)))
   const rows = Math.max(1, Math.ceil(itemCount / cols))
 
-  // Add padding for header
+  // No header row, no padding
   return {
     width: cols + CLUSTER_PADDING,
-    height: rows + CLUSTER_PADDING + 1 // +1 for header
+    height: rows + CLUSTER_PADDING
   }
 }
 
@@ -382,7 +382,7 @@ function pushBoxesAway(movingBox, allBoxes, maxDepth = 10) {
 function autoPlaceItemsInCluster(items, cluster) {
   const positions = {}
   const availableWidth = cluster.width - CLUSTER_PADDING
-  let currentRow = 1 // Start after cluster header
+  let currentRow = 0 // Start at top (no header row)
   let currentCol = 0
 
   for (const item of items) {
