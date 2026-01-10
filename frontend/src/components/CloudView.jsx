@@ -1397,7 +1397,8 @@ function CloudView({
                   data-resize-box={box.name}
                   className="absolute bottom-0 right-0 w-4 h-4 cursor-se-resize opacity-0 hover:opacity-100 transition-opacity"
                   style={{
-                    background: `linear-gradient(135deg, transparent 50%, ${color} 50%)`
+                    background: `linear-gradient(135deg, transparent 50%, ${color} 50%)`,
+                    zIndex: 10  // Above clusters (zIndex: 5)
                   }}
                 />
               )}
