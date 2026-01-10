@@ -244,15 +244,79 @@ function calculateMinBoxSize(itemCount) {
   }
 }
 
-function shelfPackBoxes(categories, itemCounts) {
+// Calculate box size needed to fit all clusters
+function calculateBoxSizeForClusters(subcategoryItems, minWidth = 4) {
+  // First calculate what clusters we'd create
+  const subcatData = Object.entries(subcategoryItems)
+    .filter(([, items]) => items.length > 0)
+    .map(([subcat, items]) => ({
+      subcategory: subcat,
+      itemCount: items.length,
+      ...calculateClusterSize(items.length)
+    }))
+    .sort((a, b) => b.height - a.height) // Tallest first
+
+  if (subcatData.length === 0) return { width: 2, height: 2 }
+
+  // Calculate total cluster area to estimate reasonable width
+  const totalWidth = subcatData.reduce((sum, c) => sum + c.width, 0)
+  const maxClusterWidth = Math.max(...subcatData.map(c => c.width))
+
+  // Try to fit 2-3 clusters per row for reasonable layout
+  // Start with width that could fit at least 2 average-width clusters
+  const avgWidth = totalWidth / subcatData.length
+  let boxWidth = Math.max(minWidth, maxClusterWidth, Math.ceil(avgWidth * 2))
+
+  // Cap at reasonable max
+  boxWidth = Math.min(boxWidth, MAX_CANVAS_WIDTH - 2)
+
+  // Simulate shelf packing to find required height
+  let currentRow = 1
+  let currentCol = 0
+  let rowHeight = 0
+  let maxHeight = 0
+
+  for (const subcat of subcatData) {
+    if (currentCol + subcat.width > boxWidth) {
+      currentRow += rowHeight + CLUSTER_GAP
+      currentCol = 0
+      rowHeight = 0
+    }
+    currentCol += subcat.width + CLUSTER_GAP
+    rowHeight = Math.max(rowHeight, subcat.height)
+    maxHeight = Math.max(maxHeight, currentRow + rowHeight)
+  }
+
+  return {
+    width: boxWidth,
+    height: maxHeight + 1 // +1 for box header
+  }
+}
+
+function shelfPackBoxes(categories, itemCounts, itemsBySubcategory = null) {
   const boxes = []
 
   // Calculate sizes and sort by height (tallest first)
-  const categoryData = categories.map(cat => ({
-    name: cat.name,
-    displayName: cat.displayName,
-    ...calculateMinBoxSize(itemCounts[cat.name] || 0)
-  })).sort((a, b) => b.height - a.height)
+  const categoryData = categories.map(cat => {
+    // Use cluster-aware sizing if we have subcategory data
+    if (itemsBySubcategory && itemsBySubcategory[cat.name]) {
+      const subcatItems = itemsBySubcategory[cat.name]
+      const hasSubcategories = Object.values(subcatItems).some(items => items.length > 0)
+      if (hasSubcategories) {
+        return {
+          name: cat.name,
+          displayName: cat.displayName,
+          ...calculateBoxSizeForClusters(subcatItems)
+        }
+      }
+    }
+    // Fallback to simple item count sizing
+    return {
+      name: cat.name,
+      displayName: cat.displayName,
+      ...calculateMinBoxSize(itemCounts[cat.name] || 0)
+    }
+  }).sort((a, b) => b.height - a.height)
 
   let currentRow = 0
   let currentCol = 0
@@ -457,6 +521,39 @@ function CloudView({
     return counts
   }, [items])
 
+  // Group items by category
+  const itemsByCategory = useMemo(() => {
+    const grouped = {}
+    categories.forEach(cat => { grouped[cat] = [] })
+    items.forEach(item => {
+      const cat = item.category || 'other'
+      if (!grouped[cat]) grouped[cat] = []
+      grouped[cat].push(item)
+    })
+    return grouped
+  }, [items, categories])
+
+  // Group items by subcategory within each category
+  const itemsBySubcategory = useMemo(() => {
+    const grouped = {}
+    categories.forEach(cat => {
+      grouped[cat] = {}
+      const order = SUBCATEGORY_ORDER[cat] || ['other']
+      order.forEach(sub => { grouped[cat][sub] = [] })
+      grouped[cat]['other'] = []
+    })
+
+    items.forEach(item => {
+      const cat = item.category || 'other'
+      if (!grouped[cat]) grouped[cat] = { other: [] }
+      const subcat = item.subcategory?.toLowerCase() || 'other'
+      if (!grouped[cat][subcat]) grouped[cat][subcat] = []
+      grouped[cat][subcat].push(item)
+    })
+
+    return grouped
+  }, [items, categories])
+
   // Initialize category boxes from availableCategories or auto-calculate
   useEffect(() => {
     const boxes = {}
@@ -495,7 +592,7 @@ function CloudView({
         }))
 
       if (categoriesToPack.length > 0) {
-        const packedBoxes = shelfPackBoxes(categoriesToPack, itemCounts)
+        const packedBoxes = shelfPackBoxes(categoriesToPack, itemCounts, itemsBySubcategory)
 
         // Offset packed boxes to not overlap with existing boxes
         let maxRow = 0
@@ -513,40 +610,7 @@ function CloudView({
     }
 
     setCategoryBoxes(boxes)
-  }, [availableCategories, categories, itemCounts])
-
-  // Group items by category
-  const itemsByCategory = useMemo(() => {
-    const grouped = {}
-    categories.forEach(cat => { grouped[cat] = [] })
-    items.forEach(item => {
-      const cat = item.category || 'other'
-      if (!grouped[cat]) grouped[cat] = []
-      grouped[cat].push(item)
-    })
-    return grouped
-  }, [items, categories])
-
-  // Group items by subcategory within each category
-  const itemsBySubcategory = useMemo(() => {
-    const grouped = {}
-    categories.forEach(cat => {
-      grouped[cat] = {}
-      const order = SUBCATEGORY_ORDER[cat] || ['other']
-      order.forEach(sub => { grouped[cat][sub] = [] })
-      grouped[cat]['other'] = []
-    })
-
-    items.forEach(item => {
-      const cat = item.category || 'other'
-      if (!grouped[cat]) grouped[cat] = { other: [] }
-      const subcat = item.subcategory?.toLowerCase() || 'other'
-      if (!grouped[cat][subcat]) grouped[cat][subcat] = []
-      grouped[cat][subcat].push(item)
-    })
-
-    return grouped
-  }, [items, categories])
+  }, [availableCategories, categories, itemCounts, itemsBySubcategory])
 
   // Fetch saved cluster positions from API
   useEffect(() => {
@@ -571,15 +635,31 @@ function CloudView({
     if (savedClusterPositions === null) return
 
     const newClusters = {}
+    const boxUpdates = {} // Track boxes that need resizing
 
     Object.entries(categoryBoxes).forEach(([catName, box]) => {
       const subcatItems = itemsBySubcategory[catName] || {}
+
+      // Calculate required box size for clusters
+      const requiredSize = calculateBoxSizeForClusters(subcatItems)
 
       // Check if we have saved cluster positions from API
       const savedCatClusters = savedClusterPositions[catName] || {}
       const existingClusters = subcategoryClusters[catName] || {}
       const hasApiPositions = Object.keys(savedCatClusters).length > 0
       const hasExistingPositions = Object.keys(existingClusters).length > 0
+
+      // Use larger of current box size or required size
+      const effectiveBox = {
+        ...box,
+        boxWidth: Math.max(box.boxWidth, requiredSize.width),
+        boxHeight: Math.max(box.boxHeight, requiredSize.height)
+      }
+
+      // Track if box needs resizing
+      if (effectiveBox.boxWidth > box.boxWidth || effectiveBox.boxHeight > box.boxHeight) {
+        boxUpdates[catName] = effectiveBox
+      }
 
       if (hasApiPositions) {
         // Use saved API positions, but update sizes based on item counts
@@ -602,7 +682,7 @@ function CloudView({
             }
           } else {
             // New subcategory - pack it
-            const packed = shelfPackClusters({ [subcat]: subcatItemList }, box)
+            const packed = shelfPackClusters({ [subcat]: subcatItemList }, effectiveBox)
             if (packed.length > 0) {
               newClusters[catName][subcat] = packed[0]
             }
@@ -628,7 +708,7 @@ function CloudView({
           } else {
             // New subcategory - pack it
             const existingClustersList = Object.values(newClusters[catName])
-            const packed = shelfPackClusters({ [subcat]: subcatItemList }, box)
+            const packed = shelfPackClusters({ [subcat]: subcatItemList }, effectiveBox)
             if (packed.length > 0) {
               newClusters[catName][subcat] = packed[0]
             }
@@ -636,13 +716,24 @@ function CloudView({
         })
       } else {
         // Auto-pack all clusters
-        const packed = shelfPackClusters(subcatItems, box)
+        const packed = shelfPackClusters(subcatItems, effectiveBox)
         newClusters[catName] = {}
         packed.forEach(cluster => {
           newClusters[catName][cluster.subcategory] = cluster
         })
       }
     })
+
+    // Apply box resizing if any boxes need more space
+    if (Object.keys(boxUpdates).length > 0) {
+      setCategoryBoxes(prev => {
+        const updated = { ...prev }
+        Object.entries(boxUpdates).forEach(([catName, updatedBox]) => {
+          updated[catName] = updatedBox
+        })
+        return updated
+      })
+    }
 
     setSubcategoryClusters(newClusters)
   }, [categoryBoxes, itemsBySubcategory, savedClusterPositions]) // eslint-disable-line react-hooks/exhaustive-deps
