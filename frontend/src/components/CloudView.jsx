@@ -19,8 +19,8 @@ const CATEGORY_COLORS = {
 // Grid constants
 const CELL_WIDTH = 56   // 48px card + 8px gap
 const CELL_HEIGHT = 64  // 56px card + 8px gap
-const BOX_PADDING = 1   // 1 cell padding inside box (for header)
-const BOX_GAP = 1       // 1 cell gap between boxes
+const BOX_PADDING = 0   // No padding - clusters start immediately
+const BOX_GAP = 0       // No gap between boxes
 const MAX_CANVAS_WIDTH = 24  // Max cells wide for initial packing
 
 // Subcategory ordering for auto-placement
@@ -30,7 +30,7 @@ const SUBCATEGORY_ORDER = {
 }
 
 // Cluster constants
-const CLUSTER_PADDING = 1  // 1 cell padding inside cluster for header
+const CLUSTER_PADDING = 0  // No padding inside cluster
 const CLUSTER_GAP = 0      // No gap - use glow effect for visual separation
 
 // Cluster colors (lighter variants of category colors)
