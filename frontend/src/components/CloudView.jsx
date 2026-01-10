@@ -17,8 +17,8 @@ const CATEGORY_COLORS = {
 }
 
 // Grid constants
-const CELL_WIDTH = 56   // 48px card + 8px gap
-const CELL_HEIGHT = 64  // 56px card + 8px gap
+const CELL_WIDTH = 50   // 48px card + 2px gap
+const CELL_HEIGHT = 58  // 56px card + 2px gap
 const BOX_PADDING = 1   // 1 cell padding inside box (for header)
 const BOX_GAP = 0       // No gap - user controls spacing manually
 const MAX_CANVAS_WIDTH = 24  // Max cells wide for initial packing
