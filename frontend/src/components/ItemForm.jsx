@@ -997,8 +997,8 @@ function ItemForm({
       )}
 
       <div className="mb-4">
-        <label className="inline-flex items-center gap-3 cursor-pointer select-none">
-          <span className="text-sm font-medium">Gifted?</span>
+        <span className="block text-sm font-medium mb-1">Gifted?</span>
+        <label className="!inline-flex items-center gap-3 cursor-pointer select-none">
           <div className="relative">
             <input
               type="checkbox"
@@ -1018,7 +1018,7 @@ function ItemForm({
               )}
             </div>
           </div>
-          <span className={`text-sm ${gifted ? 'text-green-700 dark:text-green-400' : 'text-neutral-600 dark:text-neutral-400'}`}>
+          <span className={`text-sm leading-6 ${gifted ? 'text-green-700 dark:text-green-400' : 'text-neutral-600 dark:text-neutral-400'}`}>
             {gifted ? 'Yes, this is a gift' : 'Not a gift'}
           </span>
         </label>
