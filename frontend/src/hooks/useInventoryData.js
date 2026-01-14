@@ -73,7 +73,8 @@ export function useItemFilters(visibleList, filters) {
     selectedSources,
     selectedGifted,
     selectedMaterials,
-    sortOrder
+    sortOrder,
+    randomSeed
   } = filters
 
   // Helper to filter items, optionally excluding a specific filter type
