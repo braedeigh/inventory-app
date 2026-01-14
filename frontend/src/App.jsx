@@ -5,7 +5,8 @@ import Home from './Home.jsx'
 import ItemDetail from './itemDetail.jsx'
 import Login from './Login.jsx'
 import Landing from './Landing.jsx' 
-import CommunityPage from './CommunityPage.jsx' 
+import CommunityPage from './CommunityPage.jsx'
+import Pantry from './Pantry.jsx' 
 
 const API_URL = 'https://bradie-inventory-api.onrender.com'
 
@@ -90,6 +91,13 @@ function App() {
         <Route path="/community" element={<CommunityPage
           token={token}
           userRole={userRole}
+          setShowLogin={setShowLogin}
+          handleLogout={handleLogout}
+        />} />
+
+        {/* Pantry */}
+        <Route path="/pantry" element={<Pantry
+          token={token}
           setShowLogin={setShowLogin}
           handleLogout={handleLogout}
         />} />

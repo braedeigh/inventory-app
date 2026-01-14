@@ -265,6 +265,52 @@ function Landing({ list, communityList, token, setShowLogin, handleLogout }) {
             View Full Inventory
           </button>
         </div>
+
+        {/* Pantry Card - Third */}
+        <div
+          onClick={() => navigate('/pantry')}
+          className="w-full md:w-[380px] mx-auto md:mx-0 bg-white/80 dark:bg-white/[0.03] backdrop-blur-xl border border-neutral-200 dark:border-white/10 rounded-3xl p-6 cursor-pointer hover:scale-[1.02] hover:border-teal-400 dark:hover:border-teal-800/40 hover:shadow-xl dark:hover:shadow-2xl hover:shadow-teal-200/50 dark:hover:shadow-teal-900/20 transition-all duration-300"
+        >
+          <div className="flex justify-between items-start mb-3">
+            <h3 className="text-lg font-semibold uppercase tracking-[0.2em] text-teal-700 dark:text-teal-600">
+              <span className="block">My</span>
+              <span className="block">Pantry</span>
+            </h3>
+            <span className="text-xs text-neutral-400 dark:text-neutral-600">
+              Coming Soon
+            </span>
+          </div>
+
+          <p className="text-xs text-neutral-400 dark:text-neutral-600 text-center mb-4">Track consumables & groceries</p>
+
+          {/* Status section */}
+          <div className="space-y-3 mb-4">
+            {/* Grocery list preview */}
+            <div className="p-3 bg-teal-50 dark:bg-teal-900/20 rounded-lg">
+              <p className="text-xs text-teal-600 dark:text-teal-400 font-medium mb-1">Grocery List</p>
+              <p className="text-sm text-neutral-700 dark:text-neutral-300">No items yet</p>
+            </div>
+
+            {/* Expiring soon */}
+            <div className="p-3 bg-amber-50 dark:bg-amber-900/20 rounded-lg">
+              <p className="text-xs text-amber-600 dark:text-amber-400 font-medium mb-1">Expiring Soon</p>
+              <p className="text-sm text-neutral-700 dark:text-neutral-300">Nothing tracked</p>
+            </div>
+
+            {/* Running low alerts */}
+            <div className="p-3 bg-red-50 dark:bg-red-900/20 rounded-lg">
+              <p className="text-xs text-red-600 dark:text-red-400 font-medium mb-1">Running Low</p>
+              <p className="text-sm text-neutral-700 dark:text-neutral-300">Nothing tracked yet</p>
+            </div>
+          </div>
+
+          <button
+            onClick={(e) => { e.stopPropagation(); navigate('/pantry'); }}
+            className="w-full mt-4 py-3 bg-teal-700 hover:bg-teal-800 text-white text-sm font-medium rounded-xl transition-colors"
+          >
+            Open Pantry
+          </button>
+        </div>
       </div>
     </div>
   )
