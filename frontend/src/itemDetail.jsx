@@ -924,31 +924,33 @@ function ItemDetail({ list, setList, token, userRole }) {
           {/* Gifted checkbox */}
           <div>
             {isEditing ? (
-              <label className="inline-flex items-center gap-3 cursor-pointer select-none">
-                <span className="text-sm font-medium text-neutral-500 dark:text-neutral-400">Gifted?</span>
-                <div className="relative">
-                  <input
-                    type="checkbox"
-                    checked={editGifted}
-                    onChange={(e) => setEditGifted(e.target.checked)}
-                    className="peer sr-only"
-                  />
-                  <div className={`w-6 h-6 rounded-md border-2 transition-all flex items-center justify-center ${
-                    editGifted
-                      ? 'bg-green-500 border-green-500 dark:bg-green-600 dark:border-green-600'
-                      : 'bg-white dark:bg-neutral-800 border-neutral-300 dark:border-neutral-600 hover:border-green-400 dark:hover:border-green-500'
-                  }`}>
-                    {editGifted && (
-                      <svg className="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                      </svg>
-                    )}
+              <div>
+                <label className="block text-sm font-medium text-neutral-500 dark:text-neutral-400 mb-1">Gifted?</label>
+                <label className="inline-flex items-center gap-3 cursor-pointer select-none">
+                  <div className="relative">
+                    <input
+                      type="checkbox"
+                      checked={editGifted}
+                      onChange={(e) => setEditGifted(e.target.checked)}
+                      className="peer sr-only"
+                    />
+                    <div className={`w-6 h-6 rounded-md border-2 transition-all flex items-center justify-center ${
+                      editGifted
+                        ? 'bg-green-500 border-green-500 dark:bg-green-600 dark:border-green-600'
+                        : 'bg-white dark:bg-neutral-800 border-neutral-300 dark:border-neutral-600 hover:border-green-400 dark:hover:border-green-500'
+                    }`}>
+                      {editGifted && (
+                        <svg className="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                        </svg>
+                      )}
+                    </div>
                   </div>
-                </div>
-                <span className={`text-sm ${editGifted ? 'text-green-700 dark:text-green-400' : 'text-neutral-600 dark:text-neutral-400'}`}>
-                  {editGifted ? 'Yes, this is a gift' : 'Not a gift'}
-                </span>
-              </label>
+                  <span className={`text-sm ${editGifted ? 'text-green-700 dark:text-green-400' : 'text-neutral-600 dark:text-neutral-400'}`}>
+                    {editGifted ? 'Yes, this is a gift' : 'Not a gift'}
+                  </span>
+                </label>
+              </div>
             ) : (
               <div>
                 <label className="block text-sm font-medium text-neutral-500 dark:text-neutral-400 mb-1">Gifted?</label>
