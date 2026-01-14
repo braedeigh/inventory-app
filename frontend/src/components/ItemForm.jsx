@@ -997,8 +997,8 @@ function ItemForm({
       )}
 
       <div className="mb-4">
-        <label className="block text-sm font-medium mb-1">Gifted?</label>
-        <label className="inline-flex items-center gap-3 cursor-pointer select-none">
+        <span className="block text-sm font-medium mb-1">Gifted?</span>
+        <label className="!inline-flex items-center gap-3 cursor-pointer select-none">
           <div className="relative">
             <input
               type="checkbox"

@@ -925,8 +925,8 @@ function ItemDetail({ list, setList, token, userRole }) {
           <div>
             {isEditing ? (
               <div>
-                <label className="block text-sm font-medium text-neutral-500 dark:text-neutral-400 mb-1">Gifted?</label>
-                <label className="inline-flex items-center gap-3 cursor-pointer select-none">
+                <span className="block text-sm font-medium text-neutral-500 dark:text-neutral-400 mb-1">Gifted?</span>
+                <label className="!inline-flex items-center gap-3 cursor-pointer select-none">
                   <div className="relative">
                     <input
                       type="checkbox"
