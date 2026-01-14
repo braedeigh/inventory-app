@@ -203,6 +203,34 @@ Cards display:
 This would be an alternate view mode, not replacing the list view. Toggle between "List" and "Cloud" views.
 
 
+TAXONOMY & ONTOLOGY DESIGN NOTES
+
+**Faceted Taxonomy Approach** — Rather than forcing items into a single hierarchical tree, use multiple independent classification facets:
+
+| Facet | Example Values |
+|-------|---------------|
+| **Object Type** | clothing, jewelry, furniture, tool, document |
+| **Body Relation** | worn, carried, used, displayed, stored |
+| **Material Domain** | textile, metal, wood, plastic, paper |
+| **Life Context** | daily use, special occasion, seasonal, archived |
+| **Emotional Weight** | functional, meaningful, precious, legacy |
+
+This lets an item be `clothing + worn + textile + daily use + meaningful` without forcing it into one branch.
+
+**Why faceted over hierarchical:**
+- Items naturally belong to multiple categories (a vintage dress is clothing AND sentimental)
+- Enables powerful cross-cutting queries ("show me all precious textiles")
+- More flexible than rigid tree structures
+- Each facet can be filtered/sorted independently
+- Aligns with how CloudView could show items grouped by any facet, not just category
+
+**Implementation approach:**
+- Add `tags: string[]` for flexible multi-classification
+- Keep categories but allow multiple assignments
+- Promote "sentimental" from category to `emotional_significance` property
+- Enable filtering/grouping by any facet in CloudView
+
+
 LATER / MAYBE
 
  PWA (installable on phone)
