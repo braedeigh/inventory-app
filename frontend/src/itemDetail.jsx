@@ -950,9 +950,9 @@ function ItemDetail({ list, setList, token, userRole }) {
                 </span>
               </label>
             ) : (
-              <div className="flex items-center gap-2">
-                <span className="text-sm font-medium text-neutral-500 dark:text-neutral-400">Gifted?</span>
-                <span>{item.gifted === 'true' || item.gifted === true ? '✓ Yes' : 'No'}</span>
+              <div>
+                <label className="block text-sm font-medium text-neutral-500 dark:text-neutral-400 mb-1">Gifted?</label>
+                <p>{item.gifted === 'true' || item.gifted === true ? '✓ Yes' : '✗ No'}</p>
               </div>
             )}
           </div>
