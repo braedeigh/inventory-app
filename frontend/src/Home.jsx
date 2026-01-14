@@ -25,6 +25,7 @@ function Home({ list, setList, token, userRole, setShowLogin, handleLogout }) {
 
   // Filter state
   const [sortOrder, setSortOrder] = useState('newest')
+  const [randomSeed, setRandomSeed] = useState(0)
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedCategories, setSelectedCategories] = useState([])
   const [selectedSubcategories, setSelectedSubcategories] = useState([])
@@ -56,7 +57,8 @@ function Home({ list, setList, token, userRole, setShowLogin, handleLogout }) {
     selectedSources,
     selectedGifted,
     selectedMaterials,
-    sortOrder
+    sortOrder,
+    randomSeed
   })
 
   // Restore scroll position from sessionStorage on mount
@@ -226,7 +228,10 @@ function Home({ list, setList, token, userRole, setShowLogin, handleLogout }) {
           </select>
           <button
             type="button"
-            onClick={() => setSortOrder('random')}
+            onClick={() => {
+              setSortOrder('random')
+              setRandomSeed(s => s + 1)
+            }}
             className="px-3 py-2 border border-neutral-300 dark:border-neutral-600 rounded-lg bg-white dark:bg-neutral-800 text-neutral-800 dark:text-neutral-100 hover:bg-neutral-100 dark:hover:bg-neutral-700 transition-all"
           >
             Randomize
