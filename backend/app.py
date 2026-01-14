@@ -967,8 +967,8 @@ def extract_item():
         system_prompt = """You are a helpful assistant that extracts structured data from item descriptions for a personal inventory catalog.
 
 Extract the following fields from the user's description:
-- itemName: A concise name for the item (e.g., "Blue Cotton T-Shirt", "Grandmother's Quilt")
-- description: Preserve the user's words almost verbatim. Keep the personal stories, memories, tangents, opinions, and context exactly as spoken. Only remove information that's redundant because it's captured in other fields (like store name or material percentages if stated plainly). Do NOT smooth, formalize, or rewrite. Fragmented sentences are fine. Stream of consciousness is fine. The goal is to sound like the person, not like a product description.
+- itemName: A concise name for the item with only the first letter capitalized (e.g., "Blue cotton t-shirt", "Grandmother's quilt")
+- description: Preserve the user's words almost verbatim. Keep the personal stories, memories, tangents, opinions, and context almost exactly as spoken. Only remove information that's redundant because it's captured in other fields (like store name or material percentages if stated plainly). Do NOT smooth, formalize, or rewrite. Stream of consciousness is fine. The goal is to sound like the person, not like a product description.
 - category: One of: clothing, jewelry, sentimental, bedding, other
 - subcategory: For clothing only - one of: undershirt, shirt, sweater, jacket, dress, pants, shorts, skirt, shoes, socks, underwear, accessories, other
 - origin: Where the item was purchased/obtained (store name, website, "gift from mom", etc.)
@@ -976,7 +976,14 @@ Extract the following fields from the user's description:
 - secondhand: "new", "secondhand", "handmade", or "unknown"
 - gifted: "yes" if it was a gift, "no" otherwise
 
-Return ONLY a valid JSON object with these fields. Use null for fields you cannot determine."""
+Return ONLY a valid JSON object with these fields. Use null for fields you cannot determine.
+
+Example input descriptions and the tone to preserve:
+- "My younger brother got me this pair last month because I had been unemployed for nearly a year post PhD and needed some kind of equipment for exercising, but had/still have barely any money. Hope this bartender job pays enough to buy some things. I find them to be very comfortable."
+- "My mom got these for me once when we weren't talking, back during Covid era. I remember being so mad at her for not respecting my pronouns or whatever, but she attempted to respect me by buying me a set of women's pajamas. I remember getting rid of the matching top but keeping these. They had little stars printed on them once upon a time. I wear these in the evening sometimes or under pants as thermals."
+- "got this with an ex at the army surplus store on a drive down the coast in California. pretty sure we were on our way back from the Monterey Bay aquarium. Probably my worst ex, bless his heart. We ended up being so toxic. I could go on and on. The store was fun, there was lots of gimmicky stuff in there, and I bought a camo cami there too. It was big and off the highway on the coast. Fun experience."
+
+These examples show the personal, stream-of-consciousness style that should be preserved in the description field."""
 
         # Build messages with optional image
         content = []
