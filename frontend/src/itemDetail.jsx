@@ -946,7 +946,7 @@ function ItemDetail({ list, setList, token, userRole }) {
                       )}
                     </div>
                   </div>
-                  <span className={`text-sm ${editGifted ? 'text-green-700 dark:text-green-400' : 'text-neutral-600 dark:text-neutral-400'}`}>
+                  <span className={`text-sm leading-6 ${editGifted ? 'text-green-700 dark:text-green-400' : 'text-neutral-600 dark:text-neutral-400'}`}>
                     {editGifted ? 'Yes, this is a gift' : 'Not a gift'}
                   </span>
                 </label>

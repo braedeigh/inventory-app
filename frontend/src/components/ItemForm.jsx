@@ -1018,7 +1018,7 @@ function ItemForm({
               )}
             </div>
           </div>
-          <span className={`text-sm ${gifted ? 'text-green-700 dark:text-green-400' : 'text-neutral-600 dark:text-neutral-400'}`}>
+          <span className={`text-sm leading-6 ${gifted ? 'text-green-700 dark:text-green-400' : 'text-neutral-600 dark:text-neutral-400'}`}>
             {gifted ? 'Yes, this is a gift' : 'Not a gift'}
           </span>
         </label>
