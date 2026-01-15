@@ -276,31 +276,47 @@ function Landing({ list, communityList, token, setShowLogin, handleLogout }) {
               <span className="block">My</span>
               <span className="block">Pantry</span>
             </h3>
-            <span className="text-xs text-neutral-400 dark:text-neutral-600">
-              Coming Soon
+            <span className="text-xs px-2 py-1 bg-teal-100 dark:bg-teal-900/40 text-teal-700 dark:text-teal-400 rounded-full">
+              Beta
             </span>
           </div>
 
-          <p className="text-xs text-neutral-400 dark:text-neutral-600 text-center mb-4">Track consumables & groceries</p>
+          <p className="text-xs text-neutral-400 dark:text-neutral-600 text-center mb-4">Track what you eat, buy, and need</p>
 
           {/* Status section */}
           <div className="space-y-3 mb-4">
-            {/* Grocery list preview */}
+            {/* Food Log */}
+            <div className="p-3 bg-amber-50 dark:bg-amber-900/20 rounded-lg">
+              <p className="text-xs text-amber-600 dark:text-amber-400 font-medium mb-1">Food Log</p>
+              <p className="text-sm text-neutral-700 dark:text-neutral-300">
+                {(() => {
+                  const logs = JSON.parse(localStorage.getItem('pantry_foodLogs') || '[]')
+                  return logs.length > 0 ? `${logs.length} entries logged` : 'Log what you eat daily'
+                })()}
+              </p>
+            </div>
+
+            {/* Receipt Scanning */}
+            <div className="p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
+              <p className="text-xs text-blue-600 dark:text-blue-400 font-medium mb-1">Receipts</p>
+              <p className="text-sm text-neutral-700 dark:text-neutral-300">
+                {(() => {
+                  const purchases = JSON.parse(localStorage.getItem('pantry_purchases') || '[]')
+                  return purchases.length > 0 ? `${purchases.length} receipts scanned` : 'Scan to track purchases'
+                })()}
+              </p>
+            </div>
+
+            {/* Grocery List */}
             <div className="p-3 bg-teal-50 dark:bg-teal-900/20 rounded-lg">
               <p className="text-xs text-teal-600 dark:text-teal-400 font-medium mb-1">Grocery List</p>
-              <p className="text-sm text-neutral-700 dark:text-neutral-300">No items yet</p>
-            </div>
-
-            {/* Expiring soon */}
-            <div className="p-3 bg-amber-50 dark:bg-amber-900/20 rounded-lg">
-              <p className="text-xs text-amber-600 dark:text-amber-400 font-medium mb-1">Expiring Soon</p>
-              <p className="text-sm text-neutral-700 dark:text-neutral-300">Nothing tracked</p>
-            </div>
-
-            {/* Running low alerts */}
-            <div className="p-3 bg-red-50 dark:bg-red-900/20 rounded-lg">
-              <p className="text-xs text-red-600 dark:text-red-400 font-medium mb-1">Running Low</p>
-              <p className="text-sm text-neutral-700 dark:text-neutral-300">Nothing tracked yet</p>
+              <p className="text-sm text-neutral-700 dark:text-neutral-300">
+                {(() => {
+                  const list = JSON.parse(localStorage.getItem('pantry_groceryList') || '[]')
+                  const unchecked = list.filter(i => !i.checked).length
+                  return unchecked > 0 ? `${unchecked} items to buy` : 'Auto-suggests from patterns'
+                })()}
+              </p>
             </div>
           </div>
 
