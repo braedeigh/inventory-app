@@ -3,13 +3,13 @@ import Foundation
 struct ItemPhoto: Codable, Identifiable, Equatable {
     let id: String
     let url: String
-    let position: Int
+    let position: Int?
     let createdAt: String?
 }
 
 struct ItemMaterial: Codable, Equatable {
-    let material: String
-    let percentage: Int
+    let material: String?
+    let percentage: Int?
 }
 
 struct Item: Codable, Identifiable, Equatable {
