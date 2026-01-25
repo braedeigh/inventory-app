@@ -43,30 +43,18 @@ struct PhotoPicker: View {
 
     private var selectedPhotosView: some View {
         ForEach(Array(selectedPhotos.enumerated()), id: \.offset) { index, photoData in
-            photoThumbnail(photoData: photoData, index: index)
+            PhotoThumbnailView(
+                photoData: photoData,
+                onDelete: {
+                    removePhoto(at: index)
+                }
+            )
         }
     }
 
-    private func photoThumbnail(photoData: Data, index: Int) -> some View {
-        ZStack(alignment: .topTrailing) {
-            if let uiImage = UIImage(data: photoData) {
-                Image(uiImage: uiImage)
-                    .resizable()
-                    .aspectRatio(contentMode: .fill)
-                    .frame(width: 80, height: 80)
-                    .clipShape(RoundedRectangle(cornerRadius: 8))
-            }
-
-            Button {
-                withAnimation {
-                    selectedPhotos.remove(at: index)
-                }
-            } label: {
-                Image(systemName: "xmark.circle.fill")
-                    .font(.title3)
-                    .foregroundStyle(.white, .red)
-            }
-            .offset(x: 6, y: -6)
+    private func removePhoto(at index: Int) {
+        withAnimation {
+            _ = selectedPhotos.remove(at: index)
         }
     }
 
@@ -109,6 +97,38 @@ struct PhotoPicker: View {
                 photoPickerItems = []
             }
         }
+    }
+}
+
+private struct PhotoThumbnailView: View {
+    let photoData: Data
+    let onDelete: () -> Void
+
+    var body: some View {
+        ZStack(alignment: .topTrailing) {
+            thumbnailImage
+            deleteButton
+        }
+    }
+
+    @ViewBuilder
+    private var thumbnailImage: some View {
+        if let uiImage = UIImage(data: photoData) {
+            Image(uiImage: uiImage)
+                .resizable()
+                .aspectRatio(contentMode: .fill)
+                .frame(width: 80, height: 80)
+                .clipShape(RoundedRectangle(cornerRadius: 8))
+        }
+    }
+
+    private var deleteButton: some View {
+        Button(action: onDelete) {
+            Image(systemName: "xmark.circle.fill")
+                .font(.title3)
+                .foregroundStyle(.white, .red)
+        }
+        .offset(x: 6, y: -6)
     }
 }
 
