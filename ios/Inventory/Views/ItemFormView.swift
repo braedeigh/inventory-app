@@ -260,7 +260,7 @@ struct ItemFormView: View {
     }
 
     private func loadItemData(_ item: Item) {
-        itemName = item.itemName
+        itemName = item.itemName ?? ""
         description = item.description ?? ""
         selectedCategory = item.category ?? ""
         selectedSubcategory = item.subcategory ?? ""
