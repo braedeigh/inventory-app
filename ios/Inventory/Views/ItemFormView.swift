@@ -63,13 +63,19 @@ struct ItemFormView: View {
                 }
             }
             .alert("Add Category", isPresented: $showingAddCategory) {
-                addCategoryAlert
+                TextField("Category name", text: $newCategoryName)
+                Button("Cancel", role: .cancel) { newCategoryName = "" }
+                Button("Add") { addCategory() }
             }
             .alert("Add Subcategory", isPresented: $showingAddSubcategory) {
-                addSubcategoryAlert
+                TextField("Subcategory name", text: $newSubcategoryName)
+                Button("Cancel", role: .cancel) { newSubcategoryName = "" }
+                Button("Add") { addSubcategory() }
             }
             .alert("Add Material", isPresented: $showingAddMaterial) {
-                addMaterialAlert
+                TextField("Material name", text: $newMaterialName)
+                Button("Cancel", role: .cancel) { newMaterialName = "" }
+                Button("Add") { addMaterial() }
             }
         }
     }
@@ -250,53 +256,32 @@ struct ItemFormView: View {
         }
     }
 
-    // MARK: - Alerts
+    // MARK: - Alert Actions
 
-    @AlertContentBuilder
-    private var addCategoryAlert: some View {
-        TextField("Category name", text: $newCategoryName)
-        Button("Cancel", role: .cancel) {
+    private func addCategory() {
+        Task {
+            if await viewModel.addCategory(name: newCategoryName) {
+                selectedCategory = newCategoryName.lowercased().replacingOccurrences(of: " ", with: "-")
+            }
             newCategoryName = ""
         }
-        Button("Add") {
-            Task {
-                if await viewModel.addCategory(name: newCategoryName) {
-                    selectedCategory = newCategoryName.lowercased().replacingOccurrences(of: " ", with: "-")
-                }
-                newCategoryName = ""
-            }
-        }
     }
 
-    @AlertContentBuilder
-    private var addSubcategoryAlert: some View {
-        TextField("Subcategory name", text: $newSubcategoryName)
-        Button("Cancel", role: .cancel) {
+    private func addSubcategory() {
+        Task {
+            if await viewModel.addSubcategory(name: newSubcategoryName, category: selectedCategory) {
+                selectedSubcategory = newSubcategoryName.lowercased().replacingOccurrences(of: " ", with: "-")
+            }
             newSubcategoryName = ""
         }
-        Button("Add") {
-            Task {
-                if await viewModel.addSubcategory(name: newSubcategoryName, category: selectedCategory) {
-                    selectedSubcategory = newSubcategoryName.lowercased().replacingOccurrences(of: " ", with: "-")
-                }
-                newSubcategoryName = ""
-            }
-        }
     }
 
-    @AlertContentBuilder
-    private var addMaterialAlert: some View {
-        TextField("Material name", text: $newMaterialName)
-        Button("Cancel", role: .cancel) {
-            newMaterialName = ""
-        }
-        Button("Add") {
-            Task {
-                if await viewModel.addMaterial(name: newMaterialName) {
-                    selectedMaterialToAdd = newMaterialName.prefix(1).uppercased() + newMaterialName.dropFirst().lowercased()
-                }
-                newMaterialName = ""
+    private func addMaterial() {
+        Task {
+            if await viewModel.addMaterial(name: newMaterialName) {
+                selectedMaterialToAdd = newMaterialName.prefix(1).uppercased() + newMaterialName.dropFirst().lowercased()
             }
+            newMaterialName = ""
         }
     }
 
@@ -413,17 +398,6 @@ private struct MaterialPickerView: View {
                     .foregroundStyle(.green)
             }
             .buttonStyle(.borderless)
-        }
-    }
-}
-
-// MARK: - Alert Content Builder
-
-@resultBuilder
-struct AlertContentBuilder {
-    static func buildBlock(_ components: some View...) -> some View {
-        ForEach(Array(components.enumerated()), id: \.offset) { _, component in
-            component
         }
     }
 }
