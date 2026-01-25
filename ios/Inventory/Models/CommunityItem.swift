@@ -10,7 +10,11 @@ struct CommunityItem: Codable, Identifiable, Equatable {
     let createdAt: String?
     var subcategory: String?
     var submittedBy: String?
-    var approved: Bool?
+    var approved: Int?
+
+    var isApproved: Bool {
+        approved == 1
+    }
 
     var displayName: String {
         itemName.isEmpty ? "Untitled" : itemName
