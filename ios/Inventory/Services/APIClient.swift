@@ -102,7 +102,17 @@ final class APIClient {
 
     func fetchItems() async throws -> [Item] {
         let data = try await makeRequest(endpoint: "/")
-        return try JSONDecoder().decode([Item].self, from: data)
+        do {
+            return try JSONDecoder().decode([Item].self, from: data)
+        } catch {
+            // Print raw JSON for debugging
+            if let jsonString = String(data: data, encoding: .utf8) {
+                print("DEBUG: Raw JSON response (first 2000 chars):")
+                print(String(jsonString.prefix(2000)))
+            }
+            print("DEBUG: Decode error: \(error)")
+            throw error
+        }
     }
 
     func fetchItem(id: String) async throws -> Item {
