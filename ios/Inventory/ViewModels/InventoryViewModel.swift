@@ -68,7 +68,7 @@ final class InventoryViewModel: ObservableObject {
         if !filterState.searchText.isEmpty {
             let searchLower = filterState.searchText.lowercased()
             result = result.filter { item in
-                item.itemName.lowercased().contains(searchLower) ||
+                (item.itemName?.lowercased().contains(searchLower) ?? false) ||
                 (item.description?.lowercased().contains(searchLower) ?? false) ||
                 (item.origin?.lowercased().contains(searchLower) ?? false) ||
                 (item.category?.lowercased().contains(searchLower) ?? false)
@@ -111,7 +111,7 @@ final class InventoryViewModel: ObservableObject {
         case .oldest:
             result.sort { ($0.createdAt ?? "") < ($1.createdAt ?? "") }
         case .alphabetical:
-            result.sort { $0.itemName.lowercased() < $1.itemName.lowercased() }
+            result.sort { ($0.itemName ?? "").lowercased() < ($1.itemName ?? "").lowercased() }
         case .random:
             result.shuffle()
         }
