@@ -14,7 +14,7 @@ struct ItemMaterial: Codable, Equatable {
 
 struct Item: Codable, Identifiable, Equatable {
     let id: String
-    var itemName: String
+    var itemName: String?
     var description: String?
     var category: String?
     var origin: String?
@@ -61,7 +61,8 @@ struct Item: Codable, Identifiable, Equatable {
     }
 
     var displayName: String {
-        itemName.isEmpty ? "Untitled" : itemName
+        guard let name = itemName, !name.isEmpty else { return "Untitled" }
+        return name
     }
 
     var allPhotos: [String] {
