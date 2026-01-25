@@ -94,7 +94,7 @@ final class InventoryViewModel: ObservableObject {
         if !filterState.selectedMaterials.isEmpty {
             result = result.filter { item in
                 guard let itemMaterials = item.materials else { return false }
-                let itemMaterialNames = Set(itemMaterials.map { $0.material })
+                let itemMaterialNames = Set(itemMaterials.compactMap { $0.material })
                 return !filterState.selectedMaterials.isDisjoint(with: itemMaterialNames)
             }
         }
